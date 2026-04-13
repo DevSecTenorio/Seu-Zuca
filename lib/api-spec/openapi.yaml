@@ -3,20 +3,48 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Seu Zuca — Marketplace B2B de Materiais de Construção
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: auth
+    description: Autenticação e cadastro
+  - name: users
+    description: Gestão de usuários
+  - name: categories
+    description: Categorias de produtos
+  - name: products
+    description: Produtos do catálogo
+  - name: cart
+    description: Carrinho de compras
+  - name: orders
+    description: Pedidos
+  - name: quotes
+    description: Cotações
+  - name: reviews
+    description: Avaliações
+  - name: wishlist
+    description: Lista de favoritos
+  - name: addresses
+    description: Endereços de entrega
+  - name: admin
+    description: Painel administrativo
+  - name: supplier
+    description: Painel do fornecedor
+  - name: dashboard
+    description: Analytics e dashboard
+  - name: cep
+    description: Consulta de CEP
+
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,6 +52,1200 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  # AUTH
+  /auth/register:
+    post:
+      operationId: registerUser
+      tags: [auth]
+      summary: Cadastrar novo usuário
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterBody"
+      responses:
+        "201":
+          description: Usuário criado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "400":
+          description: Dados inválidos
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/login:
+    post:
+      operationId: loginUser
+      tags: [auth]
+      summary: Login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginBody"
+      responses:
+        "200":
+          description: Login realizado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "401":
+          description: Credenciais inválidas
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/logout:
+    post:
+      operationId: logoutUser
+      tags: [auth]
+      summary: Logout
+      responses:
+        "200":
+          description: Logout realizado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  /auth/me:
+    get:
+      operationId: getMe
+      tags: [auth]
+      summary: Dados do usuário autenticado
+      responses:
+        "200":
+          description: Usuário autenticado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "401":
+          description: Não autenticado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/forgot-password:
+    post:
+      operationId: forgotPassword
+      tags: [auth]
+      summary: Recuperação de senha
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ForgotPasswordBody"
+      responses:
+        "200":
+          description: E-mail enviado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  /auth/reset-password:
+    post:
+      operationId: resetPassword
+      tags: [auth]
+      summary: Redefinir senha
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ResetPasswordBody"
+      responses:
+        "200":
+          description: Senha redefinida
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  # CATEGORIES
+  /categories:
+    get:
+      operationId: listCategories
+      tags: [categories]
+      summary: Listar categorias
+      responses:
+        "200":
+          description: Lista de categorias
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Category"
+    post:
+      operationId: createCategory
+      tags: [categories]
+      summary: Criar categoria (Admin)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCategoryBody"
+      responses:
+        "201":
+          description: Categoria criada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Category"
+
+  /categories/{id}:
+    get:
+      operationId: getCategory
+      tags: [categories]
+      summary: Obter categoria
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Categoria encontrada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Category"
+    put:
+      operationId: updateCategory
+      tags: [categories]
+      summary: Atualizar categoria (Admin)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCategoryBody"
+      responses:
+        "200":
+          description: Categoria atualizada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Category"
+    delete:
+      operationId: deleteCategory
+      tags: [categories]
+      summary: Excluir categoria (Admin)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Excluída
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  # PRODUCTS
+  /products:
+    get:
+      operationId: listProducts
+      tags: [products]
+      summary: Listar produtos do catálogo
+      parameters:
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: categoryId
+          in: query
+          schema:
+            type: integer
+        - name: supplierId
+          in: query
+          schema:
+            type: integer
+        - name: available
+          in: query
+          schema:
+            type: boolean
+        - name: page
+          in: query
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Lista de produtos
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductListResponse"
+
+  /products/{id}:
+    get:
+      operationId: getProduct
+      tags: [products]
+      summary: Obter produto por ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Produto encontrado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductDetail"
+        "404":
+          description: Não encontrado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /products/{id}/reviews:
+    get:
+      operationId: getProductReviews
+      tags: [products]
+      summary: Avaliações do produto
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Lista de avaliações
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Review"
+
+  # SUPPLIER PRODUCTS
+  /supplier/products:
+    get:
+      operationId: listSupplierProducts
+      tags: [supplier]
+      summary: Listar produtos do fornecedor
+      responses:
+        "200":
+          description: Lista de produtos do fornecedor
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ProductDetail"
+    post:
+      operationId: createProduct
+      tags: [supplier]
+      summary: Criar produto
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateProductBody"
+      responses:
+        "201":
+          description: Produto criado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductDetail"
+
+  /supplier/products/{id}:
+    put:
+      operationId: updateProduct
+      tags: [supplier]
+      summary: Atualizar produto
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateProductBody"
+      responses:
+        "200":
+          description: Produto atualizado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductDetail"
+    delete:
+      operationId: deleteProduct
+      tags: [supplier]
+      summary: Excluir produto
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Excluído
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  /supplier/orders:
+    get:
+      operationId: listSupplierOrders
+      tags: [supplier]
+      summary: Pedidos do fornecedor
+      responses:
+        "200":
+          description: Lista de pedidos
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Order"
+
+  /supplier/orders/{id}/status:
+    put:
+      operationId: updateOrderStatus
+      tags: [supplier]
+      summary: Atualizar status do pedido
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateOrderStatusBody"
+      responses:
+        "200":
+          description: Status atualizado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+
+  /supplier/quotes:
+    get:
+      operationId: listSupplierQuotes
+      tags: [supplier]
+      summary: Cotações recebidas pelo fornecedor
+      responses:
+        "200":
+          description: Lista de cotações
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Quote"
+
+  /supplier/quotes/{id}/respond:
+    post:
+      operationId: respondToQuote
+      tags: [supplier]
+      summary: Responder cotação
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/QuoteResponseBody"
+      responses:
+        "201":
+          description: Resposta enviada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QuoteResponse"
+
+  /supplier/stats:
+    get:
+      operationId: getSupplierStats
+      tags: [supplier]
+      summary: Estatísticas do fornecedor
+      responses:
+        "200":
+          description: Estatísticas
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SupplierStats"
+
+  # CART
+  /cart:
+    get:
+      operationId: getCart
+      tags: [cart]
+      summary: Obter carrinho atual
+      responses:
+        "200":
+          description: Carrinho
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Cart"
+    delete:
+      operationId: clearCart
+      tags: [cart]
+      summary: Limpar carrinho
+      responses:
+        "200":
+          description: Carrinho limpo
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  /cart/items:
+    post:
+      operationId: addToCart
+      tags: [cart]
+      summary: Adicionar item ao carrinho
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AddToCartBody"
+      responses:
+        "200":
+          description: Item adicionado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Cart"
+        "400":
+          description: Quantidade inválida
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /cart/items/{productId}:
+    put:
+      operationId: updateCartItem
+      tags: [cart]
+      summary: Atualizar quantidade no carrinho
+      parameters:
+        - name: productId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateCartItemBody"
+      responses:
+        "200":
+          description: Carrinho atualizado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Cart"
+    delete:
+      operationId: removeFromCart
+      tags: [cart]
+      summary: Remover item do carrinho
+      parameters:
+        - name: productId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Item removido
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Cart"
+
+  # ORDERS
+  /orders:
+    get:
+      operationId: listOrders
+      tags: [orders]
+      summary: Listar pedidos do comprador
+      responses:
+        "200":
+          description: Lista de pedidos
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Order"
+    post:
+      operationId: createOrder
+      tags: [orders]
+      summary: Criar pedido (checkout)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateOrderBody"
+      responses:
+        "201":
+          description: Pedido criado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderWithCheckout"
+        "400":
+          description: Erro na criação
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /orders/{id}:
+    get:
+      operationId: getOrder
+      tags: [orders]
+      summary: Obter pedido por ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Pedido encontrado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+
+  # QUOTES
+  /quotes:
+    get:
+      operationId: listQuotes
+      tags: [quotes]
+      summary: Listar cotações do comprador
+      responses:
+        "200":
+          description: Lista de cotações
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Quote"
+    post:
+      operationId: createQuote
+      tags: [quotes]
+      summary: Criar solicitação de cotação
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateQuoteBody"
+      responses:
+        "201":
+          description: Cotação criada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Quote"
+
+  /quotes/{id}:
+    get:
+      operationId: getQuote
+      tags: [quotes]
+      summary: Obter cotação com respostas
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Cotação encontrada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QuoteWithResponses"
+
+  /quotes/{id}/accept:
+    post:
+      operationId: acceptQuoteResponse
+      tags: [quotes]
+      summary: Aceitar resposta de cotação
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AcceptQuoteBody"
+      responses:
+        "200":
+          description: Cotação aceita
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  # REVIEWS
+  /reviews:
+    post:
+      operationId: createReview
+      tags: [reviews]
+      summary: Criar avaliação
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateReviewBody"
+      responses:
+        "201":
+          description: Avaliação criada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Review"
+
+  # WISHLIST
+  /wishlist:
+    get:
+      operationId: getWishlist
+      tags: [wishlist]
+      summary: Obter lista de favoritos
+      responses:
+        "200":
+          description: Favoritos
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/WishlistItem"
+
+  /wishlist/{productId}:
+    post:
+      operationId: addToWishlist
+      tags: [wishlist]
+      summary: Adicionar produto aos favoritos
+      parameters:
+        - name: productId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Adicionado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+    delete:
+      operationId: removeFromWishlist
+      tags: [wishlist]
+      summary: Remover dos favoritos
+      parameters:
+        - name: productId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Removido
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  # ADDRESSES
+  /addresses:
+    get:
+      operationId: listAddresses
+      tags: [addresses]
+      summary: Listar endereços do comprador
+      responses:
+        "200":
+          description: Lista de endereços
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Address"
+    post:
+      operationId: createAddress
+      tags: [addresses]
+      summary: Adicionar endereço
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateAddressBody"
+      responses:
+        "201":
+          description: Endereço criado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Address"
+
+  /addresses/{id}:
+    put:
+      operationId: updateAddress
+      tags: [addresses]
+      summary: Atualizar endereço
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateAddressBody"
+      responses:
+        "200":
+          description: Endereço atualizado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Address"
+    delete:
+      operationId: deleteAddress
+      tags: [addresses]
+      summary: Excluir endereço
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Excluído
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  # CEP
+  /cep/{cep}:
+    get:
+      operationId: lookupCep
+      tags: [cep]
+      summary: Consultar CEP via ViaCEP
+      parameters:
+        - name: cep
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Dados do CEP
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CepData"
+
+  # ADMIN
+  /admin/users:
+    get:
+      operationId: adminListUsers
+      tags: [admin]
+      summary: Listar usuários (Admin)
+      parameters:
+        - name: role
+          in: query
+          schema:
+            type: string
+        - name: status
+          in: query
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Lista de usuários
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserListResponse"
+
+  /admin/users/{id}/approve:
+    post:
+      operationId: adminApproveUser
+      tags: [admin]
+      summary: Aprovar comprador (Admin)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Aprovado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+
+  /admin/users/{id}/reject:
+    post:
+      operationId: adminRejectUser
+      tags: [admin]
+      summary: Recusar comprador (Admin)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RejectUserBody"
+      responses:
+        "200":
+          description: Recusado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+
+  /admin/users/{id}/suspend:
+    post:
+      operationId: adminSuspendUser
+      tags: [admin]
+      summary: Suspender usuário (Admin)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Suspenso
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+
+  /admin/category-rules:
+    get:
+      operationId: listCategoryRules
+      tags: [admin]
+      summary: Listar regras de quantidade mínima
+      responses:
+        "200":
+          description: Regras
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CategoryMinimumRule"
+    post:
+      operationId: createCategoryRule
+      tags: [admin]
+      summary: Criar regra de quantidade mínima
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCategoryRuleBody"
+      responses:
+        "201":
+          description: Regra criada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CategoryMinimumRule"
+
+  /admin/category-rules/{id}:
+    put:
+      operationId: updateCategoryRule
+      tags: [admin]
+      summary: Atualizar regra de quantidade mínima
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCategoryRuleBody"
+      responses:
+        "200":
+          description: Regra atualizada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CategoryMinimumRule"
+    delete:
+      operationId: deleteCategoryRule
+      tags: [admin]
+      summary: Excluir regra
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Excluída
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  /admin/reviews:
+    get:
+      operationId: adminListReviews
+      tags: [admin]
+      summary: Listar avaliações para moderação
+      responses:
+        "200":
+          description: Lista de avaliações
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Review"
+
+  /admin/reviews/{id}/approve:
+    post:
+      operationId: adminApproveReview
+      tags: [admin]
+      summary: Aprovar avaliação
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Aprovada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Review"
+
+  /admin/reviews/{id}/remove:
+    delete:
+      operationId: adminRemoveReview
+      tags: [admin]
+      summary: Remover avaliação
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Removida
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  /admin/commission:
+    get:
+      operationId: getCommissionConfig
+      tags: [admin]
+      summary: Obter configuração de comissão
+      responses:
+        "200":
+          description: Configuração atual
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CommissionConfig"
+    put:
+      operationId: updateCommissionConfig
+      tags: [admin]
+      summary: Atualizar comissão global
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CommissionConfigBody"
+      responses:
+        "200":
+          description: Atualizada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CommissionConfig"
+
+  /admin/reports/orders:
+    get:
+      operationId: adminOrdersReport
+      tags: [admin]
+      summary: Relatório de pedidos (exportável em CSV)
+      parameters:
+        - name: startDate
+          in: query
+          schema:
+            type: string
+        - name: endDate
+          in: query
+          schema:
+            type: string
+        - name: format
+          in: query
+          schema:
+            type: string
+            enum: [json, csv]
+      responses:
+        "200":
+          description: Relatório
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrdersReport"
+
+  # DASHBOARD
+  /dashboard/stats:
+    get:
+      operationId: getDashboardStats
+      tags: [dashboard]
+      summary: Estatísticas do dashboard Admin
+      responses:
+        "200":
+          description: Estatísticas
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardStats"
+
+  /dashboard/sales-chart:
+    get:
+      operationId: getSalesChart
+      tags: [dashboard]
+      summary: Dados do gráfico de vendas mensais
+      responses:
+        "200":
+          description: Dados do gráfico
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SalesChartPoint"
+
+  /dashboard/recent-orders:
+    get:
+      operationId: getRecentOrders
+      tags: [dashboard]
+      summary: Pedidos recentes para o dashboard
+      responses:
+        "200":
+          description: Pedidos recentes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Order"
+
+  /dashboard/top-products:
+    get:
+      operationId: getTopProducts
+      tags: [dashboard]
+      summary: Produtos mais vendidos
+      responses:
+        "200":
+          description: Top produtos
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TopProduct"
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +1256,967 @@ components:
       required:
         - status
 
+    ErrorResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        errors:
+          type: array
+          items:
+            type: string
+      required:
+        - message
+
+    MessageResponse:
+      type: object
+      properties:
+        message:
+          type: string
+      required:
+        - message
+
+    # AUTH SCHEMAS
+    RegisterBody:
+      type: object
+      properties:
+        email:
+          type: string
+        password:
+          type: string
+        nome:
+          type: string
+        role:
+          type: string
+          enum: [buyer, supplier]
+        cnpj:
+          type: string
+        razaoSocial:
+          type: string
+        nomeFantasia:
+          type: string
+        telefone:
+          type: string
+        ramo:
+          type: string
+        cep:
+          type: string
+        logradouro:
+          type: string
+        numero:
+          type: string
+        complemento:
+          type: string
+        bairro:
+          type: string
+        cidade:
+          type: string
+        estado:
+          type: string
+      required:
+        - email
+        - password
+        - nome
+        - role
+        - cnpj
+        - razaoSocial
+        - telefone
+
+    LoginBody:
+      type: object
+      properties:
+        email:
+          type: string
+        password:
+          type: string
+      required:
+        - email
+        - password
+
+    ForgotPasswordBody:
+      type: object
+      properties:
+        email:
+          type: string
+      required:
+        - email
+
+    ResetPasswordBody:
+      type: object
+      properties:
+        token:
+          type: string
+        password:
+          type: string
+      required:
+        - token
+        - password
+
+    AuthResponse:
+      type: object
+      properties:
+        user:
+          $ref: "#/components/schemas/User"
+        message:
+          type: string
+      required:
+        - user
+
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+        email:
+          type: string
+        nome:
+          type: string
+        role:
+          type: string
+          enum: [admin, buyer, supplier]
+        status:
+          type: string
+          enum: [pending, approved, rejected, suspended]
+        cnpj:
+          type: string
+        razaoSocial:
+          type: string
+        nomeFantasia:
+          type: string
+        telefone:
+          type: string
+        ramo:
+          type: string
+        emailVerificado:
+          type: boolean
+        createdAt:
+          type: string
+        stripeAccountId:
+          type: string
+      required:
+        - id
+        - email
+        - nome
+        - role
+        - status
+
+    UserListResponse:
+      type: object
+      properties:
+        users:
+          type: array
+          items:
+            $ref: "#/components/schemas/User"
+        total:
+          type: integer
+        page:
+          type: integer
+        totalPages:
+          type: integer
+      required:
+        - users
+        - total
+        - page
+        - totalPages
+
+    RejectUserBody:
+      type: object
+      properties:
+        motivo:
+          type: string
+      required:
+        - motivo
+
+    # CATEGORIES
+    Category:
+      type: object
+      properties:
+        id:
+          type: integer
+        nome:
+          type: string
+        slug:
+          type: string
+        descricao:
+          type: string
+        parentId:
+          type: integer
+        unidadeMedida:
+          type: string
+        ativo:
+          type: boolean
+        ordem:
+          type: integer
+        minimumRule:
+          $ref: "#/components/schemas/CategoryMinimumRule"
+        children:
+          type: array
+          items:
+            $ref: "#/components/schemas/Category"
+      required:
+        - id
+        - nome
+        - slug
+        - ativo
+
+    CreateCategoryBody:
+      type: object
+      properties:
+        nome:
+          type: string
+        slug:
+          type: string
+        descricao:
+          type: string
+        parentId:
+          type: integer
+        unidadeMedida:
+          type: string
+        ativo:
+          type: boolean
+        ordem:
+          type: integer
+      required:
+        - nome
+        - slug
+
+    CategoryMinimumRule:
+      type: object
+      properties:
+        id:
+          type: integer
+        categoryId:
+          type: integer
+        quantidadeMinima:
+          type: integer
+        multiplo:
+          type: integer
+        ativo:
+          type: boolean
+        categoryName:
+          type: string
+      required:
+        - id
+        - categoryId
+        - quantidadeMinima
+        - multiplo
+        - ativo
+
+    CreateCategoryRuleBody:
+      type: object
+      properties:
+        categoryId:
+          type: integer
+        quantidadeMinima:
+          type: integer
+        multiplo:
+          type: integer
+        ativo:
+          type: boolean
+      required:
+        - categoryId
+        - quantidadeMinima
+        - multiplo
+
+    # PRODUCTS
+    Product:
+      type: object
+      properties:
+        id:
+          type: integer
+        nome:
+          type: string
+        slug:
+          type: string
+        descricao:
+          type: string
+        sku:
+          type: string
+        preco:
+          type: number
+        unidadeMedida:
+          type: string
+        estoque:
+          type: integer
+        disponivel:
+          type: boolean
+        categoryId:
+          type: integer
+        categoryName:
+          type: string
+        supplierId:
+          type: integer
+        supplierName:
+          type: string
+        imagemPrincipal:
+          type: string
+        mediaAvaliacao:
+          type: number
+        totalAvaliacoes:
+          type: integer
+        prazoFrete:
+          type: integer
+        quantidadeMinima:
+          type: integer
+        createdAt:
+          type: string
+      required:
+        - id
+        - nome
+        - slug
+        - disponivel
+        - categoryId
+        - supplierId
+
+    ProductDetail:
+      allOf:
+        - $ref: "#/components/schemas/Product"
+        - type: object
+          properties:
+            imagens:
+              type: array
+              items:
+                type: string
+            regioesAtendidas:
+              type: array
+              items:
+                type: string
+            category:
+              $ref: "#/components/schemas/Category"
+            supplier:
+              $ref: "#/components/schemas/User"
+            reviews:
+              type: array
+              items:
+                $ref: "#/components/schemas/Review"
+
+    ProductListResponse:
+      type: object
+      properties:
+        products:
+          type: array
+          items:
+            $ref: "#/components/schemas/Product"
+        total:
+          type: integer
+        page:
+          type: integer
+        totalPages:
+          type: integer
+      required:
+        - products
+        - total
+        - page
+        - totalPages
+
+    CreateProductBody:
+      type: object
+      properties:
+        nome:
+          type: string
+        descricao:
+          type: string
+        sku:
+          type: string
+        preco:
+          type: number
+        unidadeMedida:
+          type: string
+        estoque:
+          type: integer
+        categoryId:
+          type: integer
+        imagens:
+          type: array
+          items:
+            type: string
+        prazoFrete:
+          type: integer
+        regioesAtendidas:
+          type: array
+          items:
+            type: string
+        alertaEstoque:
+          type: integer
+      required:
+        - nome
+        - preco
+        - unidadeMedida
+        - estoque
+        - categoryId
+
+    # CART
+    CartItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        productId:
+          type: integer
+        product:
+          $ref: "#/components/schemas/Product"
+        quantidade:
+          type: integer
+        precoUnitario:
+          type: number
+        subtotal:
+          type: number
+        quantidadeMinima:
+          type: integer
+        valido:
+          type: boolean
+        mensagemErro:
+          type: string
+      required:
+        - id
+        - productId
+        - quantidade
+        - precoUnitario
+        - subtotal
+
+    Cart:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/CartItem"
+        total:
+          type: number
+        valido:
+          type: boolean
+        erros:
+          type: array
+          items:
+            type: string
+      required:
+        - items
+        - total
+        - valido
+
+    AddToCartBody:
+      type: object
+      properties:
+        productId:
+          type: integer
+        quantidade:
+          type: integer
+      required:
+        - productId
+        - quantidade
+
+    UpdateCartItemBody:
+      type: object
+      properties:
+        quantidade:
+          type: integer
+      required:
+        - quantidade
+
+    # ORDERS
+    OrderItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        productId:
+          type: integer
+        productName:
+          type: string
+        quantidade:
+          type: integer
+        precoUnitario:
+          type: number
+        subtotal:
+          type: number
+      required:
+        - id
+        - productId
+        - productName
+        - quantidade
+        - precoUnitario
+        - subtotal
+
+    Order:
+      type: object
+      properties:
+        id:
+          type: integer
+        buyerId:
+          type: integer
+        buyerName:
+          type: string
+        supplierId:
+          type: integer
+        supplierName:
+          type: string
+        status:
+          type: string
+          enum: [pendente, em_separacao, enviado, entregue, cancelado]
+        total:
+          type: number
+        comissao:
+          type: number
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/OrderItem"
+        addressId:
+          type: integer
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+      required:
+        - id
+        - buyerId
+        - status
+        - total
+        - createdAt
+
+    OrderWithCheckout:
+      allOf:
+        - $ref: "#/components/schemas/Order"
+        - type: object
+          properties:
+            checkoutUrl:
+              type: string
+            stripeSessionId:
+              type: string
+
+    CreateOrderBody:
+      type: object
+      properties:
+        addressId:
+          type: integer
+        observacoes:
+          type: string
+      required:
+        - addressId
+
+    UpdateOrderStatusBody:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [pendente, em_separacao, enviado, entregue, cancelado]
+      required:
+        - status
+
+    # QUOTES
+    QuoteItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        productId:
+          type: integer
+        productName:
+          type: string
+        quantidade:
+          type: integer
+      required:
+        - id
+        - productId
+        - quantidade
+
+    Quote:
+      type: object
+      properties:
+        id:
+          type: integer
+        buyerId:
+          type: integer
+        buyerName:
+          type: string
+        supplierId:
+          type: integer
+        supplierName:
+          type: string
+        status:
+          type: string
+          enum: [pendente, respondida, aceita, recusada, expirada]
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/QuoteItem"
+        observacoes:
+          type: string
+        createdAt:
+          type: string
+      required:
+        - id
+        - buyerId
+        - status
+        - createdAt
+
+    QuoteWithResponses:
+      allOf:
+        - $ref: "#/components/schemas/Quote"
+        - type: object
+          properties:
+            responses:
+              type: array
+              items:
+                $ref: "#/components/schemas/QuoteResponse"
+
+    QuoteResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+        quoteId:
+          type: integer
+        supplierId:
+          type: integer
+        supplierName:
+          type: string
+        precoTotal:
+          type: number
+        prazoEntrega:
+          type: integer
+        condicoes:
+          type: string
+        valorFrete:
+          type: number
+        validadeAte:
+          type: string
+        status:
+          type: string
+          enum: [pendente, aceita, recusada]
+        createdAt:
+          type: string
+      required:
+        - id
+        - quoteId
+        - supplierId
+        - precoTotal
+        - prazoEntrega
+        - status
+        - createdAt
+
+    QuoteResponseBody:
+      type: object
+      properties:
+        precoTotal:
+          type: number
+        prazoEntrega:
+          type: integer
+        condicoes:
+          type: string
+        valorFrete:
+          type: number
+        validadeAte:
+          type: string
+      required:
+        - precoTotal
+        - prazoEntrega
+
+    CreateQuoteBody:
+      type: object
+      properties:
+        supplierId:
+          type: integer
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/QuoteItemInput"
+        observacoes:
+          type: string
+      required:
+        - supplierId
+        - items
+
+    QuoteItemInput:
+      type: object
+      properties:
+        productId:
+          type: integer
+        quantidade:
+          type: integer
+      required:
+        - productId
+        - quantidade
+
+    AcceptQuoteBody:
+      type: object
+      properties:
+        responseId:
+          type: integer
+      required:
+        - responseId
+
+    # REVIEWS
+    Review:
+      type: object
+      properties:
+        id:
+          type: integer
+        buyerId:
+          type: integer
+        buyerName:
+          type: string
+        productId:
+          type: integer
+        productName:
+          type: string
+        supplierId:
+          type: integer
+        nota:
+          type: integer
+        comentario:
+          type: string
+        aprovada:
+          type: boolean
+        createdAt:
+          type: string
+      required:
+        - id
+        - buyerId
+        - nota
+        - comentario
+        - aprovada
+        - createdAt
+
+    CreateReviewBody:
+      type: object
+      properties:
+        productId:
+          type: integer
+        orderId:
+          type: integer
+        nota:
+          type: integer
+        comentario:
+          type: string
+      required:
+        - productId
+        - orderId
+        - nota
+        - comentario
+
+    # WISHLIST
+    WishlistItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        productId:
+          type: integer
+        product:
+          $ref: "#/components/schemas/Product"
+        addedAt:
+          type: string
+      required:
+        - id
+        - productId
+        - addedAt
+
+    # ADDRESSES
+    Address:
+      type: object
+      properties:
+        id:
+          type: integer
+        userId:
+          type: integer
+        nome:
+          type: string
+        cep:
+          type: string
+        logradouro:
+          type: string
+        numero:
+          type: string
+        complemento:
+          type: string
+        bairro:
+          type: string
+        cidade:
+          type: string
+        estado:
+          type: string
+        principal:
+          type: boolean
+      required:
+        - id
+        - userId
+        - cep
+        - logradouro
+        - numero
+        - cidade
+        - estado
+
+    CreateAddressBody:
+      type: object
+      properties:
+        nome:
+          type: string
+        cep:
+          type: string
+        logradouro:
+          type: string
+        numero:
+          type: string
+        complemento:
+          type: string
+        bairro:
+          type: string
+        cidade:
+          type: string
+        estado:
+          type: string
+        principal:
+          type: boolean
+      required:
+        - cep
+        - logradouro
+        - numero
+        - cidade
+        - estado
+
+    # CEP
+    CepData:
+      type: object
+      properties:
+        cep:
+          type: string
+        logradouro:
+          type: string
+        bairro:
+          type: string
+        cidade:
+          type: string
+        estado:
+          type: string
+        ibge:
+          type: string
+      required:
+        - cep
+
+    # STATS
+    DashboardStats:
+      type: object
+      properties:
+        gmvTotal:
+          type: number
+        totalPedidos:
+          type: integer
+        ticketMedio:
+          type: number
+        fornecedoresAtivos:
+          type: integer
+        compradoresAprovados:
+          type: integer
+        pedidosPendentes:
+          type: integer
+        comissoesTotais:
+          type: number
+        cotacoesPendentes:
+          type: integer
+      required:
+        - gmvTotal
+        - totalPedidos
+        - ticketMedio
+        - fornecedoresAtivos
+        - compradoresAprovados
+
+    SalesChartPoint:
+      type: object
+      properties:
+        mes:
+          type: string
+        vendas:
+          type: number
+        pedidos:
+          type: integer
+        comissoes:
+          type: number
+      required:
+        - mes
+        - vendas
+        - pedidos
+
+    TopProduct:
+      type: object
+      properties:
+        productId:
+          type: integer
+        productName:
+          type: string
+        totalVendido:
+          type: integer
+        receita:
+          type: number
+        categoryName:
+          type: string
+      required:
+        - productId
+        - productName
+        - totalVendido
+        - receita
+
+    SupplierStats:
+      type: object
+      properties:
+        totalPedidos:
+          type: integer
+        pedidosPendentes:
+          type: integer
+        receitaTotal:
+          type: number
+        comissaoDescontada:
+          type: number
+        produtosAtivos:
+          type: integer
+        avaliacaoMedia:
+          type: number
+        cotacoesRecebidas:
+          type: integer
+        cotacoesRespondidas:
+          type: integer
+      required:
+        - totalPedidos
+        - receitaTotal
+        - produtosAtivos
+
+    CommissionConfig:
+      type: object
+      properties:
+        id:
+          type: integer
+        percentualGlobal:
+          type: number
+        updatedAt:
+          type: string
+      required:
+        - id
+        - percentualGlobal
+
+    CommissionConfigBody:
+      type: object
+      properties:
+        percentualGlobal:
+          type: number
+      required:
+        - percentualGlobal
+
+    OrdersReport:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            type: object
+        total:
+          type: integer
+        periodo:
+          type: object
+          properties:
+            inicio:
+              type: string
+            fim:
+              type: string
+      required:
+        - data
+        - total

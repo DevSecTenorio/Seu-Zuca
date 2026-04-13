@@ -1,0 +1,70 @@
+import { Switch, Route, Router as WouterRouter } from "wouter";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { Toaster } from "@/components/ui/toaster";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { AuthProvider } from "@/contexts/AuthContext";
+
+import Home from "@/pages/home";
+import Login from "@/pages/login";
+import Register from "@/pages/register";
+import AwaitingApproval from "@/pages/awaiting-approval";
+import Catalog from "@/pages/catalog";
+import Product from "@/pages/product";
+import Cart from "@/pages/cart";
+import Checkout from "@/pages/checkout";
+import Orders from "@/pages/orders";
+import Wishlist from "@/pages/wishlist";
+import Quotes from "@/pages/quotes";
+import SupplierDashboard from "@/pages/supplier/dashboard";
+import SupplierProductForm from "@/pages/supplier/product-form";
+import AdminDashboard from "@/pages/admin/dashboard";
+import NotFound from "@/pages/not-found";
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 1,
+      staleTime: 30_000,
+    },
+  },
+});
+
+function Router() {
+  return (
+    <Switch>
+      <Route path="/" component={Home} />
+      <Route path="/login" component={Login} />
+      <Route path="/cadastro" component={Register} />
+      <Route path="/cadastro/aguardando" component={AwaitingApproval} />
+      <Route path="/catalogo" component={Catalog} />
+      <Route path="/categorias" component={Catalog} />
+      <Route path="/produto/:id" component={Product} />
+      <Route path="/carrinho" component={Cart} />
+      <Route path="/checkout" component={Checkout} />
+      <Route path="/pedidos" component={Orders} />
+      <Route path="/favoritos" component={Wishlist} />
+      <Route path="/cotacoes" component={Quotes} />
+      <Route path="/fornecedor/painel" component={SupplierDashboard} />
+      <Route path="/fornecedor/produto/:id" component={SupplierProductForm} />
+      <Route path="/admin" component={AdminDashboard} />
+      <Route component={NotFound} />
+    </Switch>
+  );
+}
+
+function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <TooltipProvider>
+          <WouterRouter base={import.meta.env.BASE_URL?.replace(/\/$/, "") || ""}>
+            <Router />
+          </WouterRouter>
+          <Toaster />
+        </TooltipProvider>
+      </AuthProvider>
+    </QueryClientProvider>
+  );
+}
+
+export default App;
