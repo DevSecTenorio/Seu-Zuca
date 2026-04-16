@@ -294,6 +294,71 @@ router.get("/admin/internal-users", authMiddleware, requireAdminOrSupport, async
   res.json([...users, ...supportUsers].sort((a, b) => a.nome.localeCompare(b.nome)));
 });
 
+// ── Internal user: edit ───────────────────────────────────────────────────────
+router.put("/admin/internal-users/:id", authMiddleware, requireAdmin, async (req: AuthRequest, res): Promise<void> => {
+  const id = parseInt(req.params.id, 10);
+  const { nome, email, role, departamento, password } = req.body as {
+    nome?: string; email?: string; role?: string; departamento?: string; password?: string;
+  };
+
+  if (!nome && !email && !role && !departamento && !password) {
+    res.status(400).json({ message: "Nenhum campo para atualizar" });
+    return;
+  }
+
+  const [target] = await db.select().from(usersTable).where(eq(usersTable.id, id));
+  if (!target || (target.role !== "admin" && target.role !== "support")) {
+    res.status(404).json({ message: "Usuário interno não encontrado" });
+    return;
+  }
+
+  if (role && role !== "admin" && role !== "support") {
+    res.status(400).json({ message: "Papel inválido. Use 'admin' ou 'support'" });
+    return;
+  }
+
+  if (email && email !== target.email) {
+    const [existing] = await db.select().from(usersTable).where(eq(usersTable.email, email));
+    if (existing) { res.status(409).json({ message: "E-mail já cadastrado por outro usuário" }); return; }
+  }
+
+  const updates: Partial<typeof usersTable.$inferInsert> = {};
+  if (nome) updates.nome = nome;
+  if (email) updates.email = email;
+  if (role) updates.role = role;
+  if (departamento !== undefined) updates.ramo = departamento;
+  if (password) {
+    if (password.length < 8) { res.status(400).json({ message: "Senha deve ter pelo menos 8 caracteres" }); return; }
+    updates.passwordHash = await bcrypt.hash(password, 12);
+  }
+
+  const [updated] = await db.update(usersTable).set(updates).where(eq(usersTable.id, id)).returning({
+    id: usersTable.id, nome: usersTable.nome, email: usersTable.email,
+    role: usersTable.role, status: usersTable.status, ramo: usersTable.ramo, createdAt: usersTable.createdAt,
+  });
+
+  res.json(updated);
+});
+
+// ── Internal user: delete ─────────────────────────────────────────────────────
+router.delete("/admin/internal-users/:id", authMiddleware, requireAdmin, async (req: AuthRequest, res): Promise<void> => {
+  const id = parseInt(req.params.id, 10);
+
+  if (req.userId === id) {
+    res.status(400).json({ message: "Você não pode excluir sua própria conta" });
+    return;
+  }
+
+  const [target] = await db.select().from(usersTable).where(eq(usersTable.id, id));
+  if (!target || (target.role !== "admin" && target.role !== "support")) {
+    res.status(404).json({ message: "Usuário interno não encontrado" });
+    return;
+  }
+
+  await db.delete(usersTable).where(eq(usersTable.id, id));
+  res.json({ message: "Usuário excluído com sucesso" });
+});
+
 // Reports
 router.get("/admin/reports/orders", authMiddleware, requireAdmin, async (req: AuthRequest, res): Promise<void> => {
   const { startDate, endDate } = req.query;

@@ -52,14 +52,182 @@ type InternalUser = { id: number; nome: string; email: string; role: string; sta
 const ROLE_INTERNAL_LABEL: Record<string, string> = { admin: "Administrador", support: "Suporte" };
 const EMPTY_INTERNAL = { nome: "", email: "", password: "", role: "support", departamento: "" };
 
+const ROLE_OPTIONS = [
+  { value: "support", label: "Suporte", icon: Headphones, desc: "Analisa fornecedores. Sem alterar configurações." },
+  { value: "admin",   label: "Administrador", icon: ShieldCheck, desc: "Acesso total ao sistema. Use com cautela." },
+] as const;
+
+function RoleSelector({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  return (
+    <div className="grid grid-cols-2 gap-2">
+      {ROLE_OPTIONS.map((opt) => (
+        <button
+          key={opt.value} type="button" onClick={() => onChange(opt.value)}
+          className={`flex flex-col items-start gap-1 p-3 rounded-lg border-2 text-left transition-all ${
+            value === opt.value ? "border-[#C0181A] bg-red-50" : "border-gray-200 hover:border-gray-300"
+          }`}
+        >
+          <div className="flex items-center gap-1.5">
+            <opt.icon size={14} className={value === opt.value ? "text-[#C0181A]" : "text-gray-500"} />
+            <span className={`text-sm font-semibold ${value === opt.value ? "text-[#C0181A]" : "text-gray-700"}`}>{opt.label}</span>
+          </div>
+          <p className="text-xs text-muted-foreground leading-tight">{opt.desc}</p>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function PasswordField({ value, onChange, placeholder = "Mínimo 8 caracteres", label, required }: {
+  value: string; onChange: (v: string) => void; placeholder?: string; label: string; required?: boolean;
+}) {
+  const [show, setShow] = useState(false);
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-center justify-between">
+        <Label>{label}{required && <span className="text-red-500"> *</span>}</Label>
+        <button type="button" onClick={() => onChange(generatePassword())} className="text-xs text-[#E85D00] hover:underline">Gerar senha segura</button>
+      </div>
+      <div className="relative">
+        <Input type={show ? "text" : "password"} placeholder={placeholder} value={value}
+          onChange={(e) => onChange(e.target.value)} className="pr-10 font-mono" />
+        <button type="button" onClick={() => setShow(!show)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
+          {show ? <EyeOff size={16} /> : <Eye size={16} />}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function EditUserModal({ user, onClose, onSaved }: { user: InternalUser; onClose: () => void; onSaved: () => void }) {
+  const { toast } = useToast();
+  const [form, setForm] = useState({ nome: user.nome, email: user.email, role: user.role, departamento: user.ramo ?? "", password: "" });
+  const [loading, setLoading] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  async function handleSave(e: React.FormEvent) {
+    e.preventDefault();
+    if (!form.nome || !form.email) { toast({ title: "Nome e e-mail são obrigatórios", variant: "destructive" }); return; }
+    if (form.password && form.password.length < 8) { toast({ title: "Senha deve ter pelo menos 8 caracteres", variant: "destructive" }); return; }
+    setLoading(true);
+    try {
+      const body: Record<string, string> = { nome: form.nome, email: form.email, role: form.role, departamento: form.departamento };
+      if (form.password) body.password = form.password;
+      const r = await fetch(`/api/admin/internal-users/${user.id}`, {
+        method: "PUT", credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (!r.ok) { const d = await r.json(); throw new Error(d.message || "Erro ao salvar"); }
+      toast({ title: "Usuário atualizado com sucesso!" });
+      onSaved();
+      onClose();
+    } catch (err) {
+      toast({ title: err instanceof Error ? err.message : "Erro", variant: "destructive" });
+    } finally { setLoading(false); }
+  }
+
+  async function handleDelete() {
+    setDeleting(true);
+    try {
+      const r = await fetch(`/api/admin/internal-users/${user.id}`, { method: "DELETE", credentials: "include" });
+      if (!r.ok) { const d = await r.json(); throw new Error(d.message || "Erro ao excluir"); }
+      toast({ title: "Usuário excluído" });
+      onSaved();
+      onClose();
+    } catch (err) {
+      toast({ title: err instanceof Error ? err.message : "Erro", variant: "destructive" });
+      setDeleting(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-lg max-h-[90vh] overflow-y-auto z-10">
+        <div className="sticky top-0 bg-white border-b px-5 py-4 flex items-center justify-between rounded-t-2xl sm:rounded-t-2xl z-10">
+          <div className="flex items-center gap-2">
+            <div className={`w-8 h-8 rounded-full flex items-center justify-center ${user.role === "admin" ? "bg-red-100" : "bg-blue-100"}`}>
+              {user.role === "admin" ? <ShieldCheck size={14} className="text-[#C0181A]" /> : <Headphones size={14} className="text-blue-600" />}
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-gray-900">Editar usuário</p>
+              <p className="text-xs text-muted-foreground">{user.email}</p>
+            </div>
+          </div>
+          <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl leading-none">&times;</button>
+        </div>
+
+        <form onSubmit={handleSave} className="p-5 space-y-4">
+          <div className="space-y-1.5">
+            <Label>Papel <span className="text-red-500">*</span></Label>
+            <RoleSelector value={form.role} onChange={(v) => setForm((f) => ({ ...f, role: v }))} />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label>Nome completo <span className="text-red-500">*</span></Label>
+            <Input placeholder="Ex: Carlos Pereira" value={form.nome} onChange={(e) => setForm((f) => ({ ...f, nome: e.target.value }))} />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label>E-mail <span className="text-red-500">*</span></Label>
+            <Input type="email" placeholder="carlos@seuzuca.com.br" value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label>Departamento / Equipe</Label>
+            <Input placeholder="Ex: Suporte Tier 1" value={form.departamento} onChange={(e) => setForm((f) => ({ ...f, departamento: e.target.value }))} />
+          </div>
+
+          <PasswordField
+            label="Nova senha"
+            placeholder="Deixe em branco para manter a atual"
+            value={form.password}
+            onChange={(v) => setForm((f) => ({ ...f, password: v }))}
+          />
+
+          <div className="flex gap-2 pt-1">
+            <Button type="submit" disabled={loading} className="flex-1 bg-[#C0181A] hover:bg-[#a01418]">
+              {loading ? "Salvando..." : "Salvar alterações"}
+            </Button>
+            <Button type="button" variant="outline" onClick={onClose}>Cancelar</Button>
+          </div>
+
+          {/* Delete zone */}
+          <div className="border-t pt-4">
+            {!confirmDelete ? (
+              <button type="button" onClick={() => setConfirmDelete(true)}
+                className="flex items-center gap-1.5 text-sm text-red-500 hover:text-red-700 transition-colors">
+                <Trash2 size={14} /> Excluir este usuário
+              </button>
+            ) : (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-3 space-y-2">
+                <p className="text-sm font-semibold text-red-700">Confirmar exclusão?</p>
+                <p className="text-xs text-red-600">Esta ação é irreversível. O usuário <strong>{user.nome}</strong> perderá acesso imediatamente.</p>
+                <div className="flex gap-2">
+                  <Button type="button" size="sm" variant="destructive" disabled={deleting} onClick={handleDelete} className="text-xs">
+                    {deleting ? "Excluindo..." : "Sim, excluir"}
+                  </Button>
+                  <Button type="button" size="sm" variant="outline" onClick={() => setConfirmDelete(false)} className="text-xs">Cancelar</Button>
+                </div>
+              </div>
+            )}
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 function CreateInternalUserTab({ onCreated }: { onCreated: () => void }) {
   const { toast } = useToast();
   const [form, setForm] = useState({ ...EMPTY_INTERNAL });
-  const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
   const [internalUsers, setInternalUsers] = useState<InternalUser[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(true);
   const [success, setSuccess] = useState<{ nome: string; email: string; senha: string; role: string } | null>(null);
+  const [editingUser, setEditingUser] = useState<InternalUser | null>(null);
 
   async function loadUsers() {
     setLoadingUsers(true);
@@ -98,151 +266,135 @@ function CreateInternalUserTab({ onCreated }: { onCreated: () => void }) {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Credentials card */}
-      {success && (
-        <div className="bg-green-50 border border-green-200 rounded-xl p-4 space-y-2">
-          <div className="flex items-center gap-2 text-green-700 font-semibold text-sm">
-            <CheckCircle size={16} /> Usuário criado com sucesso
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-sm">
-            <div className="bg-white border border-green-100 rounded-lg px-3 py-2">
-              <p className="text-xs text-muted-foreground mb-0.5">Nome</p>
-              <p className="font-semibold">{success.nome}</p>
-            </div>
-            <div className="bg-white border border-green-100 rounded-lg px-3 py-2">
-              <p className="text-xs text-muted-foreground mb-0.5">E-mail</p>
-              <p className="font-mono text-sm">{success.email}</p>
-            </div>
-            <div className="bg-white border border-green-100 rounded-lg px-3 py-2">
-              <p className="text-xs text-muted-foreground mb-0.5">Senha</p>
-              <p className="font-mono text-sm">{success.senha}</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <Badge variant="secondary" className="text-xs">{ROLE_INTERNAL_LABEL[success.role] || success.role}</Badge>
-            <p className="text-xs text-muted-foreground">Repasse essas credenciais ao usuário de forma segura</p>
-          </div>
-          <Button size="sm" variant="outline" onClick={() => setSuccess(null)} className="text-xs">Fechar</Button>
-        </div>
+    <>
+      {editingUser && (
+        <EditUserModal user={editingUser} onClose={() => setEditingUser(null)} onSaved={loadUsers} />
       )}
 
-      <div className="grid md:grid-cols-2 gap-6">
-        {/* Form */}
-        <Card className="shadow-none border">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
-              <ShieldCheck size={17} className="text-[#C0181A]" />
-              Criar Usuário Interno
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-1.5">
-                <Label>Papel <span className="text-red-500">*</span></Label>
-                <div className="grid grid-cols-2 gap-2">
-                  {[
-                    { value: "support", label: "Suporte", icon: Headphones, desc: "Analisa base de fornecedores. Sem alterar configurações." },
-                    { value: "admin", label: "Administrador", icon: ShieldCheck, desc: "Acesso total ao sistema. Use com cautela." },
-                  ].map((opt) => (
-                    <button
-                      key={opt.value}
-                      type="button"
-                      onClick={() => setForm((f) => ({ ...f, role: opt.value }))}
-                      className={`flex flex-col items-start gap-1 p-3 rounded-lg border-2 text-left transition-all ${
-                        form.role === opt.value ? "border-[#C0181A] bg-red-50" : "border-gray-200 hover:border-gray-300"
-                      }`}
-                    >
-                      <div className="flex items-center gap-1.5">
-                        <opt.icon size={14} className={form.role === opt.value ? "text-[#C0181A]" : "text-gray-500"} />
-                        <span className={`text-sm font-semibold ${form.role === opt.value ? "text-[#C0181A]" : "text-gray-700"}`}>{opt.label}</span>
+      <div className="space-y-6">
+        {/* Credentials card */}
+        {success && (
+          <div className="bg-green-50 border border-green-200 rounded-xl p-4 space-y-2">
+            <div className="flex items-center gap-2 text-green-700 font-semibold text-sm">
+              <CheckCircle size={16} /> Usuário criado com sucesso
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-sm">
+              <div className="bg-white border border-green-100 rounded-lg px-3 py-2">
+                <p className="text-xs text-muted-foreground mb-0.5">Nome</p>
+                <p className="font-semibold">{success.nome}</p>
+              </div>
+              <div className="bg-white border border-green-100 rounded-lg px-3 py-2">
+                <p className="text-xs text-muted-foreground mb-0.5">E-mail</p>
+                <p className="font-mono text-sm">{success.email}</p>
+              </div>
+              <div className="bg-white border border-green-100 rounded-lg px-3 py-2">
+                <p className="text-xs text-muted-foreground mb-0.5">Senha</p>
+                <p className="font-mono text-sm">{success.senha}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Badge variant="secondary" className="text-xs">{ROLE_INTERNAL_LABEL[success.role] || success.role}</Badge>
+              <p className="text-xs text-muted-foreground">Repasse essas credenciais ao usuário de forma segura</p>
+            </div>
+            <Button size="sm" variant="outline" onClick={() => setSuccess(null)} className="text-xs">Fechar</Button>
+          </div>
+        )}
+
+        <div className="grid md:grid-cols-2 gap-6">
+          {/* Create form */}
+          <Card className="shadow-none border">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <ShieldCheck size={17} className="text-[#C0181A]" />
+                Criar Usuário Interno
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="space-y-1.5">
+                  <Label>Papel <span className="text-red-500">*</span></Label>
+                  <RoleSelector value={form.role} onChange={(v) => setForm((f) => ({ ...f, role: v }))} />
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label>Nome completo <span className="text-red-500">*</span></Label>
+                  <Input placeholder="Ex: Carlos Pereira" value={form.nome} onChange={(e) => setForm((f) => ({ ...f, nome: e.target.value }))} />
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label>E-mail <span className="text-red-500">*</span></Label>
+                  <Input type="email" placeholder="carlos@seuzuca.com.br" value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} />
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label>Departamento / Equipe</Label>
+                  <Input placeholder="Ex: Suporte Tier 1" value={form.departamento} onChange={(e) => setForm((f) => ({ ...f, departamento: e.target.value }))} />
+                </div>
+
+                <PasswordField
+                  label="Senha"
+                  required
+                  value={form.password}
+                  onChange={(v) => setForm((f) => ({ ...f, password: v }))}
+                />
+
+                <Button type="submit" disabled={loading} className="w-full bg-[#C0181A] hover:bg-[#a01418]">
+                  {loading ? "Criando..." : "Criar usuário"}
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+
+          {/* User list */}
+          <Card className="shadow-none border">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Users size={17} className="text-[#C0181A]" />
+                Usuários Internos Ativos
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+              {loadingUsers ? (
+                <div className="py-8 text-center text-sm text-muted-foreground px-4">Carregando...</div>
+              ) : internalUsers.length === 0 ? (
+                <div className="py-8 text-center text-sm text-muted-foreground px-4">Nenhum usuário interno cadastrado</div>
+              ) : (
+                <div className="divide-y">
+                  {internalUsers.map((u) => (
+                    <div key={u.id} className="flex items-center gap-3 px-4 py-3 group hover:bg-gray-50 transition-colors">
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${u.role === "admin" ? "bg-red-100" : "bg-blue-100"}`}>
+                        {u.role === "admin"
+                          ? <ShieldCheck size={14} className="text-[#C0181A]" />
+                          : <Headphones size={14} className="text-blue-600" />
+                        }
                       </div>
-                      <p className="text-xs text-muted-foreground leading-tight">{opt.desc}</p>
-                    </button>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-900 truncate">{u.nome}</p>
+                        <p className="text-xs text-muted-foreground truncate">{u.email}</p>
+                        {u.ramo && <p className="text-xs text-muted-foreground">{u.ramo}</p>}
+                      </div>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <Badge variant={u.role === "admin" ? "destructive" : "secondary"} className="text-xs">
+                          {ROLE_INTERNAL_LABEL[u.role] || u.role}
+                        </Badge>
+                        <button
+                          type="button"
+                          onClick={() => setEditingUser(u)}
+                          className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded hover:bg-gray-200 text-gray-500 hover:text-gray-700"
+                          title="Editar usuário"
+                        >
+                          <Edit2 size={13} />
+                        </button>
+                      </div>
+                    </div>
                   ))}
                 </div>
-              </div>
-
-              <div className="space-y-1.5">
-                <Label>Nome completo <span className="text-red-500">*</span></Label>
-                <Input placeholder="Ex: Carlos Pereira" value={form.nome} onChange={(e) => setForm((f) => ({ ...f, nome: e.target.value }))} />
-              </div>
-
-              <div className="space-y-1.5">
-                <Label>E-mail <span className="text-red-500">*</span></Label>
-                <Input type="email" placeholder="carlos@seuzuca.com.br" value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} />
-              </div>
-
-              <div className="space-y-1.5">
-                <Label>Departamento / Equipe</Label>
-                <Input placeholder="Ex: Suporte Tier 1" value={form.departamento} onChange={(e) => setForm((f) => ({ ...f, departamento: e.target.value }))} />
-              </div>
-
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <Label>Senha <span className="text-red-500">*</span></Label>
-                  <button type="button" onClick={() => setForm((f) => ({ ...f, password: generatePassword() }))} className="text-xs text-[#E85D00] hover:underline">Gerar senha segura</button>
-                </div>
-                <div className="relative">
-                  <Input
-                    type={showPass ? "text" : "password"}
-                    placeholder="Mínimo 8 caracteres"
-                    value={form.password}
-                    onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
-                    className="pr-10 font-mono"
-                  />
-                  <button type="button" onClick={() => setShowPass(!showPass)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
-                    {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
-                  </button>
-                </div>
-              </div>
-
-              <Button type="submit" disabled={loading} className="w-full bg-[#C0181A] hover:bg-[#a01418]">
-                {loading ? "Criando..." : "Criar usuário"}
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
-
-        {/* Existing internal users */}
-        <Card className="shadow-none border">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
-              <Users size={17} className="text-[#C0181A]" />
-              Usuários Internos Ativos
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            {loadingUsers ? (
-              <div className="py-8 text-center text-sm text-muted-foreground px-4">Carregando...</div>
-            ) : internalUsers.length === 0 ? (
-              <div className="py-8 text-center text-sm text-muted-foreground px-4">Nenhum usuário interno cadastrado além do admin principal</div>
-            ) : (
-              <div className="divide-y">
-                {internalUsers.map((u) => (
-                  <div key={u.id} className="flex items-center gap-3 px-4 py-3">
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${u.role === "admin" ? "bg-red-100" : "bg-blue-100"}`}>
-                      {u.role === "admin"
-                        ? <ShieldCheck size={14} className="text-[#C0181A]" />
-                        : <Headphones size={14} className="text-blue-600" />
-                      }
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900 truncate">{u.nome}</p>
-                      <p className="text-xs text-muted-foreground truncate">{u.email}</p>
-                      {u.ramo && <p className="text-xs text-muted-foreground">{u.ramo}</p>}
-                    </div>
-                    <Badge variant={u.role === "admin" ? "destructive" : "secondary"} className="text-xs shrink-0">
-                      {ROLE_INTERNAL_LABEL[u.role] || u.role}
-                    </Badge>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+              )}
+            </CardContent>
+          </Card>
+        </div>
       </div>
-    </div>
+    </>
   );
 }
 
