@@ -6,3 +6,4 @@ export * from "./orders";
 export * from "./quotes";
 export * from "./reviews";
 export * from "./wishlist";
+export * from "./banners";

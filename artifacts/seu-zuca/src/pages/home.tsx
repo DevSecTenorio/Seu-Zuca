@@ -6,62 +6,71 @@ import { Layout } from "@/components/Layout";
 import { Lock, ChevronLeft, ChevronRight, Star, Truck, Shield, BadgePercent, Building2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
-const banners = [
+type ApiBanner = {
+  id: number;
+  titulo: string;
+  subtitulo?: string | null;
+  destaque?: string | null;
+  tag?: string | null;
+  imagemUrl?: string | null;
+  linkUrl?: string | null;
+  corFundo: string;
+  ativo: boolean;
+  ordem: number;
+};
+
+const FALLBACK_BANNERS: ApiBanner[] = [
   {
-    bg: "from-[#C0181A] to-[#E85D00]",
-    tag: "Feirão da Construção",
-    title: "MATERIAIS\nDE QUALIDADE",
-    highlight: "até 30% OFF",
-    sub: "em produtos selecionados",
-    img: "https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=600&q=80",
-  },
-  {
-    bg: "from-[#1a3a6b] to-[#2a5298]",
-    tag: "Exclusivo B2B",
-    title: "PREÇOS DE\nATACADO",
-    highlight: "para sua empresa",
-    sub: "compre em grande volume",
-    img: "https://images.unsplash.com/photo-1590247813693-5541d1c609fd?w=600&q=80",
-  },
-  {
-    bg: "from-[#1a6b2a] to-[#2a8a3a]",
-    tag: "Entrega Rápida",
-    title: "DIRETO NA\nSUA OBRA",
-    highlight: "frete grátis acima de R$ 5.000",
-    sub: "para todo o Brasil",
-    img: "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=600&q=80",
+    id: 0, titulo: "MATERIAIS DE QUALIDADE", subtitulo: "em produtos selecionados",
+    destaque: "até 30% OFF", tag: "Feirão da Construção",
+    imagemUrl: "https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=600&q=80",
+    corFundo: "from-[#C0181A] to-[#E85D00]", ativo: true, ordem: 1,
   },
 ];
 
 function HeroBanner() {
   const [active, setActive] = useState(0);
+  const [banners, setBanners] = useState<ApiBanner[]>(FALLBACK_BANNERS);
   const [, navigate] = useLocation();
 
   useEffect(() => {
-    const t = setInterval(() => setActive((a) => (a + 1) % banners.length), 5000);
-    return () => clearInterval(t);
+    fetch("/api/banners", { credentials: "include" })
+      .then((r) => r.ok ? r.json() : null)
+      .then((data: ApiBanner[] | null) => { if (data && data.length > 0) setBanners(data); })
+      .catch(() => {});
   }, []);
 
-  const b = banners[active];
+  useEffect(() => {
+    if (banners.length <= 1) return;
+    const t = setInterval(() => setActive((a) => (a + 1) % banners.length), 5000);
+    return () => clearInterval(t);
+  }, [banners.length]);
+
+  const b = banners[active] ?? banners[0];
+  if (!b) return null;
 
   return (
-    <div className={`relative bg-gradient-to-r ${b.bg} overflow-hidden`} style={{ minHeight: 320 }}>
+    <div className={`relative bg-gradient-to-r ${b.corFundo} overflow-hidden`} style={{ minHeight: 320 }}>
       <div className="max-w-[1280px] mx-auto px-4 py-10 flex items-center justify-between gap-8">
         {/* Text */}
         <div className="text-white z-10 flex-1">
-          <span className="inline-block bg-white/20 text-white text-xs font-semibold px-3 py-1 rounded-full mb-4">
-            {b.tag}
-          </span>
+          {b.tag && (
+            <span className="inline-block bg-white/20 text-white text-xs font-semibold px-3 py-1 rounded-full mb-4">
+              {b.tag}
+            </span>
+          )}
           <h1 className="text-4xl md:text-5xl font-black leading-tight mb-3 whitespace-pre-line">
-            {b.title}
+            {b.titulo}
           </h1>
-          <div className="inline-flex items-center bg-[#FFD700] text-[#1a1a1a] font-black text-xl px-5 py-2 rounded-full mb-2">
-            {b.highlight}
-          </div>
-          <p className="text-white/80 text-sm mt-2">{b.sub}</p>
+          {b.destaque && (
+            <div className="inline-flex items-center bg-[#FFD700] text-[#1a1a1a] font-black text-xl px-5 py-2 rounded-full mb-2">
+              {b.destaque}
+            </div>
+          )}
+          {b.subtitulo && <p className="text-white/80 text-sm mt-2">{b.subtitulo}</p>}
           <div className="flex gap-3 mt-6">
             <button
-              onClick={() => navigate("/catalogo")}
+              onClick={() => navigate(b.linkUrl || "/catalogo")}
               className="bg-white text-[#C0181A] font-bold px-6 py-3 rounded-lg hover:bg-gray-100 transition-colors text-sm"
             >
               Ver ofertas
@@ -76,35 +85,43 @@ function HeroBanner() {
         </div>
 
         {/* Image */}
-        <div className="hidden md:block flex-shrink-0 w-72 h-56 rounded-2xl overflow-hidden shadow-2xl">
-          <img src={b.img} alt="" className="w-full h-full object-cover" />
-        </div>
+        {b.imagemUrl && (
+          <div className="hidden md:block flex-shrink-0 w-72 h-56 rounded-2xl overflow-hidden shadow-2xl">
+            <img src={b.imagemUrl} alt={b.titulo} className="w-full h-full object-cover" />
+          </div>
+        )}
       </div>
 
       {/* Nav arrows */}
-      <button
-        onClick={() => setActive((a) => (a - 1 + banners.length) % banners.length)}
-        className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 bg-black/30 hover:bg-black/50 rounded-full flex items-center justify-center text-white transition-colors"
-      >
-        <ChevronLeft size={20} />
-      </button>
-      <button
-        onClick={() => setActive((a) => (a + 1) % banners.length)}
-        className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 bg-black/30 hover:bg-black/50 rounded-full flex items-center justify-center text-white transition-colors"
-      >
-        <ChevronRight size={20} />
-      </button>
+      {banners.length > 1 && (
+        <>
+          <button
+            onClick={() => setActive((a) => (a - 1 + banners.length) % banners.length)}
+            className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 bg-black/30 hover:bg-black/50 rounded-full flex items-center justify-center text-white transition-colors"
+          >
+            <ChevronLeft size={20} />
+          </button>
+          <button
+            onClick={() => setActive((a) => (a + 1) % banners.length)}
+            className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 bg-black/30 hover:bg-black/50 rounded-full flex items-center justify-center text-white transition-colors"
+          >
+            <ChevronRight size={20} />
+          </button>
+        </>
+      )}
 
       {/* Dots */}
-      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
-        {banners.map((_, i) => (
-          <button
-            key={i}
-            onClick={() => setActive(i)}
-            className={`w-2.5 h-2.5 rounded-full transition-all ${i === active ? "bg-white scale-125" : "bg-white/50"}`}
-          />
-        ))}
-      </div>
+      {banners.length > 1 && (
+        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
+          {banners.map((_, i) => (
+            <button
+              key={i}
+              onClick={() => setActive(i)}
+              className={`w-2.5 h-2.5 rounded-full transition-all ${i === active ? "bg-white scale-125" : "bg-white/50"}`}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

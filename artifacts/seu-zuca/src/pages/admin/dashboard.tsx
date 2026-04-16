@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useGetDashboardStats, useAdminListUsers, useAdminApproveUser, useAdminSuspendUser } from "@workspace/api-client-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Layout } from "@/components/Layout";
@@ -9,7 +9,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Users, Package, ShoppingBag, TrendingUp, CheckCircle, XCircle,
-  Clock, UserPlus, LayoutDashboard, AlertCircle, Eye, EyeOff, RefreshCw
+  Clock, UserPlus, LayoutDashboard, AlertCircle, Eye, EyeOff, RefreshCw,
+  ImageIcon, Plus, Trash2, Edit2, GripVertical, ExternalLink, ToggleLeft, ToggleRight
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -42,6 +43,288 @@ function formatCnpj(cnpj: string) {
 function generatePassword() {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#";
   return Array.from({ length: 12 }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
+}
+
+// ─── Aba: Banners ─────────────────────────────────────────────────────────────
+type BannerType = {
+  id: number;
+  titulo: string;
+  subtitulo?: string | null;
+  destaque?: string | null;
+  tag?: string | null;
+  imagemUrl?: string | null;
+  linkUrl?: string | null;
+  corFundo: string;
+  ativo: boolean;
+  ordem: number;
+};
+
+const COR_OPTIONS = [
+  { label: "Vermelho → Laranja (padrão)", value: "from-[#C0181A] to-[#E85D00]" },
+  { label: "Azul escuro → Azul", value: "from-[#1a3a6b] to-[#2a5298]" },
+  { label: "Verde escuro → Verde", value: "from-[#1a6b2a] to-[#2a8a3a]" },
+  { label: "Cinza escuro → Cinza", value: "from-[#1a1a1a] to-[#444444]" },
+  { label: "Roxo escuro → Roxo", value: "from-[#3b0764] to-[#7c3aed]" },
+  { label: "Laranja escuro → Amarelo", value: "from-[#92400e] to-[#d97706]" },
+];
+
+const EMPTY_FORM = {
+  titulo: "", subtitulo: "", destaque: "", tag: "",
+  imagemUrl: "", linkUrl: "", corFundo: COR_OPTIONS[0].value, ativo: true,
+};
+
+function BannersTab() {
+  const { toast } = useToast();
+  const [banners, setBanners] = useState<BannerType[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [showForm, setShowForm] = useState(false);
+  const [form, setForm] = useState<typeof EMPTY_FORM>({ ...EMPTY_FORM });
+
+  async function loadBanners() {
+    setLoading(true);
+    try {
+      const r = await fetch("/api/admin/banners", { credentials: "include" });
+      if (r.ok) setBanners(await r.json());
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => { loadBanners(); }, []);
+
+  function openNew() {
+    setEditingId(null);
+    setForm({ ...EMPTY_FORM });
+    setShowForm(true);
+  }
+
+  function openEdit(b: BannerType) {
+    setEditingId(b.id);
+    setForm({
+      titulo: b.titulo,
+      subtitulo: b.subtitulo || "",
+      destaque: b.destaque || "",
+      tag: b.tag || "",
+      imagemUrl: b.imagemUrl || "",
+      linkUrl: b.linkUrl || "",
+      corFundo: b.corFundo,
+      ativo: b.ativo,
+    });
+    setShowForm(true);
+  }
+
+  async function handleSave(e: React.FormEvent) {
+    e.preventDefault();
+    if (!form.titulo.trim()) { toast({ title: "Título é obrigatório", variant: "destructive" }); return; }
+    setSaving(true);
+    try {
+      const url = editingId ? `/api/admin/banners/${editingId}` : "/api/admin/banners";
+      const method = editingId ? "PUT" : "POST";
+      const body = {
+        ...form,
+        subtitulo: form.subtitulo || null,
+        destaque: form.destaque || null,
+        tag: form.tag || null,
+        imagemUrl: form.imagemUrl || null,
+        linkUrl: form.linkUrl || null,
+        ordem: editingId
+          ? banners.find((b) => b.id === editingId)?.ordem ?? banners.length + 1
+          : banners.length + 1,
+      };
+      const r = await fetch(url, { method, credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      if (!r.ok) throw new Error((await r.json()).message || "Erro ao salvar");
+      toast({ title: editingId ? "Banner atualizado!" : "Banner criado!" });
+      setShowForm(false);
+      loadBanners();
+    } catch (err) {
+      toast({ title: err instanceof Error ? err.message : "Erro ao salvar", variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleToggle(id: number) {
+    try {
+      const r = await fetch(`/api/admin/banners/${id}/toggle`, { method: "PATCH", credentials: "include" });
+      if (!r.ok) throw new Error();
+      loadBanners();
+    } catch {
+      toast({ title: "Erro ao alterar status", variant: "destructive" });
+    }
+  }
+
+  async function handleDelete(id: number) {
+    if (!confirm("Confirmar exclusão do banner?")) return;
+    try {
+      const r = await fetch(`/api/admin/banners/${id}`, { method: "DELETE", credentials: "include" });
+      if (!r.ok) throw new Error();
+      toast({ title: "Banner excluído" });
+      loadBanners();
+    } catch {
+      toast({ title: "Erro ao excluir", variant: "destructive" });
+    }
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-muted-foreground">{banners.length} {banners.length === 1 ? "banner cadastrado" : "banners cadastrados"}</p>
+        <Button onClick={openNew} className="bg-[#C0181A] hover:bg-[#a01418] gap-2 text-sm">
+          <Plus size={15} />
+          Novo Banner
+        </Button>
+      </div>
+
+      {/* Formulário */}
+      {showForm && (
+        <Card className="border-[#E85D00]/30 shadow-none">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base text-[#C0181A] flex items-center gap-2">
+              <ImageIcon size={18} />
+              {editingId ? "Editar Banner" : "Novo Banner"}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSave} className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label>Titulo principal <span className="text-red-500">*</span></Label>
+                  <Input placeholder="Ex: MATERIAIS DE QUALIDADE" value={form.titulo} onChange={(e) => setForm((f) => ({ ...f, titulo: e.target.value }))} />
+                  <p className="text-xs text-muted-foreground">Aparece em letras maiúsculas grandes no banner</p>
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Tag / Chamada</Label>
+                  <Input placeholder="Ex: Feirão da Construção" value={form.tag} onChange={(e) => setForm((f) => ({ ...f, tag: e.target.value }))} />
+                  <p className="text-xs text-muted-foreground">Pílula pequena acima do título</p>
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Destaque (caixa amarela)</Label>
+                  <Input placeholder="Ex: até 30% OFF" value={form.destaque} onChange={(e) => setForm((f) => ({ ...f, destaque: e.target.value }))} />
+                  <p className="text-xs text-muted-foreground">Texto em destaque amarelo abaixo do título</p>
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Subtítulo</Label>
+                  <Input placeholder="Ex: em produtos selecionados" value={form.subtitulo} onChange={(e) => setForm((f) => ({ ...f, subtitulo: e.target.value }))} />
+                  <p className="text-xs text-muted-foreground">Texto menor abaixo do destaque</p>
+                </div>
+                <div className="space-y-1.5">
+                  <Label>URL da imagem</Label>
+                  <Input placeholder="https://..." value={form.imagemUrl} onChange={(e) => setForm((f) => ({ ...f, imagemUrl: e.target.value }))} />
+                  <p className="text-xs text-muted-foreground">Imagem exibida à direita do banner</p>
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Link do botão "Ver ofertas"</Label>
+                  <Input placeholder="/catalogo ou URL completa" value={form.linkUrl} onChange={(e) => setForm((f) => ({ ...f, linkUrl: e.target.value }))} />
+                  <p className="text-xs text-muted-foreground">Deixe vazio para ir ao catálogo</p>
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label>Cor de fundo</Label>
+                <select
+                  value={form.corFundo}
+                  onChange={(e) => setForm((f) => ({ ...f, corFundo: e.target.value }))}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#E85D00]"
+                >
+                  {COR_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>{o.label}</option>
+                  ))}
+                </select>
+                {/* Preview */}
+                <div className={`h-10 rounded-md bg-gradient-to-r ${form.corFundo} flex items-center px-4`}>
+                  <span className="text-white text-xs font-semibold opacity-80">Visualização do gradiente</span>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <input type="checkbox" id="ativo" checked={form.ativo} onChange={(e) => setForm((f) => ({ ...f, ativo: e.target.checked }))} className="w-4 h-4 accent-[#C0181A]" />
+                <Label htmlFor="ativo" className="cursor-pointer">Banner ativo (visível no site)</Label>
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <Button type="submit" disabled={saving} className="bg-[#C0181A] hover:bg-[#a01418]">
+                  {saving ? "Salvando..." : editingId ? "Salvar alterações" : "Criar banner"}
+                </Button>
+                <Button type="button" variant="outline" onClick={() => setShowForm(false)}>
+                  Cancelar
+                </Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Lista de banners */}
+      {loading ? (
+        <div className="py-10 text-center text-muted-foreground text-sm">Carregando banners...</div>
+      ) : banners.length === 0 ? (
+        <div className="py-12 text-center">
+          <ImageIcon size={40} className="mx-auto mb-3 text-gray-300" />
+          <p className="text-muted-foreground text-sm">Nenhum banner cadastrado.</p>
+          <p className="text-xs text-muted-foreground mt-1">Clique em "Novo Banner" para criar o primeiro.</p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {banners.map((b) => (
+            <Card key={b.id} className={`shadow-none border transition-all ${b.ativo ? "border-border" : "border-dashed border-gray-200 opacity-60"}`}>
+              <CardContent className="p-4">
+                <div className="flex items-start gap-4">
+                  {/* Drag handle + order */}
+                  <div className="flex flex-col items-center gap-1 pt-1 shrink-0">
+                    <GripVertical size={16} className="text-gray-300" />
+                    <span className="text-xs font-bold text-gray-300">#{b.ordem}</span>
+                  </div>
+
+                  {/* Color preview */}
+                  <div className={`w-14 h-14 rounded-lg bg-gradient-to-br ${b.corFundo} shrink-0 flex items-center justify-center shadow-inner`}>
+                    <ImageIcon size={20} className="text-white/60" />
+                  </div>
+
+                  {/* Info */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap mb-1">
+                      <p className="font-bold text-sm text-gray-900 truncate">{b.titulo}</p>
+                      {b.tag && <span className="text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full">{b.tag}</span>}
+                      <Badge variant={b.ativo ? "default" : "secondary"} className="text-xs">
+                        {b.ativo ? "Ativo" : "Inativo"}
+                      </Badge>
+                    </div>
+                    <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-muted-foreground">
+                      {b.destaque && <span>Destaque: <strong className="text-gray-700">{b.destaque}</strong></span>}
+                      {b.subtitulo && <span>Sub: {b.subtitulo}</span>}
+                      {b.imagemUrl && <span className="flex items-center gap-1"><ExternalLink size={10} />Com imagem</span>}
+                    </div>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex items-center gap-1 shrink-0">
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-8 w-8 p-0"
+                      title={b.ativo ? "Desativar" : "Ativar"}
+                      onClick={() => handleToggle(b.id)}
+                    >
+                      {b.ativo ? <ToggleRight size={18} className="text-green-500" /> : <ToggleLeft size={18} className="text-gray-400" />}
+                    </Button>
+                    <Button size="sm" variant="ghost" className="h-8 w-8 p-0" title="Editar" onClick={() => openEdit(b)}>
+                      <Edit2 size={15} className="text-blue-500" />
+                    </Button>
+                    <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-destructive hover:text-destructive" title="Excluir" onClick={() => handleDelete(b.id)}>
+                      <Trash2 size={15} />
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
 // ─── Aba: Criar Fornecedor ────────────────────────────────────────────────────
@@ -260,7 +543,7 @@ function CreateSupplierTab({ onCreated }: { onCreated: () => void }) {
 export default function AdminDashboard() {
   const { isAdmin } = useAuth();
   const { toast } = useToast();
-  const [activeTab, setActiveTab] = useState<"overview" | "users" | "create-supplier">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "users" | "create-supplier" | "banners">("overview");
   const [statusFilter, setStatusFilter] = useState("all");
 
   const { data: dashboard } = useGetDashboardStats({ query: { enabled: isAdmin } });
@@ -355,6 +638,7 @@ export default function AdminDashboard() {
       badge: pendingCount > 0 ? pendingCount : null,
     },
     { id: "create-supplier", label: "Criar Fornecedor", icon: UserPlus },
+    { id: "banners", label: "Banners", icon: ImageIcon },
   ] as const;
 
   return (
@@ -622,6 +906,24 @@ export default function AdminDashboard() {
             </CardHeader>
             <CardContent>
               <CreateSupplierTab onCreated={() => refetch()} />
+            </CardContent>
+          </Card>
+        )}
+
+        {/* ── Aba: Banners ─────────────────────────────────────────────────── */}
+        {activeTab === "banners" && (
+          <Card className="border-border shadow-none">
+            <CardHeader className="pb-3">
+              <div className="flex items-center gap-2">
+                <ImageIcon size={20} className="text-[#C0181A]" />
+                <CardTitle className="text-lg">Gerenciar Banners da Home</CardTitle>
+              </div>
+              <p className="text-sm text-muted-foreground mt-1">
+                Os banners ativos são exibidos em carrossel na pagina inicial do site. A ordem determina a sequencia de exibicao.
+              </p>
+            </CardHeader>
+            <CardContent>
+              <BannersTab />
             </CardContent>
           </Card>
         )}

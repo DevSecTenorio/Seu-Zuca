@@ -11,6 +11,7 @@ import wishlistRouter from "./wishlist";
 import addressesRouter from "./addresses";
 import adminRouter from "./admin";
 import dashboardRouter from "./dashboard";
+import bannersRouter from "./banners";
 
 const router: IRouter = Router();
 
@@ -26,5 +27,6 @@ router.use(wishlistRouter);
 router.use(addressesRouter);
 router.use(adminRouter);
 router.use(dashboardRouter);
+router.use(bannersRouter);
 
 export default router;
