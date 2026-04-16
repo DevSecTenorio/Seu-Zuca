@@ -4,10 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Layout } from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Separator } from "@/components/ui/separator";
-import { Lock, ShoppingCart, Heart, Truck, Package, Star, ChevronLeft } from "lucide-react";
+import { Lock, ShoppingCart, Heart, Truck, Package, Star, ChevronLeft, Shield, BadgePercent } from "lucide-react";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "wouter";
@@ -29,13 +26,13 @@ export default function Product() {
   if (isLoading) {
     return (
       <Layout>
-        <div className="max-w-7xl mx-auto px-4 py-8">
+        <div className="max-w-[1280px] mx-auto px-4 py-8">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <div className="aspect-square bg-muted animate-pulse rounded-lg" />
+            <div className="aspect-square bg-gray-100 animate-pulse rounded-xl" />
             <div className="space-y-4">
-              <div className="h-8 bg-muted animate-pulse rounded w-3/4" />
-              <div className="h-4 bg-muted animate-pulse rounded w-1/2" />
-              <div className="h-12 bg-muted animate-pulse rounded w-1/3" />
+              <div className="h-8 bg-gray-100 animate-pulse rounded w-3/4" />
+              <div className="h-4 bg-gray-100 animate-pulse rounded w-1/2" />
+              <div className="h-12 bg-gray-100 animate-pulse rounded w-1/3" />
             </div>
           </div>
         </div>
@@ -46,24 +43,22 @@ export default function Product() {
   if (!product) {
     return (
       <Layout>
-        <div className="max-w-7xl mx-auto px-4 py-16 text-center">
-          <Package size={48} className="mx-auto mb-4 text-muted-foreground" />
-          <p className="text-lg font-medium">Produto não encontrado</p>
+        <div className="max-w-[1280px] mx-auto px-4 py-16 text-center">
+          <Package size={48} className="mx-auto mb-4 text-gray-300" />
+          <p className="text-lg font-medium text-gray-600">Produto não encontrado</p>
           <Link href="/catalogo">
-            <Button className="mt-4">Ver catálogo</Button>
+            <Button className="mt-4 bg-[#C0181A] hover:bg-[#a01416]">Ver catálogo</Button>
           </Link>
         </div>
       </Layout>
     );
   }
 
-  const images = (product as { imagens?: string[]; imagemPrincipal?: string }).imagens || (product.imagemPrincipal ? [product.imagemPrincipal] : []);
+  const images = (product as { imagens?: string[]; imagemPrincipal?: string }).imagens
+    || (product.imagemPrincipal ? [product.imagemPrincipal] : []);
 
   async function handleAddToCart() {
-    if (!isApprovedBuyer) {
-      navigate("/login");
-      return;
-    }
+    if (!isApprovedBuyer) { navigate("/login"); return; }
     try {
       await addToCart.mutateAsync({ data: { productId: product!.id, quantidade: qty } });
       toast({ title: `${product!.nome} adicionado ao carrinho` });
@@ -74,10 +69,7 @@ export default function Product() {
   }
 
   async function handleWishlist() {
-    if (!isApprovedBuyer) {
-      navigate("/login");
-      return;
-    }
+    if (!isApprovedBuyer) { navigate("/login"); return; }
     try {
       await addToWishlist.mutateAsync({ data: { productId: product!.id } });
       toast({ title: "Adicionado aos favoritos" });
@@ -88,32 +80,28 @@ export default function Product() {
 
   return (
     <Layout>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-[1280px] mx-auto px-4 py-6">
         {/* Breadcrumb */}
-        <nav className="flex items-center gap-2 text-sm text-muted-foreground mb-6">
-          <Link href="/catalogo" className="hover:text-foreground flex items-center gap-1">
+        <nav className="flex items-center gap-2 text-sm text-gray-500 mb-6">
+          <Link href="/catalogo" className="hover:text-[#C0181A] flex items-center gap-1 transition-colors">
             <ChevronLeft size={14} />
             Catálogo
           </Link>
           <span>/</span>
           <span>{product.categoryName}</span>
           <span>/</span>
-          <span className="text-foreground line-clamp-1">{product.nome}</span>
+          <span className="text-gray-800 font-medium line-clamp-1">{product.nome}</span>
         </nav>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-10">
           {/* Images */}
           <div className="space-y-3">
-            <div className="aspect-square bg-muted rounded-xl overflow-hidden">
+            <div className="aspect-square bg-white border border-gray-100 rounded-xl overflow-hidden">
               {images.length > 0 ? (
-                <img
-                  src={images[activeImg]}
-                  alt={product.nome}
-                  className="w-full h-full object-cover"
-                />
+                <img src={images[activeImg]} alt={product.nome} className="w-full h-full object-cover" />
               ) : (
-                <div className="w-full h-full flex items-center justify-center text-muted-foreground">
-                  <Package size={64} />
+                <div className="w-full h-full flex items-center justify-center text-gray-200">
+                  <Package size={80} />
                 </div>
               )}
             </div>
@@ -123,7 +111,7 @@ export default function Product() {
                   <button
                     key={i}
                     onClick={() => setActiveImg(i)}
-                    className={`w-16 h-16 rounded-lg overflow-hidden border-2 transition-colors ${i === activeImg ? "border-primary" : "border-border"}`}
+                    className={`w-16 h-16 rounded-lg overflow-hidden border-2 transition-colors ${i === activeImg ? "border-[#C0181A]" : "border-gray-200 hover:border-gray-300"}`}
                   >
                     <img src={img} alt="" className="w-full h-full object-cover" />
                   </button>
@@ -134,54 +122,67 @@ export default function Product() {
 
           {/* Info */}
           <div>
-            <Badge className="mb-3">{product.categoryName}</Badge>
-            <h1 className="text-2xl font-bold mb-2">{product.nome}</h1>
-            <p className="text-sm text-muted-foreground mb-1">
-              Por: <span className="font-medium text-foreground">{product.supplierName}</span>
-            </p>
-            <p className="text-sm text-muted-foreground mb-4">
-              SKU: <span className="font-mono">{(product as { sku?: string }).sku}</span>
-            </p>
+            <div className="flex items-start gap-3 mb-2">
+              <Badge className="bg-[#C0181A] text-white border-0 shrink-0">{product.categoryName}</Badge>
+            </div>
 
-            <Separator className="my-4" />
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">{product.nome}</h1>
 
-            {/* Price */}
-            {canSeePrice ? (
-              <div className="mb-6">
-                <p className="text-3xl font-bold text-primary">
-                  {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(product.preco || 0)}
-                </p>
-                <p className="text-sm text-muted-foreground">por {product.unidadeMedida}</p>
+            <div className="flex items-center gap-3 mb-3">
+              <div className="flex items-center gap-0.5">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <Star key={i} size={14} className="text-[#FFC107] fill-[#FFC107]" />
+                ))}
               </div>
-            ) : (
-              <div className="bg-muted/50 rounded-lg p-4 mb-6 flex items-center gap-3">
-                <Lock size={20} className="text-muted-foreground shrink-0" />
+              <span className="text-gray-500 text-sm">SKU: <span className="font-mono">{(product as { sku?: string }).sku}</span></span>
+            </div>
+
+            <p className="text-sm text-gray-600 mb-1">
+              Fornecedor: <span className="font-semibold text-gray-800">{product.supplierName}</span>
+            </p>
+
+            <div className="border-t border-b border-gray-100 py-4 my-4">
+              {canSeePrice ? (
                 <div>
-                  <p className="font-medium text-sm">Preço exclusivo para clientes B2B</p>
-                  <p className="text-xs text-muted-foreground">Faça login ou crie sua conta para ver os preços</p>
+                  <p className="text-4xl font-black text-[#C0181A] leading-tight">
+                    {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(product.preco || 0)}
+                  </p>
+                  <p className="text-sm text-gray-500 mt-1">por {product.unidadeMedida}</p>
                 </div>
-                <Link href="/login">
-                  <Button size="sm" variant="outline" className="ml-auto shrink-0">Entrar</Button>
-                </Link>
-              </div>
-            )}
+              ) : (
+                <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 flex items-center gap-3">
+                  <div className="w-10 h-10 bg-[#C0181A]/10 rounded-full flex items-center justify-center">
+                    <Lock size={18} className="text-[#C0181A]" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-semibold text-sm text-gray-800">Preço exclusivo para clientes B2B</p>
+                    <p className="text-xs text-gray-500">Faça login ou cadastre sua empresa para ver os preços</p>
+                  </div>
+                  <Link href="/login">
+                    <Button size="sm" className="bg-[#C0181A] hover:bg-[#a01416] shrink-0">Entrar</Button>
+                  </Link>
+                </div>
+              )}
+            </div>
 
             {/* Stock */}
-            <div className="flex items-center gap-2 mb-4">
-              <Badge variant={product.disponivel ? "default" : "destructive"}>
+            <div className="flex items-center gap-3 mb-3">
+              <span className={`inline-flex items-center gap-1.5 text-sm font-semibold ${product.disponivel ? "text-green-600" : "text-red-500"}`}>
+                <span className={`w-2 h-2 rounded-full ${product.disponivel ? "bg-green-500" : "bg-red-500"}`} />
                 {product.disponivel ? "Em estoque" : "Sem estoque"}
-              </Badge>
+              </span>
               {product.disponivel && (
-                <span className="text-xs text-muted-foreground">
-                  {product.estoque} {product.unidadeMedida}s disponíveis
+                <span className="text-sm text-gray-500">
+                  {product.estoque} {product.unidadeMedida}(s) disponíveis
                 </span>
               )}
             </div>
 
-            {/* Minimum rule */}
+            {/* Min quantity alert */}
             {(product as { quantidadeMinima?: number }).quantidadeMinima && (
-              <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4 text-sm text-amber-800">
-                Quantidade mínima: {(product as { quantidadeMinima?: number }).quantidadeMinima} {product.unidadeMedida}(s)
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4 text-sm text-amber-800 flex items-center gap-2">
+                <BadgePercent size={16} className="shrink-0" />
+                Quantidade mínima: <strong>{(product as { quantidadeMinima?: number }).quantidadeMinima} {product.unidadeMedida}(s)</strong>
                 {(product as { multiplo?: number }).multiplo && (product as { multiplo?: number }).multiplo! > 1 && (
                   <span> — múltiplos de {(product as { multiplo?: number }).multiplo}</span>
                 )}
@@ -191,83 +192,89 @@ export default function Product() {
             {/* Add to cart */}
             {isApprovedBuyer && product.disponivel && (
               <div className="flex items-center gap-3 mb-4">
-                <div className="flex items-center border border-border rounded-md">
-                  <button
-                    className="px-3 py-2 text-muted-foreground hover:text-foreground"
-                    onClick={() => setQty(q => Math.max(1, q - 1))}
-                  >
-                    -
-                  </button>
-                  <Input
-                    type="number"
-                    value={qty}
-                    onChange={(e) => setQty(Math.max(1, Number(e.target.value)))}
-                    className="w-16 text-center border-0 focus-visible:ring-0 p-0"
-                    min={1}
-                  />
-                  <button
-                    className="px-3 py-2 text-muted-foreground hover:text-foreground"
-                    onClick={() => setQty(q => q + 1)}
-                  >
-                    +
-                  </button>
+                <div className="flex items-center border border-gray-200 rounded-lg bg-white overflow-hidden">
+                  <button className="px-3 py-2.5 text-gray-500 hover:text-gray-800 hover:bg-gray-50 text-lg font-medium transition-colors" onClick={() => setQty(q => Math.max(1, q - 1))}>-</button>
+                  <span className="px-4 py-2 text-sm font-bold border-x border-gray-200 min-w-[3rem] text-center">{qty}</span>
+                  <button className="px-3 py-2.5 text-gray-500 hover:text-gray-800 hover:bg-gray-50 text-lg font-medium transition-colors" onClick={() => setQty(q => q + 1)}>+</button>
                 </div>
-                <Button onClick={handleAddToCart} disabled={addToCart.isPending} className="flex-1">
-                  <ShoppingCart size={16} className="mr-2" />
-                  Adicionar ao carrinho
-                </Button>
-                <Button variant="outline" onClick={handleWishlist} size="icon">
-                  <Heart size={16} />
-                </Button>
+                <button
+                  onClick={handleAddToCart}
+                  disabled={addToCart.isPending}
+                  className="flex-1 bg-[#C0181A] hover:bg-[#a01416] text-white font-bold py-3 rounded-lg flex items-center justify-center gap-2 transition-colors disabled:opacity-60"
+                >
+                  <ShoppingCart size={18} />
+                  {addToCart.isPending ? "Adicionando..." : "Adicionar ao carrinho"}
+                </button>
+                <button
+                  onClick={handleWishlist}
+                  className="w-12 h-12 border border-gray-200 rounded-lg flex items-center justify-center hover:border-[#C0181A] hover:text-[#C0181A] transition-colors"
+                >
+                  <Heart size={18} />
+                </button>
               </div>
             )}
 
-            {/* Shipping info */}
-            <Card className="border-border">
-              <CardContent className="p-4 space-y-2">
-                <div className="flex items-center gap-2 text-sm">
-                  <Truck size={16} className="text-muted-foreground" />
-                  <span>Prazo de entrega: {(product as { prazoFrete?: number }).prazoFrete || 7} dias úteis</span>
-                </div>
-                <div className="flex items-center gap-2 text-sm">
-                  <Package size={16} className="text-muted-foreground" />
-                  <span>Unidade de venda: {product.unidadeMedida}</span>
-                </div>
-              </CardContent>
-            </Card>
+            {!isApprovedBuyer && product.disponivel && (
+              <div className="flex gap-3 mb-4">
+                <Link href="/login" className="flex-1">
+                  <button className="w-full bg-[#C0181A] hover:bg-[#a01416] text-white font-bold py-3 rounded-lg transition-colors">
+                    Entrar para comprar
+                  </button>
+                </Link>
+                <Link href="/cadastro" className="flex-1">
+                  <button className="w-full border-2 border-[#C0181A] text-[#C0181A] font-bold py-3 rounded-lg hover:bg-[#C0181A] hover:text-white transition-colors">
+                    Criar conta B2B
+                  </button>
+                </Link>
+              </div>
+            )}
+
+            {/* Info cards */}
+            <div className="grid grid-cols-3 gap-3">
+              <div className="bg-gray-50 rounded-lg p-3 text-center">
+                <Truck size={20} className="mx-auto mb-1 text-[#C0181A]" />
+                <p className="text-xs text-gray-600 font-medium">{(product as { prazoFrete?: number }).prazoFrete || 7} dias úteis</p>
+                <p className="text-xs text-gray-400">entrega</p>
+              </div>
+              <div className="bg-gray-50 rounded-lg p-3 text-center">
+                <Shield size={20} className="mx-auto mb-1 text-[#C0181A]" />
+                <p className="text-xs text-gray-600 font-medium">Compra</p>
+                <p className="text-xs text-gray-400">segura</p>
+              </div>
+              <div className="bg-gray-50 rounded-lg p-3 text-center">
+                <Package size={20} className="mx-auto mb-1 text-[#C0181A]" />
+                <p className="text-xs text-gray-600 font-medium">{product.unidadeMedida}</p>
+                <p className="text-xs text-gray-400">por unidade</p>
+              </div>
+            </div>
           </div>
         </div>
 
         {/* Description */}
-        <div className="bg-card border border-border rounded-xl p-6 mb-8">
-          <h2 className="text-lg font-bold mb-4">Descrição do Produto</h2>
-          <p className="text-muted-foreground leading-relaxed">{product.descricao}</p>
+        <div className="bg-white border border-gray-100 rounded-xl p-6 mb-6">
+          <h2 className="text-lg font-bold text-gray-800 mb-4 pb-3 border-b border-gray-100">Descrição do Produto</h2>
+          <p className="text-gray-600 leading-relaxed">{product.descricao}</p>
         </div>
 
         {/* Reviews */}
         {(product as { reviews?: unknown[] }).reviews && (product as { reviews: unknown[] }).reviews.length > 0 && (
-          <div className="bg-card border border-border rounded-xl p-6">
-            <h2 className="text-lg font-bold mb-4">Avaliações</h2>
+          <div className="bg-white border border-gray-100 rounded-xl p-6">
+            <h2 className="text-lg font-bold text-gray-800 mb-4 pb-3 border-b border-gray-100">Avaliações dos clientes</h2>
             <div className="space-y-4">
-              {((product as { reviews?: Array<{
-                id: number;
-                buyerName: string;
-                nota: number;
-                titulo: string;
-                comentario: string;
-                createdAt: string;
-              }> }).reviews || []).map((review) => (
-                <div key={review.id} className="border-b border-border pb-4 last:border-0">
-                  <div className="flex items-center gap-2 mb-2">
+              {((product as {
+                reviews?: Array<{ id: number; buyerName: string; nota: number; titulo: string; comentario: string; createdAt: string }>
+              }).reviews || []).map((review) => (
+                <div key={review.id} className="border-b border-gray-100 pb-4 last:border-0">
+                  <div className="flex items-center gap-2 mb-1">
                     <div className="flex">
                       {Array.from({ length: 5 }).map((_, i) => (
-                        <Star key={i} size={14} className={i < review.nota ? "text-amber-400 fill-amber-400" : "text-muted-foreground"} />
+                        <Star key={i} size={12} className={i < review.nota ? "text-[#FFC107] fill-[#FFC107]" : "text-gray-200 fill-gray-200"} />
                       ))}
                     </div>
-                    <span className="font-medium text-sm">{review.titulo}</span>
+                    <span className="font-semibold text-sm">{review.titulo}</span>
                   </div>
-                  <p className="text-sm text-muted-foreground">{review.comentario}</p>
-                  <p className="text-xs text-muted-foreground mt-2">por {review.buyerName}</p>
+                  <p className="text-sm text-gray-600">{review.comentario}</p>
+                  <p className="text-xs text-gray-400 mt-1">por {review.buyerName}</p>
                 </div>
               ))}
             </div>

@@ -2,9 +2,7 @@ import { useGetCart, useUpdateCartItem, useRemoveFromCart, useClearCart } from "
 import { useAuth } from "@/contexts/AuthContext";
 import { Layout } from "@/components/Layout";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
-import { ShoppingCart, Trash2, Package, AlertCircle, ArrowRight } from "lucide-react";
+import { ShoppingCart, Trash2, Package, AlertCircle, ArrowRight, ChevronLeft } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 
@@ -21,11 +19,10 @@ export default function Cart() {
   if (!isApprovedBuyer) {
     return (
       <Layout>
-        <div className="max-w-2xl mx-auto px-4 py-16 text-center">
-          <ShoppingCart size={48} className="mx-auto mb-4 text-muted-foreground" />
-          <p className="text-lg font-medium mb-2">Acesso restrito</p>
-          <p className="text-muted-foreground mb-6">Faça login para ver seu carrinho</p>
-          <Link href="/login"><Button>Entrar</Button></Link>
+        <div className="max-w-[1280px] mx-auto px-4 py-20 text-center">
+          <ShoppingCart size={64} className="mx-auto mb-4 text-gray-200" />
+          <p className="text-xl font-bold text-gray-700 mb-2">Faça login para acessar seu carrinho</p>
+          <Link href="/login"><button className="mt-4 bg-[#C0181A] hover:bg-[#a01416] text-white font-bold px-8 py-3 rounded-lg transition-colors">Entrar</button></Link>
         </div>
       </Layout>
     );
@@ -34,12 +31,10 @@ export default function Cart() {
   if (isLoading) {
     return (
       <Layout>
-        <div className="max-w-4xl mx-auto px-4 py-8">
-          <div className="animate-pulse space-y-4">
-            <div className="h-8 bg-muted rounded w-48" />
-            <div className="h-32 bg-muted rounded" />
-            <div className="h-32 bg-muted rounded" />
-          </div>
+        <div className="max-w-[1280px] mx-auto px-4 py-8 animate-pulse space-y-4">
+          <div className="h-8 bg-gray-100 rounded w-48" />
+          <div className="h-32 bg-gray-100 rounded" />
+          <div className="h-32 bg-gray-100 rounded" />
         </div>
       </Layout>
     );
@@ -51,11 +46,15 @@ export default function Cart() {
   if (items.length === 0) {
     return (
       <Layout>
-        <div className="max-w-2xl mx-auto px-4 py-16 text-center">
-          <ShoppingCart size={64} className="mx-auto mb-4 text-muted-foreground opacity-50" />
-          <h1 className="text-2xl font-bold mb-2">Seu carrinho está vazio</h1>
-          <p className="text-muted-foreground mb-6">Adicione produtos do catálogo para começar</p>
-          <Link href="/catalogo"><Button>Explorar catálogo</Button></Link>
+        <div className="max-w-[1280px] mx-auto px-4 py-20 text-center">
+          <ShoppingCart size={80} className="mx-auto mb-4 text-gray-200" />
+          <h1 className="text-2xl font-bold text-gray-700 mb-2">Seu carrinho está vazio</h1>
+          <p className="text-gray-500 mb-8">Adicione produtos do catálogo para começar</p>
+          <Link href="/catalogo">
+            <button className="bg-[#C0181A] hover:bg-[#a01416] text-white font-bold px-8 py-3 rounded-lg transition-colors">
+              Explorar catálogo
+            </button>
+          </Link>
         </div>
       </Layout>
     );
@@ -78,116 +77,101 @@ export default function Cart() {
     toast({ title: "Item removido do carrinho" });
   }
 
-  async function handleClear() {
-    await clearCart.mutateAsync({});
-    refetch();
-    toast({ title: "Carrinho limpo" });
-  }
-
   return (
     <Layout>
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-bold">Carrinho de Compras</h1>
-          <Button variant="ghost" size="sm" onClick={handleClear} className="text-muted-foreground hover:text-destructive">
-            <Trash2 size={14} className="mr-1" />
-            Limpar carrinho
-          </Button>
+      <div className="max-w-[1280px] mx-auto px-4 py-6">
+        <div className="flex items-center gap-3 mb-6">
+          <Link href="/catalogo" className="text-gray-500 hover:text-gray-700">
+            <ChevronLeft size={20} />
+          </Link>
+          <h1 className="text-2xl font-bold text-gray-900">Carrinho de Compras</h1>
+          <span className="text-gray-400 text-sm">({items.length} {items.length === 1 ? "item" : "itens"})</span>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Items */}
-          <div className="lg:col-span-2 space-y-4">
+          <div className="lg:col-span-2 space-y-3">
             {items.map((item) => (
-              <Card key={item.id} className="border-border">
-                <CardContent className="p-4">
-                  <div className="flex gap-4">
-                    <div className="w-20 h-20 bg-muted rounded-lg shrink-0 overflow-hidden">
-                      {(item as { imagemPrincipal?: string }).imagemPrincipal ? (
-                        <img src={(item as { imagemPrincipal?: string }).imagemPrincipal} alt={item.productNome} className="w-full h-full object-cover" />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-muted-foreground">
-                          <Package size={24} />
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <Link href={`/produto/${item.productId}`}>
-                        <h3 className="font-semibold text-sm hover:text-primary cursor-pointer line-clamp-2">{item.productNome}</h3>
-                      </Link>
-                      <p className="text-xs text-muted-foreground mt-1">{item.supplierNome}</p>
-                      <p className="text-sm font-bold text-primary mt-2">
-                        {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(item.preco || 0)} / {item.unidadeMedida}
-                      </p>
-                    </div>
-                  </div>
+              <div key={item.id} className="bg-white border border-gray-100 rounded-xl p-4 flex gap-4">
+                <div className="w-20 h-20 bg-gray-50 rounded-lg shrink-0 overflow-hidden">
+                  {(item as { imagemPrincipal?: string }).imagemPrincipal ? (
+                    <img src={(item as { imagemPrincipal?: string }).imagemPrincipal} alt={item.productNome} className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-gray-200"><Package size={28} /></div>
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <Link href={`/produto/${item.productId}`}>
+                    <p className="font-semibold text-sm text-gray-800 hover:text-[#C0181A] cursor-pointer line-clamp-2">{item.productNome}</p>
+                  </Link>
+                  <p className="text-xs text-gray-400 mt-0.5">{item.supplierNome}</p>
+                  <p className="text-[#C0181A] font-bold text-base mt-1">
+                    {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(item.preco || 0)}
+                    <span className="text-gray-400 font-normal text-xs ml-1">/{item.unidadeMedida}</span>
+                  </p>
 
                   {(item as { minQtyError?: string }).minQtyError && (
-                    <div className="flex items-center gap-2 mt-2 text-amber-600 text-xs bg-amber-50 p-2 rounded">
+                    <div className="flex items-center gap-1.5 mt-1 text-amber-600 text-xs">
                       <AlertCircle size={12} />
                       {(item as { minQtyError?: string }).minQtyError}
                     </div>
                   )}
 
-                  <div className="flex items-center justify-between mt-3">
-                    <div className="flex items-center border border-border rounded-md">
-                      <button
-                        className="px-3 py-1.5 text-muted-foreground hover:text-foreground text-sm"
-                        onClick={() => handleQtyChange(item.id, item.quantidade - 1)}
-                      >
-                        -
-                      </button>
-                      <span className="px-3 py-1.5 text-sm border-x border-border min-w-12 text-center">{item.quantidade}</span>
-                      <button
-                        className="px-3 py-1.5 text-muted-foreground hover:text-foreground text-sm"
-                        onClick={() => handleQtyChange(item.id, item.quantidade + 1)}
-                      >
-                        +
-                      </button>
+                  <div className="flex items-center justify-between mt-2">
+                    <div className="flex items-center border border-gray-200 rounded-lg overflow-hidden">
+                      <button className="px-3 py-1 text-gray-500 hover:bg-gray-50 text-sm font-medium" onClick={() => handleQtyChange(item.id, item.quantidade - 1)}>-</button>
+                      <span className="px-3 py-1 text-sm font-bold border-x border-gray-200 min-w-[2.5rem] text-center">{item.quantidade}</span>
+                      <button className="px-3 py-1 text-gray-500 hover:bg-gray-50 text-sm font-medium" onClick={() => handleQtyChange(item.id, item.quantidade + 1)}>+</button>
                     </div>
                     <div className="flex items-center gap-3">
-                      <span className="font-bold">
+                      <span className="font-bold text-gray-800">
                         {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format((item.preco || 0) * item.quantidade)}
                       </span>
-                      <Button variant="ghost" size="sm" onClick={() => handleRemove(item.id)} className="text-muted-foreground hover:text-destructive p-1">
-                        <Trash2 size={14} />
-                      </Button>
+                      <button onClick={() => handleRemove(item.id)} className="text-gray-300 hover:text-red-500 transition-colors">
+                        <Trash2 size={15} />
+                      </button>
                     </div>
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             ))}
+
+            <div className="text-right">
+              <button onClick={async () => { await clearCart.mutateAsync({}); refetch(); }} className="text-sm text-gray-400 hover:text-red-500 transition-colors">
+                Limpar carrinho
+              </button>
+            </div>
           </div>
 
           {/* Summary */}
           <div>
-            <Card className="border-border sticky top-24">
-              <CardHeader>
-                <CardTitle className="text-lg">Resumo do pedido</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
+            <div className="bg-white border border-gray-100 rounded-xl p-5 sticky top-[140px]">
+              <h2 className="font-bold text-gray-800 text-lg mb-4">Resumo do pedido</h2>
+              <div className="space-y-2 mb-4">
                 <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Subtotal ({items.length} {items.length === 1 ? "item" : "itens"})</span>
-                  <span>{new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(total)}</span>
+                  <span className="text-gray-500">Subtotal ({items.length} {items.length === 1 ? "item" : "itens"})</span>
+                  <span className="font-medium">{new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(total)}</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Frete</span>
-                  <span className="text-green-600">A calcular</span>
+                  <span className="text-gray-500">Frete</span>
+                  <span className="text-green-600 font-medium">A calcular</span>
                 </div>
-                <Separator />
+              </div>
+              <div className="border-t border-gray-100 pt-3 mb-4">
                 <div className="flex justify-between font-bold text-lg">
                   <span>Total</span>
-                  <span>{new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(total)}</span>
+                  <span className="text-[#C0181A]">{new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(total)}</span>
                 </div>
-                <Button className="w-full mt-4" size="lg" onClick={() => navigate("/checkout")}>
-                  Finalizar pedido
-                  <ArrowRight size={16} className="ml-2" />
-                </Button>
-                <p className="text-xs text-muted-foreground text-center">
-                  Pagamento seguro via Stripe
-                </p>
-              </CardContent>
-            </Card>
+              </div>
+              <button
+                onClick={() => navigate("/checkout")}
+                className="w-full bg-[#C0181A] hover:bg-[#a01416] text-white font-bold py-3 rounded-lg flex items-center justify-center gap-2 transition-colors"
+              >
+                Finalizar pedido
+                <ArrowRight size={16} />
+              </button>
+              <p className="text-xs text-gray-400 text-center mt-3">Pagamento seguro — Stripe</p>
+            </div>
           </div>
         </div>
       </div>
