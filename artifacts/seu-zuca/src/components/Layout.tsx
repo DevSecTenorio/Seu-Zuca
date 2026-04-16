@@ -228,11 +228,13 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <div className="max-w-[1280px] mx-auto px-4 py-10">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
             <div>
-              <img
-                src="/logo-seuzuca.png"
-                alt="Seu Zuca"
-                className="h-[48px] w-auto object-contain mb-4 brightness-0 invert"
-              />
+              <div className="bg-white rounded-lg px-3 py-1.5 inline-block mb-4">
+                <img
+                  src="/logo-seuzuca.png"
+                  alt="Seu Zuca"
+                  className="h-[40px] w-auto object-contain"
+                />
+              </div>
               <p className="text-sm">Marketplace B2B exclusivo para Pessoas Jurídicas. Materiais de construção em grande volume.</p>
             </div>
             <div>

@@ -63,7 +63,10 @@ export default function AdminDashboard() {
     createdAt?: string;
   };
 
-  const allUsers = (users as UserType[] | undefined) || [];
+  const usersData = users as { users?: UserType[] } | UserType[] | undefined;
+  const allUsers: UserType[] = Array.isArray(usersData)
+    ? usersData
+    : (usersData as { users?: UserType[] })?.users || [];
   const filteredUsers = allUsers.filter((u) => {
     if (statusFilter === "all") return true;
     return u.status === statusFilter;
@@ -72,20 +75,42 @@ export default function AdminDashboard() {
   const pendingCount = allUsers.filter((u) => u.status === "pending").length;
 
   const dash = dashboard as {
-    totalUsuarios?: number;
-    totalProdutos?: number;
+    gmvTotal?: number;
     totalPedidos?: number;
-    faturamentoTotal?: number;
+    ticketMedio?: number;
+    fornecedoresAtivos?: number;
+    compradoresAprovados?: number;
+    pedidosPendentes?: number;
+    comissoesTotais?: number;
+    cotacoesPendentes?: number;
   } | undefined;
 
   const stats = [
-    { icon: Users, label: "Total Usuários", value: dash?.totalUsuarios ?? allUsers.length, color: "text-blue-600", bg: "bg-blue-50" },
-    { icon: Package, label: "Produtos", value: dash?.totalProdutos ?? 0, color: "text-emerald-600", bg: "bg-emerald-50" },
-    { icon: ShoppingBag, label: "Pedidos", value: dash?.totalPedidos ?? 0, color: "text-violet-600", bg: "bg-violet-50" },
+    {
+      icon: Users,
+      label: "Compradores Aprovados",
+      value: dash?.compradoresAprovados ?? allUsers.filter(u => u.role === "buyer" && u.status === "approved").length,
+      color: "text-blue-600",
+      bg: "bg-blue-50",
+    },
+    {
+      icon: Package,
+      label: "Fornecedores Ativos",
+      value: dash?.fornecedoresAtivos ?? allUsers.filter(u => u.role === "supplier").length,
+      color: "text-emerald-600",
+      bg: "bg-emerald-50",
+    },
+    {
+      icon: ShoppingBag,
+      label: "Pedidos",
+      value: dash?.totalPedidos ?? 0,
+      color: "text-violet-600",
+      bg: "bg-violet-50",
+    },
     {
       icon: TrendingUp,
       label: "GMV Total",
-      value: new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 }).format(dash?.faturamentoTotal ?? 0),
+      value: new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 }).format(dash?.gmvTotal ?? 0),
       color: "text-amber-600",
       bg: "bg-amber-50",
     },
