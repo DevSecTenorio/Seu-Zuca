@@ -45,13 +45,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
           <div className="flex items-center gap-4 h-[72px]">
             {/* Logo */}
             <Link href="/" className="flex-shrink-0">
-              <div className="flex items-center gap-1">
-                <div className="w-[80px] h-[52px] bg-[#C0181A] rounded-lg flex flex-col items-center justify-center px-2">
-                  <span className="text-white font-black text-[18px] leading-none tracking-tight">SEU</span>
-                  <span className="text-white font-black text-[18px] leading-none tracking-tight">ZUCA</span>
-                  <span className="text-[#FFD700] text-[7px] font-semibold leading-tight tracking-wide">PEDIU, CHEGOU</span>
-                </div>
-              </div>
+              <img
+                src="/logo-seuzuca.png"
+                alt="Seu Zuca — Pediu, Chegou"
+                className="h-[64px] w-auto object-contain"
+              />
             </Link>
 
             {/* Search bar */}
@@ -230,11 +228,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <div className="max-w-[1280px] mx-auto px-4 py-10">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
             <div>
-              <div className="w-[80px] h-[52px] bg-[#C0181A] rounded-lg flex flex-col items-center justify-center px-2 mb-4">
-                <span className="text-white font-black text-[18px] leading-none tracking-tight">SEU</span>
-                <span className="text-white font-black text-[18px] leading-none tracking-tight">ZUCA</span>
-                <span className="text-[#FFD700] text-[7px] font-semibold leading-tight tracking-wide">PEDIU, CHEGOU</span>
-              </div>
+              <img
+                src="/logo-seuzuca.png"
+                alt="Seu Zuca"
+                className="h-[48px] w-auto object-contain mb-4 brightness-0 invert"
+              />
               <p className="text-sm">Marketplace B2B exclusivo para Pessoas Jurídicas. Materiais de construção em grande volume.</p>
             </div>
             <div>

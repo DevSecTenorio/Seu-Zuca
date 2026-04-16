@@ -37,12 +37,12 @@ export default function Login() {
       <div className="flex-1 flex items-center justify-center px-4 py-12">
         <div className="w-full max-w-md">
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-3 mb-8">
-            <div className="w-[72px] h-[48px] bg-[#C0181A] rounded-lg flex flex-col items-center justify-center px-2">
-              <span className="text-white font-black text-[16px] leading-none tracking-tight">SEU</span>
-              <span className="text-white font-black text-[16px] leading-none tracking-tight">ZUCA</span>
-              <span className="text-[#FFD700] text-[6px] font-semibold tracking-wide">PEDIU, CHEGOU</span>
-            </div>
+          <Link href="/" className="flex items-center gap-4 mb-8">
+            <img
+              src="/logo-seuzuca.png"
+              alt="Seu Zuca"
+              className="h-[56px] w-auto object-contain"
+            />
             <div>
               <p className="font-bold text-gray-800 text-lg leading-tight">Seja bem-vindo!</p>
               <p className="text-gray-500 text-sm">Plataforma B2B de materiais de construção</p>
