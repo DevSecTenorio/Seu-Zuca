@@ -2,6 +2,21 @@ import { Router, type IRouter } from "express";
 import { db, usersTable, commissionsTable, categoryMinimumRulesTable, categoriesTable, ordersTable, orderItemsTable } from "@workspace/db";
 import { eq, desc, sql, and, gte, lte } from "drizzle-orm";
 import { authMiddleware, requireAdmin, type AuthRequest } from "../middlewares/auth";
+import bcrypt from "bcryptjs";
+
+function validateCnpj(cnpj: string): boolean {
+  const cleaned = cnpj.replace(/\D/g, "");
+  if (cleaned.length !== 14) return false;
+  if (/^(\d)\1+$/.test(cleaned)) return false;
+  const calcDigit = (digits: string, weights: number[]) => {
+    const sum = digits.split("").reduce((acc, d, i) => acc + parseInt(d) * weights[i], 0);
+    const rem = sum % 11;
+    return rem < 2 ? 0 : 11 - rem;
+  };
+  const d1 = calcDigit(cleaned.slice(0, 12), [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]);
+  const d2 = calcDigit(cleaned.slice(0, 13), [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]);
+  return parseInt(cleaned[12]) === d1 && parseInt(cleaned[13]) === d2;
+}
 
 const router: IRouter = Router();
 
@@ -71,6 +86,55 @@ router.post("/admin/users/:id/suspend", authMiddleware, requireAdmin, async (req
   }
 
   res.json({ id: user.id, email: user.email, nome: user.nome, role: user.role, status: user.status, createdAt: user.createdAt });
+});
+
+// Admin create supplier
+router.post("/admin/create-supplier", authMiddleware, requireAdmin, async (req: AuthRequest, res): Promise<void> => {
+  const { email, password, nome, razaoSocial, nomeFantasia, cnpj, telefone, ramo } = req.body;
+
+  if (!email || !password || !nome || !cnpj) {
+    res.status(400).json({ message: "Campos obrigatórios: email, senha, nome, CNPJ" });
+    return;
+  }
+
+  if (!validateCnpj(cnpj)) {
+    res.status(400).json({ message: "CNPJ inválido" });
+    return;
+  }
+
+  const existing = await db.select().from(usersTable).where(eq(usersTable.email, email));
+  if (existing.length > 0) {
+    res.status(400).json({ message: "E-mail já cadastrado" });
+    return;
+  }
+
+  const passwordHash = await bcrypt.hash(password, 10);
+
+  const [user] = await db.insert(usersTable).values({
+    email,
+    passwordHash,
+    nome,
+    role: "supplier",
+    status: "approved",
+    cnpj: cnpj.replace(/\D/g, ""),
+    razaoSocial: razaoSocial || nome,
+    nomeFantasia: nomeFantasia || nome,
+    telefone,
+    ramo,
+    emailVerificado: true,
+  }).returning();
+
+  res.status(201).json({
+    id: user.id,
+    email: user.email,
+    nome: user.nome,
+    role: user.role,
+    status: user.status,
+    cnpj: user.cnpj,
+    razaoSocial: user.razaoSocial,
+    nomeFantasia: user.nomeFantasia,
+    createdAt: user.createdAt,
+  });
 });
 
 // Category rules
