@@ -5,7 +5,7 @@ interface User {
   id: number;
   email: string;
   nome: string;
-  role: "admin" | "buyer" | "supplier";
+  role: "admin" | "buyer" | "supplier" | "support";
   status: "pending" | "approved" | "rejected" | "suspended";
   cnpj?: string;
   razaoSocial?: string;
@@ -25,6 +25,8 @@ interface AuthContextType {
   isBuyer: boolean;
   isSupplier: boolean;
   isApprovedBuyer: boolean;
+  isSupport: boolean;
+  isAdminOrSupport: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -46,6 +48,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     isBuyer: validUser?.role === "buyer",
     isSupplier: validUser?.role === "supplier",
     isApprovedBuyer: validUser?.role === "buyer" && validUser?.status === "approved",
+    isSupport: validUser?.role === "support",
+    isAdminOrSupport: validUser?.role === "admin" || validUser?.role === "support",
   };
 
   return (

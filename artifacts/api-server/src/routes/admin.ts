@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
 import { db, usersTable, commissionsTable, categoryMinimumRulesTable, categoriesTable, ordersTable, orderItemsTable } from "@workspace/db";
 import { eq, desc, sql, and, gte, lte } from "drizzle-orm";
-import { authMiddleware, requireAdmin, type AuthRequest } from "../middlewares/auth";
+import { authMiddleware, requireAdmin, requireAdminOrSupport, type AuthRequest } from "../middlewares/auth";
 import bcrypt from "bcryptjs";
 
 function validateCnpj(cnpj: string): boolean {
@@ -217,6 +217,81 @@ router.put("/admin/commission", authMiddleware, requireAdmin, async (req: AuthRe
     const [created] = await db.insert(commissionsTable).values({ percentualGlobal }).returning();
     res.json(created);
   }
+});
+
+// ── Create internal user (admin or support) ──────────────────────────────────
+router.post("/admin/create-internal-user", authMiddleware, requireAdmin, async (req: AuthRequest, res): Promise<void> => {
+  const { nome, email, password, role, departamento } = req.body;
+
+  if (!nome || !email || !password || !role) {
+    res.status(400).json({ message: "Nome, email, senha e papel são obrigatórios" });
+    return;
+  }
+  if (!["admin", "support"].includes(role)) {
+    res.status(400).json({ message: "Papel deve ser 'admin' ou 'support'" });
+    return;
+  }
+  if (password.length < 8) {
+    res.status(400).json({ message: "Senha deve ter pelo menos 8 caracteres" });
+    return;
+  }
+
+  const existing = await db.select().from(usersTable).where(eq(usersTable.email, email.toLowerCase().trim()));
+  if (existing.length > 0) {
+    res.status(409).json({ message: "E-mail já cadastrado" });
+    return;
+  }
+
+  const passwordHash = await bcrypt.hash(password, 10);
+  const [user] = await db.insert(usersTable).values({
+    nome,
+    email: email.toLowerCase().trim(),
+    passwordHash,
+    role,
+    status: "approved",
+    emailVerificado: true,
+    ramo: departamento || null,
+  }).returning();
+
+  res.status(201).json({
+    id: user.id,
+    nome: user.nome,
+    email: user.email,
+    role: user.role,
+    status: user.status,
+    createdAt: user.createdAt,
+  });
+});
+
+// ── Support: list users for support with admin or support role ─────────────
+router.get("/admin/internal-users", authMiddleware, requireAdminOrSupport, async (_req: AuthRequest, res): Promise<void> => {
+  const users = await db
+    .select({
+      id: usersTable.id,
+      nome: usersTable.nome,
+      email: usersTable.email,
+      role: usersTable.role,
+      status: usersTable.status,
+      ramo: usersTable.ramo,
+      createdAt: usersTable.createdAt,
+    })
+    .from(usersTable)
+    .where(and(eq(usersTable.role, "admin"), eq(usersTable.status, "approved")));
+
+  const supportUsers = await db
+    .select({
+      id: usersTable.id,
+      nome: usersTable.nome,
+      email: usersTable.email,
+      role: usersTable.role,
+      status: usersTable.status,
+      ramo: usersTable.ramo,
+      createdAt: usersTable.createdAt,
+    })
+    .from(usersTable)
+    .where(eq(usersTable.role, "support"));
+
+  res.json([...users, ...supportUsers].sort((a, b) => a.nome.localeCompare(b.nome)));
 });
 
 // Reports

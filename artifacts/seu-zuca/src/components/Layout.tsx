@@ -2,7 +2,7 @@ import { Link, useLocation } from "wouter";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLogoutUser, useListCategories } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { ShoppingCart, User, Search, Menu, X, ChevronDown, LayoutGrid, LogOut, Package, BarChart2, ChevronRight } from "lucide-react";
+import { ShoppingCart, User, Search, Menu, X, ChevronDown, LayoutGrid, LogOut, Package, BarChart2, ChevronRight, Headphones } from "lucide-react";
 import { useState, useRef } from "react";
 import {
   DropdownMenu,
@@ -21,7 +21,7 @@ type Category = {
 };
 
 export function Layout({ children }: { children: React.ReactNode }) {
-  const { user, isAuthenticated, isAdmin, isSupplier, isApprovedBuyer } = useAuth();
+  const { user, isAuthenticated, isAdmin, isSupplier, isApprovedBuyer, isSupport, isAdminOrSupport } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [mobileExpandedCat, setMobileExpandedCat] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -121,6 +121,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
                       <DropdownMenuItem onClick={() => navigate("/admin")}>
                         <BarChart2 size={15} className="mr-2" />
                         Painel Admin
+                      </DropdownMenuItem>
+                    )}
+                    {isAdminOrSupport && (
+                      <DropdownMenuItem onClick={() => navigate("/suporte")}>
+                        <Headphones size={15} className="mr-2" />
+                        Painel de Suporte
                       </DropdownMenuItem>
                     )}
                     {isSupplier && (

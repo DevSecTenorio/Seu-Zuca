@@ -55,6 +55,14 @@ export function requireAdmin(req: AuthRequest, res: Response, next: NextFunction
   next();
 }
 
+export function requireAdminOrSupport(req: AuthRequest, res: Response, next: NextFunction): void {
+  if (req.userRole !== "admin" && req.userRole !== "support") {
+    res.status(403).json({ message: "Acesso restrito a administradores e suporte" });
+    return;
+  }
+  next();
+}
+
 export function requireSupplier(req: AuthRequest, res: Response, next: NextFunction): void {
   if (req.userRole !== "supplier" && req.userRole !== "admin") {
     res.status(403).json({ message: "Acesso restrito a fornecedores" });

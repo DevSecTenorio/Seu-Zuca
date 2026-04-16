@@ -10,7 +10,8 @@ import { Label } from "@/components/ui/label";
 import {
   Users, Package, ShoppingBag, TrendingUp, CheckCircle, XCircle,
   Clock, UserPlus, LayoutDashboard, AlertCircle, Eye, EyeOff, RefreshCw,
-  ImageIcon, Plus, Trash2, Edit2, GripVertical, ExternalLink, ToggleLeft, ToggleRight
+  ImageIcon, Plus, Trash2, Edit2, GripVertical, ExternalLink, ToggleLeft, ToggleRight,
+  ShieldCheck, Headphones
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -43,6 +44,206 @@ function formatCnpj(cnpj: string) {
 function generatePassword() {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#";
   return Array.from({ length: 12 }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
+}
+
+// ─── Aba: Usuários Internos (Admin / Suporte) ─────────────────────────────────
+type InternalUser = { id: number; nome: string; email: string; role: string; status: string; ramo?: string | null; createdAt: string };
+
+const ROLE_INTERNAL_LABEL: Record<string, string> = { admin: "Administrador", support: "Suporte" };
+const EMPTY_INTERNAL = { nome: "", email: "", password: "", role: "support", departamento: "" };
+
+function CreateInternalUserTab({ onCreated }: { onCreated: () => void }) {
+  const { toast } = useToast();
+  const [form, setForm] = useState({ ...EMPTY_INTERNAL });
+  const [showPass, setShowPass] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [internalUsers, setInternalUsers] = useState<InternalUser[]>([]);
+  const [loadingUsers, setLoadingUsers] = useState(true);
+  const [success, setSuccess] = useState<{ nome: string; email: string; senha: string; role: string } | null>(null);
+
+  async function loadUsers() {
+    setLoadingUsers(true);
+    try {
+      const r = await fetch("/api/admin/internal-users", { credentials: "include" });
+      if (r.ok) setInternalUsers(await r.json());
+    } finally { setLoadingUsers(false); }
+  }
+
+  useEffect(() => { loadUsers(); }, []);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!form.nome || !form.email || !form.password) {
+      toast({ title: "Preencha nome, e-mail e senha", variant: "destructive" }); return;
+    }
+    if (form.password.length < 8) {
+      toast({ title: "Senha deve ter pelo menos 8 caracteres", variant: "destructive" }); return;
+    }
+    setLoading(true);
+    try {
+      const r = await fetch("/api/admin/create-internal-user", {
+        method: "POST", credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+      if (!r.ok) { const d = await r.json(); throw new Error(d.message || "Erro ao criar usuário"); }
+      setSuccess({ nome: form.nome, email: form.email, senha: form.password, role: form.role });
+      setForm({ ...EMPTY_INTERNAL });
+      onCreated();
+      loadUsers();
+      toast({ title: "Usuário criado com sucesso!" });
+    } catch (err) {
+      toast({ title: err instanceof Error ? err.message : "Erro", variant: "destructive" });
+    } finally { setLoading(false); }
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Credentials card */}
+      {success && (
+        <div className="bg-green-50 border border-green-200 rounded-xl p-4 space-y-2">
+          <div className="flex items-center gap-2 text-green-700 font-semibold text-sm">
+            <CheckCircle size={16} /> Usuário criado com sucesso
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-sm">
+            <div className="bg-white border border-green-100 rounded-lg px-3 py-2">
+              <p className="text-xs text-muted-foreground mb-0.5">Nome</p>
+              <p className="font-semibold">{success.nome}</p>
+            </div>
+            <div className="bg-white border border-green-100 rounded-lg px-3 py-2">
+              <p className="text-xs text-muted-foreground mb-0.5">E-mail</p>
+              <p className="font-mono text-sm">{success.email}</p>
+            </div>
+            <div className="bg-white border border-green-100 rounded-lg px-3 py-2">
+              <p className="text-xs text-muted-foreground mb-0.5">Senha</p>
+              <p className="font-mono text-sm">{success.senha}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Badge variant="secondary" className="text-xs">{ROLE_INTERNAL_LABEL[success.role] || success.role}</Badge>
+            <p className="text-xs text-muted-foreground">Repasse essas credenciais ao usuário de forma segura</p>
+          </div>
+          <Button size="sm" variant="outline" onClick={() => setSuccess(null)} className="text-xs">Fechar</Button>
+        </div>
+      )}
+
+      <div className="grid md:grid-cols-2 gap-6">
+        {/* Form */}
+        <Card className="shadow-none border">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <ShieldCheck size={17} className="text-[#C0181A]" />
+              Criar Usuário Interno
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-1.5">
+                <Label>Papel <span className="text-red-500">*</span></Label>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    { value: "support", label: "Suporte", icon: Headphones, desc: "Analisa base de fornecedores. Sem alterar configurações." },
+                    { value: "admin", label: "Administrador", icon: ShieldCheck, desc: "Acesso total ao sistema. Use com cautela." },
+                  ].map((opt) => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => setForm((f) => ({ ...f, role: opt.value }))}
+                      className={`flex flex-col items-start gap-1 p-3 rounded-lg border-2 text-left transition-all ${
+                        form.role === opt.value ? "border-[#C0181A] bg-red-50" : "border-gray-200 hover:border-gray-300"
+                      }`}
+                    >
+                      <div className="flex items-center gap-1.5">
+                        <opt.icon size={14} className={form.role === opt.value ? "text-[#C0181A]" : "text-gray-500"} />
+                        <span className={`text-sm font-semibold ${form.role === opt.value ? "text-[#C0181A]" : "text-gray-700"}`}>{opt.label}</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground leading-tight">{opt.desc}</p>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label>Nome completo <span className="text-red-500">*</span></Label>
+                <Input placeholder="Ex: Carlos Pereira" value={form.nome} onChange={(e) => setForm((f) => ({ ...f, nome: e.target.value }))} />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label>E-mail <span className="text-red-500">*</span></Label>
+                <Input type="email" placeholder="carlos@seuzuca.com.br" value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label>Departamento / Equipe</Label>
+                <Input placeholder="Ex: Suporte Tier 1" value={form.departamento} onChange={(e) => setForm((f) => ({ ...f, departamento: e.target.value }))} />
+              </div>
+
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <Label>Senha <span className="text-red-500">*</span></Label>
+                  <button type="button" onClick={() => setForm((f) => ({ ...f, password: generatePassword() }))} className="text-xs text-[#E85D00] hover:underline">Gerar senha segura</button>
+                </div>
+                <div className="relative">
+                  <Input
+                    type={showPass ? "text" : "password"}
+                    placeholder="Mínimo 8 caracteres"
+                    value={form.password}
+                    onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
+                    className="pr-10 font-mono"
+                  />
+                  <button type="button" onClick={() => setShowPass(!showPass)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
+                    {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
+              </div>
+
+              <Button type="submit" disabled={loading} className="w-full bg-[#C0181A] hover:bg-[#a01418]">
+                {loading ? "Criando..." : "Criar usuário"}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+
+        {/* Existing internal users */}
+        <Card className="shadow-none border">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Users size={17} className="text-[#C0181A]" />
+              Usuários Internos Ativos
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            {loadingUsers ? (
+              <div className="py-8 text-center text-sm text-muted-foreground px-4">Carregando...</div>
+            ) : internalUsers.length === 0 ? (
+              <div className="py-8 text-center text-sm text-muted-foreground px-4">Nenhum usuário interno cadastrado além do admin principal</div>
+            ) : (
+              <div className="divide-y">
+                {internalUsers.map((u) => (
+                  <div key={u.id} className="flex items-center gap-3 px-4 py-3">
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${u.role === "admin" ? "bg-red-100" : "bg-blue-100"}`}>
+                      {u.role === "admin"
+                        ? <ShieldCheck size={14} className="text-[#C0181A]" />
+                        : <Headphones size={14} className="text-blue-600" />
+                      }
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-900 truncate">{u.nome}</p>
+                      <p className="text-xs text-muted-foreground truncate">{u.email}</p>
+                      {u.ramo && <p className="text-xs text-muted-foreground">{u.ramo}</p>}
+                    </div>
+                    <Badge variant={u.role === "admin" ? "destructive" : "secondary"} className="text-xs shrink-0">
+                      {ROLE_INTERNAL_LABEL[u.role] || u.role}
+                    </Badge>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
 }
 
 // ─── Aba: Banners ─────────────────────────────────────────────────────────────
@@ -543,7 +744,7 @@ function CreateSupplierTab({ onCreated }: { onCreated: () => void }) {
 export default function AdminDashboard() {
   const { isAdmin } = useAuth();
   const { toast } = useToast();
-  const [activeTab, setActiveTab] = useState<"overview" | "users" | "create-supplier" | "banners">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "users" | "create-supplier" | "internal-users" | "banners">("overview");
   const [statusFilter, setStatusFilter] = useState("all");
 
   const { data: dashboard } = useGetDashboardStats({ query: { enabled: isAdmin } });
@@ -638,6 +839,7 @@ export default function AdminDashboard() {
       badge: pendingCount > 0 ? pendingCount : null,
     },
     { id: "create-supplier", label: "Criar Fornecedor", icon: UserPlus },
+    { id: "internal-users", label: "Usuários Internos", icon: ShieldCheck },
     { id: "banners", label: "Banners", icon: ImageIcon },
   ] as const;
 
@@ -906,6 +1108,24 @@ export default function AdminDashboard() {
             </CardHeader>
             <CardContent>
               <CreateSupplierTab onCreated={() => refetch()} />
+            </CardContent>
+          </Card>
+        )}
+
+        {/* ── Aba: Usuários Internos ───────────────────────────────────────── */}
+        {activeTab === "internal-users" && (
+          <Card className="shadow-none border">
+            <CardHeader className="pb-3">
+              <div className="flex items-center gap-2">
+                <ShieldCheck size={20} className="text-[#C0181A]" />
+                <CardTitle className="text-lg">Usuários Internos — Admin e Suporte</CardTitle>
+              </div>
+              <p className="text-sm text-muted-foreground mt-1">
+                Crie acessos para administradores adicionais e agentes de suporte. Suporte pode visualizar toda a base de fornecedores sem alterar configuracoes do sistema.
+              </p>
+            </CardHeader>
+            <CardContent>
+              <CreateInternalUserTab onCreated={() => {}} />
             </CardContent>
           </Card>
         )}

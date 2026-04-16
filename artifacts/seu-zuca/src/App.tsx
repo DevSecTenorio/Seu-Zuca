@@ -18,6 +18,7 @@ import Quotes from "@/pages/quotes";
 import SupplierDashboard from "@/pages/supplier/dashboard";
 import SupplierProductForm from "@/pages/supplier/product-form";
 import AdminDashboard from "@/pages/admin/dashboard";
+import SupportPanel from "@/pages/support/painel";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient({
@@ -47,6 +48,7 @@ function Router() {
       <Route path="/fornecedor/painel" component={SupplierDashboard} />
       <Route path="/fornecedor/produto/:id" component={SupplierProductForm} />
       <Route path="/admin" component={AdminDashboard} />
+      <Route path="/suporte" component={SupportPanel} />
       <Route component={NotFound} />
     </Switch>
   );

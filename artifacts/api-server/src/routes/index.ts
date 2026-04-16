@@ -12,6 +12,7 @@ import addressesRouter from "./addresses";
 import adminRouter from "./admin";
 import dashboardRouter from "./dashboard";
 import bannersRouter from "./banners";
+import supportRouter from "./support";
 
 const router: IRouter = Router();
 
@@ -28,5 +29,6 @@ router.use(addressesRouter);
 router.use(adminRouter);
 router.use(dashboardRouter);
 router.use(bannersRouter);
+router.use(supportRouter);
 
 export default router;
