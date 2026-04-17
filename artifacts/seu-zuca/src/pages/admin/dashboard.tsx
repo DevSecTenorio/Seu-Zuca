@@ -457,7 +457,7 @@ function BannerImageUploader({ value, onChange }: { value: string; onChange: (ur
           <input
             ref={fileInputRef}
             type="file"
-            accept="image/*"
+            accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp"
             className="hidden"
             onChange={handleFileChange}
             disabled={isUploading}
