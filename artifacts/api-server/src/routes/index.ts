@@ -13,6 +13,7 @@ import adminRouter from "./admin";
 import dashboardRouter from "./dashboard";
 import bannersRouter from "./banners";
 import supportRouter from "./support";
+import storageRouter from "./storage";
 
 const router: IRouter = Router();
 
@@ -30,5 +31,6 @@ router.use(adminRouter);
 router.use(dashboardRouter);
 router.use(bannersRouter);
 router.use(supportRouter);
+router.use(storageRouter);
 
 export default router;

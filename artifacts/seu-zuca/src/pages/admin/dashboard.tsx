@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useGetDashboardStats, useAdminListUsers, useAdminApproveUser, useAdminSuspendUser } from "@workspace/api-client-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Layout } from "@/components/Layout";
@@ -11,8 +11,9 @@ import {
   Users, Package, ShoppingBag, TrendingUp, CheckCircle, XCircle,
   Clock, UserPlus, LayoutDashboard, AlertCircle, Eye, EyeOff, RefreshCw,
   ImageIcon, Plus, Trash2, Edit2, GripVertical, ExternalLink, ToggleLeft, ToggleRight,
-  ShieldCheck, Headphones
+  ShieldCheck, Headphones, UploadCloud, X as XIcon, Link as LinkIcon
 } from "lucide-react";
+import { useUpload } from "@workspace/object-storage-web";
 import { useToast } from "@/hooks/use-toast";
 
 const roleLabel: Record<string, string> = { admin: "Admin", buyer: "Comprador", supplier: "Fornecedor" };
@@ -398,6 +399,122 @@ function CreateInternalUserTab({ onCreated }: { onCreated: () => void }) {
   );
 }
 
+// ─── Componente: Upload de imagem para banner ─────────────────────────────────
+function BannerImageUploader({ value, onChange }: { value: string; onChange: (url: string) => void }) {
+  const { toast } = useToast();
+  const [mode, setMode] = useState<"upload" | "url">("upload");
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const { uploadFile, isUploading, progress } = useUpload({
+    onSuccess: (res) => {
+      const servedUrl = `/api/storage${res.objectPath}`;
+      onChange(servedUrl);
+      toast({ title: "Imagem enviada com sucesso!" });
+    },
+    onError: (err) => {
+      toast({ title: err.message || "Erro ao enviar imagem", variant: "destructive" });
+    },
+  });
+
+  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast({ title: "Selecione um arquivo de imagem", variant: "destructive" });
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast({ title: "A imagem deve ter no máximo 5 MB", variant: "destructive" });
+      return;
+    }
+    await uploadFile(file);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  }
+
+  return (
+    <div className="space-y-2">
+      {/* Mode selector */}
+      <div className="flex rounded-lg border overflow-hidden text-xs font-medium w-fit">
+        <button
+          type="button"
+          onClick={() => setMode("upload")}
+          className={`flex items-center gap-1.5 px-3 py-1.5 transition-colors ${mode === "upload" ? "bg-[#C0181A] text-white" : "bg-white text-gray-600 hover:bg-gray-50"}`}
+        >
+          <UploadCloud size={13} /> Upload de arquivo
+        </button>
+        <button
+          type="button"
+          onClick={() => setMode("url")}
+          className={`flex items-center gap-1.5 px-3 py-1.5 transition-colors border-l ${mode === "url" ? "bg-[#C0181A] text-white" : "bg-white text-gray-600 hover:bg-gray-50"}`}
+        >
+          <LinkIcon size={13} /> URL externa
+        </button>
+      </div>
+
+      {/* Upload area */}
+      {mode === "upload" && (
+        <div>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handleFileChange}
+            disabled={isUploading}
+          />
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isUploading}
+            className="w-full flex flex-col items-center justify-center gap-2 px-4 py-5 rounded-lg border-2 border-dashed border-gray-200 hover:border-[#C0181A]/40 hover:bg-red-50/30 transition-all disabled:opacity-50"
+          >
+            {isUploading ? (
+              <>
+                <div className="w-full bg-gray-200 rounded-full h-1.5 max-w-[180px]">
+                  <div className="bg-[#C0181A] h-1.5 rounded-full transition-all" style={{ width: `${progress}%` }} />
+                </div>
+                <span className="text-xs text-muted-foreground">Enviando... {progress}%</span>
+              </>
+            ) : (
+              <>
+                <UploadCloud size={22} className="text-gray-400" />
+                <span className="text-xs text-muted-foreground">Clique para selecionar uma imagem<br /><span className="text-gray-400">PNG, JPG, WebP — máx. 5 MB</span></span>
+              </>
+            )}
+          </button>
+        </div>
+      )}
+
+      {/* URL input */}
+      {mode === "url" && (
+        <Input
+          placeholder="https://exemplo.com/imagem.jpg"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+        />
+      )}
+
+      {/* Preview */}
+      {value && (
+        <div className="relative group w-full rounded-lg overflow-hidden border border-gray-100 bg-gray-50" style={{ height: 90 }}>
+          <img src={value} alt="Preview" className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
+          <button
+            type="button"
+            onClick={() => onChange("")}
+            className="absolute top-1.5 right-1.5 w-6 h-6 bg-black/60 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+          >
+            <XIcon size={12} />
+          </button>
+          <div className="absolute bottom-0 left-0 right-0 bg-black/40 px-2 py-1">
+            <p className="text-white text-xs truncate">{value.startsWith("/api/") ? "Imagem enviada" : value}</p>
+          </div>
+        </div>
+      )}
+      {!value && <p className="text-xs text-muted-foreground">Imagem exibida à direita do banner</p>}
+    </div>
+  );
+}
+
 // ─── Aba: Banners ─────────────────────────────────────────────────────────────
 type BannerType = {
   id: number;
@@ -564,9 +681,11 @@ function BannersTab() {
                   <p className="text-xs text-muted-foreground">Texto menor abaixo do destaque</p>
                 </div>
                 <div className="space-y-1.5">
-                  <Label>URL da imagem</Label>
-                  <Input placeholder="https://..." value={form.imagemUrl} onChange={(e) => setForm((f) => ({ ...f, imagemUrl: e.target.value }))} />
-                  <p className="text-xs text-muted-foreground">Imagem exibida à direita do banner</p>
+                  <Label>Imagem do banner</Label>
+                  <BannerImageUploader
+                    value={form.imagemUrl}
+                    onChange={(url) => setForm((f) => ({ ...f, imagemUrl: url }))}
+                  />
                 </div>
                 <div className="space-y-1.5">
                   <Label>Link do botão "Ver ofertas"</Label>
