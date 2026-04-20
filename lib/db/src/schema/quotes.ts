@@ -7,9 +7,12 @@ import { productsTable } from "./products";
 export const quotesTable = pgTable("quotes", {
   id: serial("id").primaryKey(),
   buyerId: integer("buyer_id").notNull().references(() => usersTable.id),
-  supplierId: integer("supplier_id").notNull().references(() => usersTable.id),
+  supplierId: integer("supplier_id").references(() => usersTable.id),
+  titulo: text("titulo"),
+  descricao: text("descricao"),
   status: text("status").notNull().default("pendente"),
   observacoes: text("observacoes"),
+  dataExpiracao: timestamp("data_expiracao", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });
@@ -17,8 +20,10 @@ export const quotesTable = pgTable("quotes", {
 export const quoteItemsTable = pgTable("quote_items", {
   id: serial("id").primaryKey(),
   quoteId: integer("quote_id").notNull().references(() => quotesTable.id, { onDelete: "cascade" }),
-  productId: integer("product_id").notNull().references(() => productsTable.id),
+  productId: integer("product_id").references(() => productsTable.id),
+  produtoDescricao: text("produto_descricao"),
   quantidade: integer("quantidade").notNull(),
+  unidadeMedida: text("unidade_medida"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -27,7 +32,7 @@ export const quoteResponsesTable = pgTable("quote_responses", {
   quoteId: integer("quote_id").notNull().references(() => quotesTable.id, { onDelete: "cascade" }),
   supplierId: integer("supplier_id").notNull().references(() => usersTable.id),
   precoTotal: real("preco_total").notNull(),
-  prazoEntrega: integer("prazo_entrega").notNull(),
+  prazoEntrega: text("prazo_entrega").notNull(),
   condicoes: text("condicoes"),
   valorFrete: real("valor_frete").notNull().default(0),
   validadeAte: timestamp("validade_ate", { withTimezone: true }),

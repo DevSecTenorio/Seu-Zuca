@@ -60,14 +60,19 @@ export default function Quotes() {
       toast({ title: "Informe o título da cotação", variant: "destructive" });
       return;
     }
+    const validItems = newQuote.items.filter((i) => i.produtoDescricao?.trim());
+    if (validItems.length === 0) {
+      toast({ title: "Informe pelo menos um item", variant: "destructive" });
+      return;
+    }
     try {
-      await createQuote.mutateAsync({ data: newQuote });
+      await createQuote.mutateAsync({ data: { ...newQuote, items: validItems } });
       toast({ title: "Cotação criada com sucesso!" });
       setDialogOpen(false);
       setNewQuote({ titulo: "", descricao: "", dataExpiracao: "", items: [{ produtoDescricao: "", quantidade: 1, unidadeMedida: "unidade" }] });
       refetch();
     } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || "Erro ao criar cotação";
+      const msg = (err as { message?: string })?.message || "Erro ao criar cotação";
       toast({ title: msg, variant: "destructive" });
     }
   }
