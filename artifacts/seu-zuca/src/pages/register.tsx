@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { useRegisterUser, useLookupCep } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -53,7 +53,8 @@ export default function Register() {
   const { toast } = useToast();
   const { data: cepData } = useLookupCep(cepQuery, { query: { enabled: cepQuery.length === 8 } });
 
-  if (cepData && !form.logradouro) {
+  useEffect(() => {
+    if (!cepData) return;
     setForm((f) => ({
       ...f,
       logradouro: (cepData as { logradouro?: string }).logradouro || f.logradouro,
@@ -61,7 +62,7 @@ export default function Register() {
       cidade: (cepData as { cidade?: string }).cidade || f.cidade,
       estado: (cepData as { estado?: string }).estado || f.estado,
     }));
-  }
+  }, [cepData]);
 
   function handleCnpjChange(value: string) {
     const formatted = formatCnpj(value);
