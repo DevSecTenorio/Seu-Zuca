@@ -41,7 +41,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   function handleSearch(e: React.FormEvent) {
     e.preventDefault();
     if (searchQuery.trim()) {
-      navigate(`/catalogo?q=${encodeURIComponent(searchQuery.trim())}`);
+      navigate(`/catalogo?search=${encodeURIComponent(searchQuery.trim())}`);
     }
   }
 

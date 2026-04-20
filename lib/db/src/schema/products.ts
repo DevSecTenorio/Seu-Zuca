@@ -15,6 +15,7 @@ export const productsTable = pgTable("products", {
   estoque: integer("estoque").notNull().default(0),
   alertaEstoque: integer("alerta_estoque").notNull().default(10),
   disponivel: boolean("disponivel").notNull().default(true),
+  aprovado: boolean("aprovado").notNull().default(true),
   categoryId: integer("category_id").notNull().references(() => categoriesTable.id),
   supplierId: integer("supplier_id").notNull().references(() => usersTable.id),
   imagemPrincipal: text("imagem_principal"),

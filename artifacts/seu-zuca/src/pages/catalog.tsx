@@ -13,7 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 export default function Catalog() {
   const search = useSearch();
   const params = new URLSearchParams(search);
-  const [searchText, setSearchText] = useState(params.get("q") || "");
+  const [searchText, setSearchText] = useState(params.get("search") || params.get("q") || "");
   const [selectedCategory, setSelectedCategory] = useState(params.get("categoryId") || "all");
   const [sortBy, setSortBy] = useState("createdAt");
   const [page, setPage] = useState(1);
@@ -23,7 +23,7 @@ export default function Catalog() {
   const canSeePrice = isApprovedBuyer || isAdmin || isSupplier;
 
   const { data, isLoading } = useListProducts({
-    q: searchText || undefined,
+    search: searchText || undefined,
     categoryId: selectedCategory !== "all" ? Number(selectedCategory) : undefined,
     orderBy: sortBy as "nome" | "preco" | "estoque" | "createdAt",
     page,

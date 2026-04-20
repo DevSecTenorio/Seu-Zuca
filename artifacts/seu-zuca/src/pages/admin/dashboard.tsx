@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useGetDashboardStats, useAdminListUsers, useAdminApproveUser, useAdminSuspendUser } from "@workspace/api-client-react";
+import { useGetDashboardStats, useAdminListUsers, useAdminApproveUser, useAdminSuspendUser, useListCategories, useCreateCategory, useUpdateCategory, useDeleteCategory } from "@workspace/api-client-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Layout } from "@/components/Layout";
 import { Button } from "@/components/ui/button";
@@ -7,11 +7,12 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Users, Package, ShoppingBag, TrendingUp, CheckCircle, XCircle,
   Clock, UserPlus, LayoutDashboard, AlertCircle, Eye, EyeOff, RefreshCw,
   ImageIcon, Plus, Trash2, Edit2, GripVertical, ExternalLink, ToggleLeft, ToggleRight,
-  ShieldCheck, Headphones, UploadCloud, X as XIcon, Link as LinkIcon
+  ShieldCheck, Headphones, UploadCloud, X as XIcon, Link as LinkIcon, FolderOpen, Tag
 } from "lucide-react";
 import { useUpload } from "@workspace/object-storage-web";
 import { useToast } from "@/hooks/use-toast";
@@ -1011,11 +1012,290 @@ function CreateSupplierTab({ onCreated }: { onCreated: () => void }) {
   );
 }
 
+// ─── Aba: Categorias ─────────────────────────────────────────────────────────
+type CatType = { id: number; nome: string; slug?: string; icone?: string; descricao?: string; parentId?: number | null; ordem?: number };
+
+const EMPTY_CAT = { nome: "", slug: "", icone: "", descricao: "" };
+
+function CategoriesTab() {
+  const { toast } = useToast();
+  const { data: rawCategories, refetch } = useListCategories();
+  const createMutation = useCreateCategory();
+  const updateMutation = useUpdateCategory();
+  const deleteMutation = useDeleteCategory();
+  const [form, setForm] = useState({ ...EMPTY_CAT });
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
+
+  const categories = (rawCategories as unknown as CatType[]) || [];
+
+  function startEdit(cat: CatType) {
+    setEditingId(cat.id);
+    setForm({ nome: cat.nome, slug: cat.slug || "", icone: cat.icone || "", descricao: cat.descricao || "" });
+  }
+
+  function cancelEdit() { setEditingId(null); setForm({ ...EMPTY_CAT }); }
+
+  async function handleSave(e: React.FormEvent) {
+    e.preventDefault();
+    if (!form.nome) { toast({ title: "Nome é obrigatório", variant: "destructive" }); return; }
+    try {
+      if (editingId) {
+        await updateMutation.mutateAsync({ id: String(editingId), data: { nome: form.nome, slug: form.slug || form.nome.toLowerCase().replace(/\s+/g, "-"), icone: form.icone || undefined, descricao: form.descricao || undefined } });
+        toast({ title: "Categoria atualizada!" });
+      } else {
+        await createMutation.mutateAsync({ data: { nome: form.nome, slug: form.slug || form.nome.toLowerCase().replace(/\s+/g, "-"), icone: form.icone || undefined, descricao: form.descricao || undefined } });
+        toast({ title: "Categoria criada!" });
+      }
+      setForm({ ...EMPTY_CAT });
+      setEditingId(null);
+      refetch();
+    } catch (err) {
+      toast({ title: err instanceof Error ? err.message : "Erro ao salvar", variant: "destructive" });
+    }
+  }
+
+  async function handleDelete(id: number) {
+    try {
+      await deleteMutation.mutateAsync({ id: String(id) });
+      toast({ title: "Categoria excluída" });
+      setConfirmDeleteId(null);
+      refetch();
+    } catch {
+      toast({ title: "Não é possível excluir — há produtos nesta categoria", variant: "destructive" });
+      setConfirmDeleteId(null);
+    }
+  }
+
+  return (
+    <div className="grid md:grid-cols-2 gap-6">
+      {/* Form */}
+      <Card className="shadow-none border">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <FolderOpen size={17} className="text-[#C0181A]" />
+            {editingId ? "Editar Categoria" : "Nova Categoria"}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSave} className="space-y-4">
+            <div className="space-y-1.5">
+              <Label>Nome <span className="text-red-500">*</span></Label>
+              <Input placeholder="Ex: Estrutura" value={form.nome} onChange={(e) => setForm((f) => ({ ...f, nome: e.target.value }))} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Slug (URL)</Label>
+              <Input placeholder="estrutura" value={form.slug} onChange={(e) => setForm((f) => ({ ...f, slug: e.target.value }))} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Ícone (nome Lucide)</Label>
+              <Input placeholder="building-2" value={form.icone} onChange={(e) => setForm((f) => ({ ...f, icone: e.target.value }))} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Descrição</Label>
+              <Textarea placeholder="Breve descrição da categoria..." value={form.descricao} onChange={(e) => setForm((f) => ({ ...f, descricao: e.target.value }))} rows={2} />
+            </div>
+            <div className="flex gap-2">
+              <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending} className="bg-[#C0181A] hover:bg-[#a01418]">
+                {editingId ? "Salvar alterações" : "Criar categoria"}
+              </Button>
+              {editingId && <Button type="button" variant="outline" onClick={cancelEdit}>Cancelar</Button>}
+            </div>
+          </form>
+        </CardContent>
+      </Card>
+
+      {/* List */}
+      <Card className="shadow-none border">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Tag size={17} className="text-[#C0181A]" />
+            Categorias ({categories.length})
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-0">
+          {categories.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-8 px-4">Nenhuma categoria cadastrada</p>
+          ) : (
+            <div className="divide-y">
+              {categories.map((cat) => (
+                <div key={cat.id} className="flex items-center gap-3 px-4 py-3 group hover:bg-gray-50">
+                  <div className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center shrink-0">
+                    <FolderOpen size={14} className="text-[#E85D00]" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium">{cat.nome}</p>
+                    {cat.slug && <p className="text-xs text-muted-foreground font-mono">/{cat.slug}</p>}
+                  </div>
+                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Button variant="ghost" size="sm" className="p-1.5 h-7 w-7" onClick={() => startEdit(cat)}>
+                      <Edit2 size={13} />
+                    </Button>
+                    {confirmDeleteId === cat.id ? (
+                      <div className="flex gap-1 items-center">
+                        <Button variant="destructive" size="sm" className="h-6 text-xs px-2" onClick={() => handleDelete(cat.id)}>Confirmar</Button>
+                        <Button variant="outline" size="sm" className="h-6 text-xs px-2" onClick={() => setConfirmDeleteId(null)}>Não</Button>
+                      </div>
+                    ) : (
+                      <Button variant="ghost" size="sm" className="p-1.5 h-7 w-7 text-muted-foreground hover:text-destructive" onClick={() => setConfirmDeleteId(cat.id)}>
+                        <Trash2 size={13} />
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+// ─── Aba: Aprovação de Produtos ───────────────────────────────────────────────
+type AdminProductType = {
+  id: number; nome: string; sku?: string; preco: number; unidadeMedida: string;
+  estoque: number; disponivel: boolean; aprovado: boolean; imagemPrincipal?: string;
+  createdAt: string; categoryName?: string; supplierName?: string;
+};
+
+function ProductsApprovalTab() {
+  const { toast } = useToast();
+  const [filter, setFilter] = useState<"false" | "true" | "all">("false");
+  const [products, setProducts] = useState<AdminProductType[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [total, setTotal] = useState(0);
+
+  async function load() {
+    setLoading(true);
+    try {
+      const url = filter === "all" ? "/api/admin/products" : `/api/admin/products?aprovado=${filter}`;
+      const r = await fetch(url, { credentials: "include" });
+      if (r.ok) { const d = await r.json(); setProducts(d.products || []); setTotal(d.total || 0); }
+    } finally { setLoading(false); }
+  }
+
+  useEffect(() => { load(); }, [filter]);
+
+  async function handleApprove(id: number) {
+    try {
+      await fetch(`/api/admin/products/${id}/approve`, { method: "PUT", credentials: "include" });
+      toast({ title: "Produto aprovado!" });
+      load();
+    } catch { toast({ title: "Erro", variant: "destructive" }); }
+  }
+
+  async function handleReject(id: number) {
+    try {
+      await fetch(`/api/admin/products/${id}/reject`, { method: "PUT", credentials: "include" });
+      toast({ title: "Produto ocultado" });
+      load();
+    } catch { toast({ title: "Erro", variant: "destructive" }); }
+  }
+
+  const BRL = (v: number) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v);
+
+  return (
+    <Card className="shadow-none border">
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Package size={18} className="text-[#C0181A]" />
+            Moderação de Produtos
+          </CardTitle>
+          <div className="flex gap-1">
+            {[
+              { v: "false", label: "Aguardando" },
+              { v: "true",  label: "Aprovados" },
+              { v: "all",   label: "Todos" },
+            ].map(f => (
+              <button
+                key={f.v}
+                onClick={() => setFilter(f.v as "false" | "true" | "all")}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${filter === f.v ? "bg-[#C0181A] text-white border-[#C0181A]" : "bg-white text-gray-600 border-gray-200 hover:border-gray-300"}`}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+        </div>
+        <p className="text-sm text-muted-foreground mt-1">{total} {total === 1 ? "produto" : "produtos"} encontrado{total !== 1 ? "s" : ""}</p>
+      </CardHeader>
+      <CardContent className="p-0">
+        {loading ? (
+          <div className="space-y-3 p-4">
+            {Array.from({ length: 4 }).map((_, i) => <div key={i} className="h-16 bg-muted animate-pulse rounded" />)}
+          </div>
+        ) : products.length === 0 ? (
+          <div className="text-center py-16 text-muted-foreground">
+            <Package size={40} className="mx-auto mb-3 opacity-30" />
+            <p>{filter === "false" ? "Nenhum produto aguardando aprovação" : "Nenhum produto encontrado"}</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border">
+                  <th className="text-left py-3 px-4 text-muted-foreground font-medium">Produto</th>
+                  <th className="text-left py-3 text-muted-foreground font-medium hidden sm:table-cell">Fornecedor</th>
+                  <th className="text-right py-3 text-muted-foreground font-medium">Preço</th>
+                  <th className="text-center py-3 text-muted-foreground font-medium">Status</th>
+                  <th className="text-right py-3 px-4 text-muted-foreground font-medium">Ações</th>
+                </tr>
+              </thead>
+              <tbody>
+                {products.map((p) => (
+                  <tr key={p.id} className="border-b border-border last:border-0 hover:bg-muted/30">
+                    <td className="py-3 px-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-muted rounded overflow-hidden shrink-0">
+                          {p.imagemPrincipal
+                            ? <img src={p.imagemPrincipal} alt="" className="w-full h-full object-cover" />
+                            : <Package size={14} className="m-auto text-muted-foreground" />}
+                        </div>
+                        <div>
+                          <p className="font-medium line-clamp-1">{p.nome}</p>
+                          <p className="text-xs text-muted-foreground">{p.categoryName} · {new Date(p.createdAt).toLocaleDateString("pt-BR")}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="py-3 text-muted-foreground text-sm hidden sm:table-cell">{p.supplierName || "—"}</td>
+                    <td className="py-3 text-right font-semibold">{BRL(p.preco)}</td>
+                    <td className="py-3 text-center">
+                      <Badge variant={p.aprovado ? "default" : "secondary"} className="text-xs">
+                        {p.aprovado ? "Aprovado" : "Aguardando"}
+                      </Badge>
+                    </td>
+                    <td className="py-3 px-4 text-right">
+                      <div className="flex items-center gap-1 justify-end">
+                        {!p.aprovado && (
+                          <Button size="sm" className="h-7 text-xs bg-green-600 hover:bg-green-700" onClick={() => handleApprove(p.id)}>
+                            <CheckCircle size={11} className="mr-1" /> Aprovar
+                          </Button>
+                        )}
+                        {p.aprovado && (
+                          <Button size="sm" variant="outline" className="h-7 text-xs border-red-200 text-red-600 hover:bg-red-50" onClick={() => handleReject(p.id)}>
+                            Ocultar
+                          </Button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 // ─── Dashboard principal ──────────────────────────────────────────────────────
 export default function AdminDashboard() {
   const { isAdmin } = useAuth();
   const { toast } = useToast();
-  const [activeTab, setActiveTab] = useState<"overview" | "users" | "create-supplier" | "internal-users" | "banners">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "users" | "create-supplier" | "internal-users" | "banners" | "categories" | "products">("overview");
   const [statusFilter, setStatusFilter] = useState("all");
 
   const { data: dashboard } = useGetDashboardStats({ query: { enabled: isAdmin } });
@@ -1111,6 +1391,8 @@ export default function AdminDashboard() {
     },
     { id: "create-supplier", label: "Criar Fornecedor", icon: UserPlus },
     { id: "internal-users", label: "Usuários Internos", icon: ShieldCheck },
+    { id: "categories", label: "Categorias", icon: FolderOpen },
+    { id: "products", label: "Produtos", icon: Package },
     { id: "banners", label: "Banners", icon: ImageIcon },
   ] as const;
 
@@ -1132,7 +1414,7 @@ export default function AdminDashboard() {
         </div>
 
         {/* Nav tabs */}
-        <div className="flex gap-1 mb-6 bg-gray-100 p-1 rounded-xl w-fit">
+        <div className="flex gap-1 mb-6 bg-gray-100 p-1 rounded-xl w-full overflow-x-auto flex-wrap">
           {navTabs.map(tab => (
             <button
               key={tab.id}
@@ -1417,6 +1699,26 @@ export default function AdminDashboard() {
               <BannersTab />
             </CardContent>
           </Card>
+        )}
+
+        {activeTab === "categories" && (
+          <div className="space-y-4">
+            <div>
+              <h2 className="text-lg font-semibold">Gerenciar Categorias</h2>
+              <p className="text-sm text-muted-foreground mt-0.5">Crie e edite as categorias de produtos do marketplace.</p>
+            </div>
+            <CategoriesTab />
+          </div>
+        )}
+
+        {activeTab === "products" && (
+          <div className="space-y-4">
+            <div>
+              <h2 className="text-lg font-semibold">Aprovação de Produtos</h2>
+              <p className="text-sm text-muted-foreground mt-0.5">Revise e aprove produtos enviados pelos fornecedores antes de ficarem visíveis no catálogo.</p>
+            </div>
+            <ProductsApprovalTab />
+          </div>
         )}
 
       </div>
