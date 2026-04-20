@@ -3,8 +3,27 @@ import { Link, useLocation } from "wouter";
 import { useListCategories, useListProducts } from "@workspace/api-client-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Layout } from "@/components/Layout";
-import { Lock, ChevronLeft, ChevronRight, Star, Truck, Shield, BadgePercent, Building2 } from "lucide-react";
+import { Lock, ChevronLeft, ChevronRight, Star, Truck, Shield, BadgePercent, Building2, Paintbrush, Wrench, Hammer, Droplets, Zap, TreePine, Layers, Columns3, Package, type LucideIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+
+const CATEGORY_ICONS: Record<string, LucideIcon> = {
+  "estrutura":    Columns3,
+  "acabamento":   Paintbrush,
+  "instalações":  Wrench,
+  "instalacoes":  Wrench,
+  "ferramentas":  Hammer,
+  "hidráulica":   Droplets,
+  "hidraulica":   Droplets,
+  "elétrica":     Zap,
+  "eletrica":     Zap,
+  "madeira":      TreePine,
+  "alvenaria":    Layers,
+};
+
+function getCategoryIcon(nome: string): LucideIcon {
+  const key = nome.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  return CATEGORY_ICONS[nome.toLowerCase()] ?? CATEGORY_ICONS[key] ?? Package;
+}
 
 type ApiBanner = {
   id: number;
@@ -168,16 +187,19 @@ export default function Home() {
               </Link>
             </div>
             <div className="grid grid-cols-4 md:grid-cols-8 gap-3">
-              {categories.slice(0, 8).map((cat) => (
-                <Link key={cat.id} href={`/catalogo?categoryId=${cat.id}`}>
-                  <div className="flex flex-col items-center gap-2 cursor-pointer group">
-                    <div className="w-14 h-14 md:w-16 md:h-16 bg-white border-2 border-gray-100 rounded-xl flex items-center justify-center group-hover:border-[#E85D00] transition-all shadow-sm">
-                      <Building2 size={24} className="text-[#C0181A]" />
+              {categories.slice(0, 8).map((cat) => {
+                const CatIcon = getCategoryIcon(cat.nome);
+                return (
+                  <Link key={cat.id} href={`/catalogo?categoryId=${cat.id}`}>
+                    <div className="flex flex-col items-center gap-2 cursor-pointer group">
+                      <div className="w-14 h-14 md:w-16 md:h-16 bg-white border-2 border-gray-100 rounded-xl flex items-center justify-center group-hover:border-[#E85D00] transition-all shadow-sm">
+                        <CatIcon size={24} className="text-[#C0181A]" />
+                      </div>
+                      <span className="text-xs text-center text-gray-700 font-medium leading-tight">{cat.nome}</span>
                     </div>
-                    <span className="text-xs text-center text-gray-700 font-medium leading-tight">{cat.nome}</span>
-                  </div>
-                </Link>
-              ))}
+                  </Link>
+                );
+              })}
             </div>
           </div>
         </section>
