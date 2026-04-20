@@ -103,3 +103,6 @@
   to { transform: translateX(0); opacity: 1; }
 }
 .slide-in { animation: slide-in-right 0.4s ease-out; }
+
+.no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }

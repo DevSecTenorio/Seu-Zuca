@@ -239,7 +239,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
               </DropdownMenu>
 
               {/* Quick-link tabs with hover mega-menu */}
-              <nav className="flex items-stretch overflow-x-hidden flex-1">
+              <nav className="flex items-stretch overflow-x-auto no-scrollbar flex-1">
                 {navRoots.map((cat) => {
                   const subs = childrenOf(cat.id);
                   const isActive = activeCatId === cat.id || subs.some((s) => s.id === activeCatId);
