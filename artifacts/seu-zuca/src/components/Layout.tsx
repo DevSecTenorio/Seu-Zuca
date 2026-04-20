@@ -250,8 +250,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
                       onMouseEnter={() => onCatEnter(cat.id)}
                       onMouseLeave={onCatLeave}
                     >
-                      <button
-                        onClick={() => navigate(`/catalogo?categoryId=${cat.id}`)}
+                      <Link
+                        href={`/catalogo?categoryId=${cat.id}`}
                         className={`flex items-center gap-1 px-4 h-full text-sm font-semibold whitespace-nowrap transition-colors border-b-2
                           ${isActive
                             ? "text-white border-white bg-white/10"
@@ -260,7 +260,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                       >
                         {cat.nome}
                         {subs.length > 0 && <ChevronDown size={12} className="opacity-70" />}
-                      </button>
+                      </Link>
 
                       {/* Sub-category dropdown on hover */}
                       {subs.length > 0 && hoveredCat === cat.id && (
@@ -273,25 +273,27 @@ export function Layout({ children }: { children: React.ReactNode }) {
                             <span className="text-xs font-bold text-[#E85D00] uppercase tracking-wide">{cat.nome}</span>
                           </div>
                           {subs.map((sub) => (
-                            <button
+                            <Link
                               key={sub.id}
-                              onClick={() => { navigate(`/catalogo?categoryId=${sub.id}`); setHoveredCat(null); }}
-                              className={`w-full text-left px-4 py-2 text-sm transition-colors
+                              href={`/catalogo?categoryId=${sub.id}`}
+                              onClick={() => setHoveredCat(null)}
+                              className={`block w-full px-4 py-2 text-sm transition-colors
                                 ${activeCatId === sub.id
                                   ? "text-[#C0181A] font-semibold bg-orange-50"
                                   : "text-gray-700 hover:bg-orange-50 hover:text-[#C0181A]"
                                 }`}
                             >
                               {sub.nome}
-                            </button>
+                            </Link>
                           ))}
                           <div className="border-t border-gray-100 mt-1 pt-1">
-                            <button
-                              onClick={() => { navigate(`/catalogo?categoryId=${cat.id}`); setHoveredCat(null); }}
-                              className="w-full text-left px-4 py-2 text-xs font-semibold text-[#E85D00] hover:underline"
+                            <Link
+                              href={`/catalogo?categoryId=${cat.id}`}
+                              onClick={() => setHoveredCat(null)}
+                              className="block w-full px-4 py-2 text-xs font-semibold text-[#E85D00] hover:underline"
                             >
                               Ver tudo em {cat.nome}
-                            </button>
+                            </Link>
                           </div>
                         </div>
                       )}
