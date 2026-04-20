@@ -12,7 +12,7 @@ import {
   Users, Package, ShoppingBag, TrendingUp, CheckCircle, XCircle,
   Clock, UserPlus, LayoutDashboard, AlertCircle, Eye, EyeOff, RefreshCw,
   ImageIcon, Plus, Trash2, Edit2, GripVertical, ExternalLink, ToggleLeft, ToggleRight,
-  ShieldCheck, Headphones, UploadCloud, X as XIcon, Link as LinkIcon, FolderOpen, Tag
+  ShieldCheck, Headphones, UploadCloud, X as XIcon, Link as LinkIcon, FolderOpen, Tag, Star, Percent, ListOrdered
 } from "lucide-react";
 import { useUpload } from "@workspace/object-storage-web";
 import { useToast } from "@/hooks/use-toast";
@@ -1165,6 +1165,8 @@ function ProductsApprovalTab() {
   const [products, setProducts] = useState<AdminProductType[]>([]);
   const [loading, setLoading] = useState(true);
   const [total, setTotal] = useState(0);
+  const [commissions, setCommissions] = useState<Record<number, string>>({});
+  const [savingCommission, setSavingCommission] = useState<number | null>(null);
 
   async function load() {
     setLoading(true);
@@ -1176,6 +1178,21 @@ function ProductsApprovalTab() {
   }
 
   useEffect(() => { load(); }, [filter]);
+
+  async function handleSaveCommission(id: number) {
+    const val = commissions[id];
+    if (val === undefined || val === "") return;
+    setSavingCommission(id);
+    try {
+      const r = await fetch(`/api/admin/products/${id}/commission`, {
+        method: "PUT", credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ comissao: Number(val) }),
+      });
+      if (r.ok) toast({ title: "Comissão salva" });
+      else toast({ title: "Erro ao salvar comissão", variant: "destructive" });
+    } finally { setSavingCommission(null); }
+  }
 
   async function handleApprove(id: number) {
     try {
@@ -1239,6 +1256,7 @@ function ProductsApprovalTab() {
                   <th className="text-left py-3 px-4 text-muted-foreground font-medium">Produto</th>
                   <th className="text-left py-3 text-muted-foreground font-medium hidden sm:table-cell">Fornecedor</th>
                   <th className="text-right py-3 text-muted-foreground font-medium">Preço</th>
+                  <th className="text-center py-3 text-muted-foreground font-medium hidden md:table-cell">Comissão %</th>
                   <th className="text-center py-3 text-muted-foreground font-medium">Status</th>
                   <th className="text-right py-3 px-4 text-muted-foreground font-medium">Ações</th>
                 </tr>
@@ -1261,6 +1279,26 @@ function ProductsApprovalTab() {
                     </td>
                     <td className="py-3 text-muted-foreground text-sm hidden sm:table-cell">{p.supplierName || "—"}</td>
                     <td className="py-3 text-right font-semibold">{BRL(p.preco)}</td>
+                    <td className="py-3 text-center hidden md:table-cell">
+                      <div className="flex items-center gap-1 justify-center">
+                        <div className="relative">
+                          <Input
+                            type="number" min="0" max="100" step="0.01" placeholder="—"
+                            value={commissions[p.id] !== undefined ? commissions[p.id] : ""}
+                            onChange={e => setCommissions(c => ({ ...c, [p.id]: e.target.value }))}
+                            className="w-16 h-6 text-xs pr-5 py-0"
+                          />
+                          <span className="absolute right-1.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">%</span>
+                        </div>
+                        <Button
+                          size="sm" variant="ghost" className="h-6 w-6 p-0 text-green-600 hover:text-green-700"
+                          disabled={savingCommission === p.id || !commissions[p.id]}
+                          onClick={() => handleSaveCommission(p.id)}
+                        >
+                          <CheckCircle size={12} />
+                        </Button>
+                      </div>
+                    </td>
                     <td className="py-3 text-center">
                       <Badge variant={p.aprovado ? "default" : "secondary"} className="text-xs">
                         {p.aprovado ? "Aprovado" : "Aguardando"}
@@ -1291,12 +1329,263 @@ function ProductsApprovalTab() {
   );
 }
 
+// ─── Aba: Pedidos Mínimos ─────────────────────────────────────────────────────
+type MinRule = { id: number; categoryId: number; categoryName?: string; quantidadeMinima: number; multiplo: number; ativo: boolean };
+
+function MinimumRulesTab() {
+  const { toast } = useToast();
+  const { data: rawCategories } = useListCategories();
+  const categories = (rawCategories as unknown as CatType[]) || [];
+  const [rules, setRules] = useState<MinRule[]>([]);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [form, setForm] = useState({ categoryId: "", quantidadeMinima: "", multiplo: "1" });
+  const [confirmDel, setConfirmDel] = useState<number | null>(null);
+
+  async function load() {
+    const r = await fetch("/api/admin/category-rules", { credentials: "include" });
+    if (r.ok) setRules(await r.json());
+  }
+
+  useEffect(() => { load(); }, []);
+
+  async function handleSave(e: React.FormEvent) {
+    e.preventDefault();
+    if (!form.categoryId || !form.quantidadeMinima) {
+      toast({ title: "Preencha todos os campos obrigatórios", variant: "destructive" }); return;
+    }
+    const body = { categoryId: Number(form.categoryId), quantidadeMinima: Number(form.quantidadeMinima), multiplo: Number(form.multiplo) || 1, ativo: true };
+    const url = editingId ? `/api/admin/category-rules/${editingId}` : "/api/admin/category-rules";
+    const r = await fetch(url, { method: editingId ? "PUT" : "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    if (r.ok) {
+      toast({ title: editingId ? "Regra atualizada" : "Regra criada" });
+      setEditingId(null);
+      setForm({ categoryId: "", quantidadeMinima: "", multiplo: "1" });
+      load();
+    }
+  }
+
+  async function handleDelete(id: number) {
+    await fetch(`/api/admin/category-rules/${id}`, { method: "DELETE", credentials: "include" });
+    toast({ title: "Regra excluída" });
+    setConfirmDel(null);
+    load();
+  }
+
+  function startEdit(rule: MinRule) {
+    setEditingId(rule.id);
+    setForm({ categoryId: String(rule.categoryId), quantidadeMinima: String(rule.quantidadeMinima), multiplo: String(rule.multiplo) });
+  }
+
+  return (
+    <div className="grid md:grid-cols-2 gap-6">
+      <Card className="shadow-none border">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">{editingId ? "Editar Regra" : "Nova Regra de Mínimo"}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSave} className="space-y-4">
+            <div className="space-y-1.5">
+              <Label>Categoria <span className="text-red-500">*</span></Label>
+              <select
+                className="w-full border border-input bg-background rounded-md text-sm px-3 py-2 focus:outline-none focus:ring-1 focus:ring-ring"
+                value={form.categoryId}
+                onChange={e => setForm(f => ({ ...f, categoryId: e.target.value }))}
+              >
+                <option value="">Selecione...</option>
+                {categories.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
+              </select>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>Qtd. mínima <span className="text-red-500">*</span></Label>
+                <Input type="number" min="1" placeholder="10" value={form.quantidadeMinima} onChange={e => setForm(f => ({ ...f, quantidadeMinima: e.target.value }))} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Múltiplo</Label>
+                <Input type="number" min="1" placeholder="1" value={form.multiplo} onChange={e => setForm(f => ({ ...f, multiplo: e.target.value }))} />
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <Button type="submit" className="bg-[#C0181A] hover:bg-[#a01418]">{editingId ? "Salvar" : "Criar regra"}</Button>
+              {editingId && <Button type="button" variant="outline" onClick={() => { setEditingId(null); setForm({ categoryId: "", quantidadeMinima: "", multiplo: "1" }); }}>Cancelar</Button>}
+            </div>
+          </form>
+        </CardContent>
+      </Card>
+
+      <Card className="shadow-none border">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">Regras cadastradas ({rules.length})</CardTitle>
+        </CardHeader>
+        <CardContent className="p-0">
+          {rules.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-8 px-4">Nenhuma regra cadastrada</p>
+          ) : (
+            <div className="divide-y">
+              {rules.map(rule => (
+                <div key={rule.id} className="flex items-center gap-3 px-4 py-3 group hover:bg-gray-50">
+                  <div className="flex-1">
+                    <p className="text-sm font-medium">{rule.categoryName || "Categoria"}</p>
+                    <p className="text-xs text-muted-foreground">Mín: {rule.quantidadeMinima} · Múltiplo: {rule.multiplo}</p>
+                  </div>
+                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Button variant="ghost" size="sm" className="p-1.5 h-7 w-7" onClick={() => startEdit(rule)}><Edit2 size={13} /></Button>
+                    {confirmDel === rule.id ? (
+                      <div className="flex gap-1 items-center">
+                        <Button variant="destructive" size="sm" className="h-6 text-xs px-2" onClick={() => handleDelete(rule.id)}>Confirmar</Button>
+                        <Button variant="outline" size="sm" className="h-6 text-xs px-2" onClick={() => setConfirmDel(null)}>Não</Button>
+                      </div>
+                    ) : (
+                      <Button variant="ghost" size="sm" className="p-1.5 h-7 w-7 text-muted-foreground hover:text-destructive" onClick={() => setConfirmDel(rule.id)}><Trash2 size={13} /></Button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+// ─── Aba: Moderação de Avaliações ─────────────────────────────────────────────
+type ReviewAdmin = {
+  id: number; nota: number; comentario: string; aprovada: boolean;
+  createdAt: string; buyerName?: string; productName?: string; productImage?: string;
+};
+
+function ReviewsModerationTab() {
+  const { toast } = useToast();
+  const [reviews, setReviews] = useState<ReviewAdmin[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState<"all" | "pending" | "approved">("pending");
+
+  async function load() {
+    setLoading(true);
+    try {
+      const r = await fetch("/api/admin/reviews", { credentials: "include" });
+      if (r.ok) setReviews(await r.json());
+    } finally { setLoading(false); }
+  }
+
+  useEffect(() => { load(); }, []);
+
+  async function handleApprove(id: number) {
+    await fetch(`/api/admin/reviews/${id}/approve`, { method: "PUT", credentials: "include" });
+    toast({ title: "Avaliação aprovada" });
+    load();
+  }
+
+  async function handleReject(id: number) {
+    await fetch(`/api/admin/reviews/${id}/reject`, { method: "PUT", credentials: "include" });
+    toast({ title: "Avaliação ocultada" });
+    load();
+  }
+
+  const filtered = reviews.filter(r =>
+    filter === "all" ? true : filter === "pending" ? !r.aprovada : r.aprovada
+  );
+
+  return (
+    <Card className="shadow-none border">
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Star size={17} className="text-[#C0181A]" />
+            Moderação de Avaliações
+          </CardTitle>
+          <div className="flex gap-1">
+            {[{ v: "pending", l: "Aguardando" }, { v: "approved", l: "Aprovadas" }, { v: "all", l: "Todas" }].map(f => (
+              <button key={f.v} onClick={() => setFilter(f.v as "all" | "pending" | "approved")}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${filter === f.v ? "bg-[#C0181A] text-white border-[#C0181A]" : "bg-white text-gray-600 border-gray-200 hover:border-gray-300"}`}>
+                {f.l}
+              </button>
+            ))}
+          </div>
+        </div>
+        <p className="text-sm text-muted-foreground mt-1">{filtered.length} avaliação{filtered.length !== 1 ? "ões" : ""}</p>
+      </CardHeader>
+      <CardContent className="p-0">
+        {loading ? (
+          <div className="space-y-3 p-4">{Array.from({ length: 3 }).map((_, i) => <div key={i} className="h-20 bg-muted animate-pulse rounded" />)}</div>
+        ) : filtered.length === 0 ? (
+          <div className="text-center py-12 text-muted-foreground">
+            <Star size={36} className="mx-auto mb-3 opacity-30" />
+            <p>{filter === "pending" ? "Nenhuma avaliação aguardando" : "Nenhuma avaliação encontrada"}</p>
+          </div>
+        ) : (
+          <div className="divide-y">
+            {filtered.map(review => (
+              <div key={review.id} className="px-4 py-4 hover:bg-gray-50">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex items-start gap-3 flex-1 min-w-0">
+                    <div className="w-9 h-9 rounded bg-muted overflow-hidden shrink-0">
+                      {review.productImage
+                        ? <img src={review.productImage} alt="" className="w-full h-full object-cover" />
+                        : <Package size={14} className="m-auto text-muted-foreground" />}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-sm font-medium">{review.buyerName || "Comprador"}</span>
+                        <div className="flex gap-0.5">
+                          {Array.from({ length: 5 }).map((_, i) => (
+                            <Star key={i} size={11} className={i < review.nota ? "fill-amber-400 text-amber-400" : "text-gray-200"} />
+                          ))}
+                        </div>
+                        <span className={`text-xs px-2 py-0.5 rounded-full ${review.aprovada ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"}`}>
+                          {review.aprovada ? "Aprovada" : "Aguardando"}
+                        </span>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-0.5">{review.productName} · {new Date(review.createdAt).toLocaleDateString("pt-BR")}</p>
+                      <p className="text-sm mt-1 line-clamp-2">{review.comentario}</p>
+                    </div>
+                  </div>
+                  <div className="flex gap-1 shrink-0">
+                    {!review.aprovada && (
+                      <Button size="sm" className="h-7 text-xs bg-green-600 hover:bg-green-700" onClick={() => handleApprove(review.id)}>
+                        <CheckCircle size={11} className="mr-1" /> Aprovar
+                      </Button>
+                    )}
+                    {review.aprovada && (
+                      <Button size="sm" variant="outline" className="h-7 text-xs border-red-200 text-red-600 hover:bg-red-50" onClick={() => handleReject(review.id)}>
+                        Ocultar
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 // ─── Dashboard principal ──────────────────────────────────────────────────────
 export default function AdminDashboard() {
   const { isAdmin } = useAuth();
   const { toast } = useToast();
-  const [activeTab, setActiveTab] = useState<"overview" | "users" | "create-supplier" | "internal-users" | "banners" | "categories" | "products">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "users" | "create-supplier" | "internal-users" | "banners" | "categories" | "products" | "minimums" | "reviews">("overview");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [userCommissions, setUserCommissions] = useState<Record<number, string>>({});
+  const [savingUserCommission, setSavingUserCommission] = useState<number | null>(null);
+
+  async function handleSaveUserCommission(userId: number) {
+    const val = userCommissions[userId];
+    if (val === undefined || val === "") return;
+    setSavingUserCommission(userId);
+    try {
+      const r = await fetch(`/api/admin/users/${userId}/commission`, {
+        method: "PUT", credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ comissao: Number(val) }),
+      });
+      if (r.ok) toast({ title: "Comissão do fornecedor salva" });
+      else toast({ title: "Erro ao salvar comissão", variant: "destructive" });
+    } finally { setSavingUserCommission(null); }
+  }
 
   const { data: dashboard } = useGetDashboardStats({ query: { enabled: isAdmin } });
   const { data: users, isLoading, refetch } = useAdminListUsers({ query: { enabled: isAdmin } });
@@ -1394,6 +1683,8 @@ export default function AdminDashboard() {
     { id: "categories", label: "Categorias", icon: FolderOpen },
     { id: "products", label: "Produtos", icon: Package },
     { id: "banners", label: "Banners", icon: ImageIcon },
+    { id: "minimums", label: "Qtd. Mínimas", icon: ListOrdered },
+    { id: "reviews", label: "Avaliações", icon: Star },
   ] as const;
 
   return (
@@ -1611,7 +1902,28 @@ export default function AdminDashboard() {
                             {user.createdAt ? new Date(user.createdAt).toLocaleDateString("pt-BR") : "-"}
                           </td>
                           <td className="py-3 text-right">
-                            <div className="flex items-center gap-1 justify-end">
+                            <div className="flex items-center gap-2 justify-end flex-wrap">
+                              {user.role === "supplier" && (
+                                <div className="flex items-center gap-1">
+                                  <div className="relative">
+                                    <Input
+                                      type="number" min="0" max="100" step="0.01" placeholder="Comis.%"
+                                      value={userCommissions[user.id!] !== undefined ? userCommissions[user.id!] : ""}
+                                      onChange={e => setUserCommissions(c => ({ ...c, [user.id!]: e.target.value }))}
+                                      className="w-20 h-6 text-xs pr-5 py-0"
+                                    />
+                                    <span className="absolute right-1.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">%</span>
+                                  </div>
+                                  <Button
+                                    size="sm" variant="ghost" className="h-6 w-6 p-0 text-green-600 hover:text-green-700"
+                                    disabled={savingUserCommission === user.id || !userCommissions[user.id!]}
+                                    onClick={() => handleSaveUserCommission(user.id!)}
+                                    title="Salvar comissão"
+                                  >
+                                    <CheckCircle size={12} />
+                                  </Button>
+                                </div>
+                              )}
                               {user.status === "pending" && (
                                 <>
                                   <Button size="sm" className="h-7 text-xs gap-1 bg-green-600 hover:bg-green-700" onClick={() => handleApprove(user.id!)}>
@@ -1718,6 +2030,26 @@ export default function AdminDashboard() {
               <p className="text-sm text-muted-foreground mt-0.5">Revise e aprove produtos enviados pelos fornecedores antes de ficarem visíveis no catálogo.</p>
             </div>
             <ProductsApprovalTab />
+          </div>
+        )}
+
+        {activeTab === "minimums" && (
+          <div className="space-y-4">
+            <div>
+              <h2 className="text-lg font-semibold">Quantidades Mínimas por Categoria</h2>
+              <p className="text-sm text-muted-foreground mt-0.5">Defina pedido mínimo e múltiplos por categoria para compradores B2B.</p>
+            </div>
+            <MinimumRulesTab />
+          </div>
+        )}
+
+        {activeTab === "reviews" && (
+          <div className="space-y-4">
+            <div>
+              <h2 className="text-lg font-semibold">Moderação de Avaliações</h2>
+              <p className="text-sm text-muted-foreground mt-0.5">Aprove ou oculte avaliações feitas pelos compradores nos produtos.</p>
+            </div>
+            <ReviewsModerationTab />
           </div>
         )}
 

@@ -149,6 +149,24 @@ router.get("/auth/me", authMiddleware, async (req: AuthRequest, res): Promise<vo
   });
 });
 
+router.put("/auth/profile", authMiddleware, async (req: AuthRequest, res): Promise<void> => {
+  const { nome, telefone, nomeFantasia, razaoSocial } = req.body;
+  const updates: Record<string, string> = {};
+  if (nome) updates.nome = nome;
+  if (telefone !== undefined) updates.telefone = telefone;
+  if (nomeFantasia !== undefined) updates.nomeFantasia = nomeFantasia;
+  if (razaoSocial !== undefined) updates.razaoSocial = razaoSocial;
+
+  const [user] = await db.update(usersTable).set(updates).where(eq(usersTable.id, req.userId!)).returning();
+  if (!user) { res.status(404).json({ message: "Usuário não encontrado" }); return; }
+
+  res.json({
+    id: user.id, email: user.email, nome: user.nome, role: user.role, status: user.status,
+    cnpj: user.cnpj, razaoSocial: user.razaoSocial, nomeFantasia: user.nomeFantasia,
+    telefone: user.telefone, ramo: user.ramo, createdAt: user.createdAt,
+  });
+});
+
 router.post("/auth/forgot-password", async (req, res): Promise<void> => {
   const { email } = req.body;
   if (!email) {

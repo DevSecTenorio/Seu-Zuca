@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   useGetSupplierStats, useListSupplierProducts, useDeleteProduct,
   useListSupplierOrders, useUpdateOrderStatus,
@@ -9,9 +9,10 @@ import { Layout } from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Package, TrendingUp, ShoppingBag, DollarSign, Plus, Edit, Trash2, FileText, ClipboardList } from "lucide-react";
+import { Package, TrendingUp, ShoppingBag, DollarSign, Plus, Edit, Trash2, FileText, ClipboardList, BarChart2, AlertTriangle } from "lucide-react";
 import { useLocation, Link } from "wouter";
 import { useToast } from "@/hooks/use-toast";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 
 const BRL = (v: number) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v);
 
@@ -37,13 +38,20 @@ const QUOTE_STATUS: Record<string, { label: string; color: "default" | "secondar
   cancelada:  { label: "Cancelada",  color: "destructive" },
 };
 
-type Tab = "produtos" | "pedidos" | "cotacoes";
+type Tab = "produtos" | "pedidos" | "cotacoes" | "analytics";
+
+type AnalyticsData = {
+  receitaMensal: { mes: string; receita: number; pedidos: number }[];
+  topProdutos: { id: number; nome: string; imagemPrincipal?: string; totalVendido: number; receita: number }[];
+};
 
 export default function SupplierDashboard() {
   const { isSupplier } = useAuth();
   const [, navigate] = useLocation();
   const { toast } = useToast();
   const [tab, setTab] = useState<Tab>("produtos");
+  const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
+  const [loadingAnalytics, setLoadingAnalytics] = useState(false);
 
   const { data: dashboard } = useGetSupplierStats({ query: { enabled: isSupplier } });
   const { data: products, isLoading: loadingProducts, refetch: refetchProducts } = useListSupplierProducts({ query: { enabled: isSupplier } });
@@ -51,6 +59,16 @@ export default function SupplierDashboard() {
   const { data: quotes, isLoading: loadingQuotes } = useListSupplierQuotes({ query: { enabled: isSupplier } });
   const deleteMutation = useDeleteProduct();
   const updateOrderStatus = useUpdateOrderStatus();
+
+  useEffect(() => {
+    if (tab === "analytics" && !analytics) {
+      setLoadingAnalytics(true);
+      fetch("/api/supplier/analytics", { credentials: "include" })
+        .then(r => r.ok ? r.json() : null)
+        .then(d => { if (d) setAnalytics(d); })
+        .finally(() => setLoadingAnalytics(false));
+    }
+  }, [tab]);
 
   if (!isSupplier) {
     return (
@@ -87,10 +105,18 @@ export default function SupplierDashboard() {
   ];
 
   const tabs: { key: Tab; label: string; icon: React.ElementType }[] = [
-    { key: "produtos",  label: "Produtos",  icon: Package },
-    { key: "pedidos",   label: "Pedidos",   icon: ClipboardList },
-    { key: "cotacoes",  label: "Cotações",  icon: FileText },
+    { key: "produtos",   label: "Produtos",   icon: Package },
+    { key: "pedidos",    label: "Pedidos",    icon: ClipboardList },
+    { key: "cotacoes",   label: "Cotações",   icon: FileText },
+    { key: "analytics",  label: "Analytics",  icon: BarChart2 },
   ];
+
+  const productList = (products as Array<{
+    id: number; nome: string; sku?: string; imagemPrincipal?: string; categoryName?: string;
+    preco?: number; estoque?: number; alertaEstoque?: number; disponivel?: boolean; aprovado?: boolean;
+  }>) || [];
+  const lowStockCount = productList.filter(p => (p.estoque ?? 0) <= (p.alertaEstoque ?? 10) && (p.estoque ?? 0) > 0).length;
+  const pendingCount = productList.filter(p => !p.aprovado).length;
 
   return (
     <Layout>
@@ -196,9 +222,19 @@ export default function SupplierDashboard() {
                             <span className={(product.estoque ?? 0) < 50 ? "text-destructive font-medium" : ""}>{product.estoque}</span>
                           </td>
                           <td className="py-3 text-center">
-                            <Badge variant={product.disponivel ? "default" : "secondary"} className="text-xs">
-                              {product.disponivel ? "Ativo" : "Inativo"}
-                            </Badge>
+                            <div className="flex flex-col items-center gap-1">
+                              {product.aprovado === false && (
+                                <Badge variant="secondary" className="text-xs bg-amber-100 text-amber-700 border-amber-200">Aguard. aprovação</Badge>
+                              )}
+                              {(product.estoque ?? 0) <= (product.alertaEstoque ?? 10) && (product.estoque ?? 0) > 0 && (
+                                <Badge variant="destructive" className="text-xs">Estoque baixo</Badge>
+                              )}
+                              {product.aprovado !== false && (product.estoque ?? 0) > (product.alertaEstoque ?? 10) && (
+                                <Badge variant={product.disponivel ? "default" : "secondary"} className="text-xs">
+                                  {product.disponivel ? "Ativo" : "Inativo"}
+                                </Badge>
+                              )}
+                            </div>
                           </td>
                           <td className="py-3 text-right">
                             <div className="flex items-center gap-1 justify-end">
@@ -347,6 +383,83 @@ export default function SupplierDashboard() {
                 <p className="text-lg font-medium">Nenhuma cotação recebida</p>
                 <p className="text-sm mt-1">Solicitações de cotação dos compradores aparecerão aqui</p>
               </div>
+            )}
+          </div>
+        )}
+
+        {/* Analytics */}
+        {tab === "analytics" && (
+          <div className="space-y-6">
+            {loadingAnalytics ? (
+              <div className="space-y-4">
+                <div className="h-60 bg-muted animate-pulse rounded-xl" />
+                <div className="h-40 bg-muted animate-pulse rounded-xl" />
+              </div>
+            ) : !analytics ? (
+              <div className="text-center py-16 text-muted-foreground">
+                <BarChart2 size={44} className="mx-auto mb-4 opacity-40" />
+                <p>Sem dados para exibir</p>
+              </div>
+            ) : (
+              <>
+                {/* Revenue chart */}
+                <Card className="border shadow-none">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <TrendingUp size={16} className="text-[#C0181A]" />
+                      Receita — Últimos 6 meses
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {analytics.receitaMensal.length === 0 ? (
+                      <p className="text-sm text-muted-foreground text-center py-8">Nenhum pedido nos últimos 6 meses</p>
+                    ) : (
+                      <ResponsiveContainer width="100%" height={220}>
+                        <BarChart data={analytics.receitaMensal} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                          <XAxis dataKey="mes" tick={{ fontSize: 12 }} />
+                          <YAxis tick={{ fontSize: 11 }} tickFormatter={v => `R$${(v / 1000).toFixed(0)}k`} />
+                          <Tooltip formatter={(v: number) => BRL(v)} labelFormatter={l => `Mês: ${l}`} />
+                          <Bar dataKey="receita" fill="#C0181A" radius={[4, 4, 0, 0]} name="Receita" />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Top products */}
+                <Card className="border shadow-none">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <Package size={16} className="text-[#C0181A]" />
+                      Produtos mais vendidos
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-0">
+                    {analytics.topProdutos.length === 0 ? (
+                      <p className="text-sm text-muted-foreground text-center py-8 px-4">Nenhuma venda registrada ainda</p>
+                    ) : (
+                      <div className="divide-y">
+                        {analytics.topProdutos.map((p, i) => (
+                          <div key={p.id} className="flex items-center gap-3 px-4 py-3">
+                            <span className="text-sm font-bold text-muted-foreground w-5">{i + 1}</span>
+                            <div className="w-9 h-9 rounded overflow-hidden bg-muted shrink-0">
+                              {p.imagemPrincipal
+                                ? <img src={p.imagemPrincipal} alt="" className="w-full h-full object-cover" />
+                                : <Package size={14} className="m-auto text-muted-foreground" />}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium line-clamp-1">{p.nome}</p>
+                              <p className="text-xs text-muted-foreground">{p.totalVendido} vendido{p.totalVendido !== 1 ? "s" : ""}</p>
+                            </div>
+                            <p className="text-sm font-bold text-[#C0181A] shrink-0">{BRL(p.receita)}</p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </>
             )}
           </div>
         )}

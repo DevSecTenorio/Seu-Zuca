@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { db, usersTable, commissionsTable, categoryMinimumRulesTable, categoriesTable, ordersTable, orderItemsTable } from "@workspace/db";
+import { db, usersTable, commissionsTable, categoryMinimumRulesTable, categoriesTable, ordersTable, orderItemsTable, productsTable, reviewsTable } from "@workspace/db";
 import { eq, desc, sql, and, gte, lte } from "drizzle-orm";
 import { authMiddleware, requireAdmin, requireAdminOrSupport, type AuthRequest } from "../middlewares/auth";
 import bcrypt from "bcryptjs";
@@ -357,6 +357,57 @@ router.delete("/admin/internal-users/:id", authMiddleware, requireAdmin, async (
 
   await db.delete(usersTable).where(eq(usersTable.id, id));
   res.json({ message: "Usuário excluído com sucesso" });
+});
+
+// ── Per-supplier commission ───────────────────────────────────────────────────
+router.put("/admin/users/:id/commission", authMiddleware, requireAdmin, async (req: AuthRequest, res): Promise<void> => {
+  const id = parseInt(Array.isArray(req.params.id) ? req.params.id[0] : req.params.id, 10);
+  const { comissao } = req.body;
+
+  if (comissao === undefined || comissao < 0 || comissao > 100) {
+    res.status(400).json({ message: "Comissão deve ser entre 0 e 100" }); return;
+  }
+  const [user] = await db.update(usersTable).set({ comissao: Number(comissao) }).where(and(eq(usersTable.id, id), eq(usersTable.role, "supplier"))).returning();
+  if (!user) { res.status(404).json({ message: "Fornecedor não encontrado" }); return; }
+  res.json({ id: user.id, nome: user.nome, comissao: user.comissao });
+});
+
+// ── Per-product commission ────────────────────────────────────────────────────
+router.put("/admin/products/:id/commission", authMiddleware, requireAdmin, async (req: AuthRequest, res): Promise<void> => {
+  const id = parseInt(Array.isArray(req.params.id) ? req.params.id[0] : req.params.id, 10);
+  const { comissao } = req.body;
+
+  if (comissao === undefined || comissao < 0 || comissao > 100) {
+    res.status(400).json({ message: "Comissão deve ser entre 0 e 100" }); return;
+  }
+  const [product] = await db.update(productsTable).set({ comissao: Number(comissao) }).where(eq(productsTable.id, id)).returning();
+  if (!product) { res.status(404).json({ message: "Produto não encontrado" }); return; }
+  res.json({ id: product.id, nome: product.nome, comissao: product.comissao });
+});
+
+// ── Review moderation ─────────────────────────────────────────────────────────
+router.get("/admin/reviews", authMiddleware, requireAdmin, async (_req: AuthRequest, res): Promise<void> => {
+  const reviews = await db.select().from(reviewsTable).orderBy(desc(reviewsTable.createdAt));
+  const result = await Promise.all(reviews.map(async (r) => {
+    const [buyer] = await db.select({ nome: usersTable.nome }).from(usersTable).where(eq(usersTable.id, r.buyerId));
+    const [product] = await db.select({ nome: productsTable.nome, imagemPrincipal: productsTable.imagemPrincipal }).from(productsTable).where(eq(productsTable.id, r.productId));
+    return { ...r, buyerName: buyer?.nome, productName: product?.nome, productImage: product?.imagemPrincipal };
+  }));
+  res.json(result);
+});
+
+router.put("/admin/reviews/:id/approve", authMiddleware, requireAdmin, async (req: AuthRequest, res): Promise<void> => {
+  const id = parseInt(Array.isArray(req.params.id) ? req.params.id[0] : req.params.id, 10);
+  const [review] = await db.update(reviewsTable).set({ aprovada: true }).where(eq(reviewsTable.id, id)).returning();
+  if (!review) { res.status(404).json({ message: "Avaliação não encontrada" }); return; }
+  res.json(review);
+});
+
+router.put("/admin/reviews/:id/reject", authMiddleware, requireAdmin, async (req: AuthRequest, res): Promise<void> => {
+  const id = parseInt(Array.isArray(req.params.id) ? req.params.id[0] : req.params.id, 10);
+  const [review] = await db.update(reviewsTable).set({ aprovada: false }).where(eq(reviewsTable.id, id)).returning();
+  if (!review) { res.status(404).json({ message: "Avaliação não encontrada" }); return; }
+  res.json(review);
 });
 
 // Reports

@@ -114,6 +114,97 @@ router.get("/supplier/stats", authMiddleware, async (req: AuthRequest, res): Pro
   });
 });
 
+// Supplier detailed analytics (last 6 months)
+router.get("/supplier/analytics", authMiddleware, async (req: AuthRequest, res): Promise<void> => {
+  const supplierId = req.userId!;
+
+  const receitaMensal = await db.execute(sql`
+    SELECT
+      TO_CHAR(created_at, 'YYYY-MM') AS mes,
+      TO_CHAR(created_at, 'Mon') AS mes_curto,
+      COALESCE(SUM(total), 0) AS receita,
+      COUNT(*) AS pedidos
+    FROM orders
+    WHERE supplier_id = ${supplierId}
+      AND created_at >= NOW() - INTERVAL '6 months'
+    GROUP BY TO_CHAR(created_at, 'YYYY-MM'), TO_CHAR(created_at, 'Mon')
+    ORDER BY mes ASC
+  `);
+
+  const topProdutos = await db.execute(sql`
+    SELECT
+      p.id,
+      p.nome,
+      p.imagem_principal AS "imagemPrincipal",
+      COALESCE(SUM(oi.quantidade), 0) AS total_vendido,
+      COALESCE(SUM(oi.quantidade * oi.preco_unitario), 0) AS receita
+    FROM products p
+    LEFT JOIN order_items oi ON oi.product_id = p.id
+    WHERE p.supplier_id = ${supplierId}
+    GROUP BY p.id, p.nome, p.imagem_principal
+    ORDER BY total_vendido DESC
+    LIMIT 5
+  `);
+
+  res.json({
+    receitaMensal: receitaMensal.rows.map((r: Record<string, unknown>) => ({
+      mes: r.mes_curto,
+      mesCompleto: r.mes,
+      receita: parseFloat(String(r.receita)),
+      pedidos: parseInt(String(r.pedidos)),
+    })),
+    topProdutos: topProdutos.rows.map((r: Record<string, unknown>) => ({
+      id: r.id,
+      nome: r.nome,
+      imagemPrincipal: r.imagemPrincipal,
+      totalVendido: parseInt(String(r.total_vendido)),
+      receita: parseFloat(String(r.receita)),
+    })),
+  });
+});
+
+// Public supplier profile
+router.get("/suppliers/:id/public", async (req, res): Promise<void> => {
+  const raw = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+  const id = parseInt(raw, 10);
+
+  const [supplier] = await db.select({
+    id: usersTable.id,
+    nome: usersTable.nome,
+    nomeFantasia: usersTable.nomeFantasia,
+    razaoSocial: usersTable.razaoSocial,
+    ramo: usersTable.ramo,
+    createdAt: usersTable.createdAt,
+  }).from(usersTable).where(and(eq(usersTable.id, id), eq(usersTable.role, "supplier"), eq(usersTable.status, "approved")));
+
+  if (!supplier) { res.status(404).json({ message: "Fornecedor não encontrado" }); return; }
+
+  const products = await db.select({
+    id: productsTable.id,
+    nome: productsTable.nome,
+    slug: productsTable.slug,
+    preco: productsTable.preco,
+    unidadeMedida: productsTable.unidadeMedida,
+    imagemPrincipal: productsTable.imagemPrincipal,
+    disponivel: productsTable.disponivel,
+  }).from(productsTable).where(and(eq(productsTable.supplierId, id), eq(productsTable.aprovado, true), eq(productsTable.disponivel, true)));
+
+  const reviewStatsResult = await db.execute(sql`
+    SELECT COUNT(*) AS total, COALESCE(AVG(nota), 0) AS media
+    FROM reviews WHERE supplier_id = ${id} AND aprovada = true
+  `);
+
+  const stats = (reviewStatsResult.rows[0] || {}) as Record<string, unknown>;
+
+  res.json({
+    ...supplier,
+    totalProdutos: products.length,
+    mediaAvaliacao: Math.round(parseFloat(String(stats?.media || 0)) * 10) / 10,
+    totalAvaliacoes: parseInt(String(stats?.total || 0)),
+    products: products.slice(0, 12),
+  });
+});
+
 // CEP
 router.get("/cep/:cep", async (req, res): Promise<void> => {
   const raw = Array.isArray(req.params.cep) ? req.params.cep[0] : req.params.cep;

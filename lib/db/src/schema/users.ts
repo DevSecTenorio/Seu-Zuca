@@ -1,4 +1,4 @@
-import { pgTable, text, serial, timestamp, boolean } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, timestamp, boolean, real } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -15,6 +15,7 @@ export const usersTable = pgTable("users", {
   telefone: text("telefone"),
   ramo: text("ramo"),
   emailVerificado: boolean("email_verificado").notNull().default(false),
+  comissao: real("comissao"),
   stripeAccountId: text("stripe_account_id"),
   resetToken: text("reset_token"),
   resetTokenExpiry: timestamp("reset_token_expiry", { withTimezone: true }),

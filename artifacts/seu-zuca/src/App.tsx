@@ -24,6 +24,8 @@ import SupportPanel from "@/pages/support/painel";
 import QuemSomos from "@/pages/quem-somos";
 import ComoFunciona from "@/pages/como-funciona";
 import SejaFornecedor from "@/pages/seja-fornecedor";
+import MinhaConta from "@/pages/minha-conta";
+import FornecedorPerfil from "@/pages/fornecedor-perfil";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient({
@@ -52,8 +54,10 @@ function Router() {
       <Route path="/favoritos" component={Wishlist} />
       <Route path="/cotacoes" component={Quotes} />
       <Route path="/cotacao/:id" component={QuoteDetail} />
+      <Route path="/minha-conta" component={MinhaConta} />
       <Route path="/fornecedor/painel" component={SupplierDashboard} />
       <Route path="/fornecedor/produto/:id" component={SupplierProductForm} />
+      <Route path="/fornecedor/:id" component={FornecedorPerfil} />
       <Route path="/admin" component={AdminDashboard} />
       <Route path="/suporte" component={SupportPanel} />
       <Route path="/quem-somos" component={QuemSomos} />
