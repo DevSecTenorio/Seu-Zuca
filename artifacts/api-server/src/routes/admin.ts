@@ -279,29 +279,24 @@ router.post("/admin/create-internal-user", authMiddleware, requireAdmin, async (
 
 // ── Support: list users for support with admin or support role ─────────────
 router.get("/admin/internal-users", authMiddleware, requireAdminOrSupport, async (_req: AuthRequest, res): Promise<void> => {
+  const selectFields = {
+    id: usersTable.id,
+    nome: usersTable.nome,
+    email: usersTable.email,
+    role: usersTable.role,
+    status: usersTable.status,
+    ramo: usersTable.ramo,
+    createdAt: usersTable.createdAt,
+    ultimoAcesso: usersTable.ultimoAcesso,
+  };
+
   const users = await db
-    .select({
-      id: usersTable.id,
-      nome: usersTable.nome,
-      email: usersTable.email,
-      role: usersTable.role,
-      status: usersTable.status,
-      ramo: usersTable.ramo,
-      createdAt: usersTable.createdAt,
-    })
+    .select(selectFields)
     .from(usersTable)
     .where(and(eq(usersTable.role, "admin"), eq(usersTable.status, "approved")));
 
   const supportUsers = await db
-    .select({
-      id: usersTable.id,
-      nome: usersTable.nome,
-      email: usersTable.email,
-      role: usersTable.role,
-      status: usersTable.status,
-      ramo: usersTable.ramo,
-      createdAt: usersTable.createdAt,
-    })
+    .select(selectFields)
     .from(usersTable)
     .where(eq(usersTable.role, "support"));
 

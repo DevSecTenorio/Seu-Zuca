@@ -19,6 +19,7 @@ export const usersTable = pgTable("users", {
   stripeAccountId: text("stripe_account_id"),
   resetToken: text("reset_token"),
   resetTokenExpiry: timestamp("reset_token_expiry", { withTimezone: true }),
+  ultimoAcesso: timestamp("ultimo_acesso", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });

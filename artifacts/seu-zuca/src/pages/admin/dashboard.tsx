@@ -50,7 +50,7 @@ function generatePassword() {
 }
 
 // ─── Aba: Usuários Internos (Admin / Suporte) ─────────────────────────────────
-type InternalUser = { id: number; nome: string; email: string; role: string; status: string; ramo?: string | null; createdAt: string };
+type InternalUser = { id: number; nome: string; email: string; role: string; status: string; ramo?: string | null; createdAt: string; ultimoAcesso?: string | null };
 
 const ROLE_INTERNAL_LABEL: Record<string, string> = { admin: "Administrador", support: "Suporte" };
 const EMPTY_INTERNAL = { nome: "", email: "", password: "", role: "support", departamento: "" };
@@ -384,6 +384,12 @@ function CreateInternalUserTab({ onCreated }: { onCreated: () => void }) {
                         <p className="text-sm font-medium text-gray-900 truncate">{u.nome}</p>
                         <p className="text-xs text-muted-foreground truncate">{u.email}</p>
                         {u.ramo && <p className="text-xs text-muted-foreground">{u.ramo}</p>}
+                        <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
+                          <Clock size={10} />
+                          {u.ultimoAcesso
+                            ? <>Último acesso: {new Date(u.ultimoAcesso).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}</>
+                            : "Nunca acessou"}
+                        </p>
                       </div>
                       <div className="flex items-center gap-1.5 shrink-0">
                         <Badge variant={u.role === "admin" ? "destructive" : "secondary"} className="text-xs">

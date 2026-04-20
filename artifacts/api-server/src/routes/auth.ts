@@ -99,6 +99,8 @@ router.post("/auth/login", async (req, res): Promise<void> => {
     return;
   }
 
+  await db.update(usersTable).set({ ultimoAcesso: new Date() }).where(eq(usersTable.id, user.id));
+
   const token = signToken(user.id);
   res.cookie("token", token, { httpOnly: true, maxAge: 7 * 24 * 60 * 60 * 1000, sameSite: "lax" });
 
