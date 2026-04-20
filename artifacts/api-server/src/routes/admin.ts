@@ -49,6 +49,8 @@ router.get("/admin/users", authMiddleware, requireAdmin, async (req: AuthRequest
   res.json({ users: sanitized, total, page: pageNum, totalPages: Math.ceil(total / limit) });
 });
 
+const OWNER_EMAIL = "admin@seuzuca.com.br";
+
 router.post("/admin/users/:id/approve", authMiddleware, requireAdmin, async (req: AuthRequest, res): Promise<void> => {
   const raw = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
   const id = parseInt(raw, 10);
@@ -66,6 +68,12 @@ router.post("/admin/users/:id/reject", authMiddleware, requireAdmin, async (req:
   const raw = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
   const id = parseInt(raw, 10);
 
+  const [target] = await db.select().from(usersTable).where(eq(usersTable.id, id));
+  if (target?.email === OWNER_EMAIL) {
+    res.status(403).json({ message: "O administrador principal não pode ser modificado" });
+    return;
+  }
+
   const [user] = await db.update(usersTable).set({ status: "rejected" }).where(eq(usersTable.id, id)).returning();
   if (!user) {
     res.status(404).json({ message: "Usuário não encontrado" });
@@ -78,6 +86,12 @@ router.post("/admin/users/:id/reject", authMiddleware, requireAdmin, async (req:
 router.post("/admin/users/:id/suspend", authMiddleware, requireAdmin, async (req: AuthRequest, res): Promise<void> => {
   const raw = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
   const id = parseInt(raw, 10);
+
+  const [target] = await db.select().from(usersTable).where(eq(usersTable.id, id));
+  if (target?.email === OWNER_EMAIL) {
+    res.status(403).json({ message: "O administrador principal não pode ser suspenso" });
+    return;
+  }
 
   const [user] = await db.update(usersTable).set({ status: "suspended" }).where(eq(usersTable.id, id)).returning();
   if (!user) {
@@ -352,6 +366,11 @@ router.delete("/admin/internal-users/:id", authMiddleware, requireAdmin, async (
   const [target] = await db.select().from(usersTable).where(eq(usersTable.id, id));
   if (!target || (target.role !== "admin" && target.role !== "support")) {
     res.status(404).json({ message: "Usuário interno não encontrado" });
+    return;
+  }
+
+  if (target.email === OWNER_EMAIL) {
+    res.status(403).json({ message: "O administrador principal não pode ser excluído" });
     return;
   }
 

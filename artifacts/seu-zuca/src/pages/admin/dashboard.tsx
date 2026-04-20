@@ -18,6 +18,7 @@ import { useUpload } from "@workspace/object-storage-web";
 import { useToast } from "@/hooks/use-toast";
 
 const roleLabel: Record<string, string> = { admin: "Admin", buyer: "Comprador", supplier: "Fornecedor" };
+const OWNER_EMAIL = "admin@seuzuca.com.br";
 const statusLabel: Record<string, string> = { pending: "Pendente", approved: "Aprovado", rejected: "Recusado", suspended: "Suspenso" };
 const statusVariant: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
   pending: "secondary",
@@ -196,26 +197,35 @@ function EditUserModal({ user, onClose, onSaved }: { user: InternalUser; onClose
             <Button type="button" variant="outline" onClick={onClose}>Cancelar</Button>
           </div>
 
-          {/* Delete zone */}
-          <div className="border-t pt-4">
-            {!confirmDelete ? (
-              <button type="button" onClick={() => setConfirmDelete(true)}
-                className="flex items-center gap-1.5 text-sm text-red-500 hover:text-red-700 transition-colors">
-                <Trash2 size={14} /> Excluir este usuário
-              </button>
-            ) : (
-              <div className="bg-red-50 border border-red-200 rounded-lg p-3 space-y-2">
-                <p className="text-sm font-semibold text-red-700">Confirmar exclusão?</p>
-                <p className="text-xs text-red-600">Esta ação é irreversível. O usuário <strong>{user.nome}</strong> perderá acesso imediatamente.</p>
-                <div className="flex gap-2">
-                  <Button type="button" size="sm" variant="destructive" disabled={deleting} onClick={handleDelete} className="text-xs">
-                    {deleting ? "Excluindo..." : "Sim, excluir"}
-                  </Button>
-                  <Button type="button" size="sm" variant="outline" onClick={() => setConfirmDelete(false)} className="text-xs">Cancelar</Button>
-                </div>
+          {/* Delete zone — blocked for owner */}
+          {user.email === OWNER_EMAIL ? (
+            <div className="border-t pt-4">
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground bg-gray-50 rounded-lg px-3 py-2">
+                <ShieldCheck size={13} className="text-[#C0181A] shrink-0" />
+                Conta de proprietário — não pode ser excluída
               </div>
-            )}
-          </div>
+            </div>
+          ) : (
+            <div className="border-t pt-4">
+              {!confirmDelete ? (
+                <button type="button" onClick={() => setConfirmDelete(true)}
+                  className="flex items-center gap-1.5 text-sm text-red-500 hover:text-red-700 transition-colors">
+                  <Trash2 size={14} /> Excluir este usuário
+                </button>
+              ) : (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-3 space-y-2">
+                  <p className="text-sm font-semibold text-red-700">Confirmar exclusão?</p>
+                  <p className="text-xs text-red-600">Esta ação é irreversível. O usuário <strong>{user.nome}</strong> perderá acesso imediatamente.</p>
+                  <div className="flex gap-2">
+                    <Button type="button" size="sm" variant="destructive" disabled={deleting} onClick={handleDelete} className="text-xs">
+                      {deleting ? "Excluindo..." : "Sim, excluir"}
+                    </Button>
+                    <Button type="button" size="sm" variant="outline" onClick={() => setConfirmDelete(false)} className="text-xs">Cancelar</Button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </form>
       </div>
     </div>
@@ -1903,47 +1913,56 @@ export default function AdminDashboard() {
                           </td>
                           <td className="py-3 text-right">
                             <div className="flex items-center gap-2 justify-end flex-wrap">
-                              {user.role === "supplier" && (
-                                <div className="flex items-center gap-1">
-                                  <div className="relative">
-                                    <Input
-                                      type="number" min="0" max="100" step="0.01" placeholder="Comis.%"
-                                      value={userCommissions[user.id!] !== undefined ? userCommissions[user.id!] : ""}
-                                      onChange={e => setUserCommissions(c => ({ ...c, [user.id!]: e.target.value }))}
-                                      className="w-20 h-6 text-xs pr-5 py-0"
-                                    />
-                                    <span className="absolute right-1.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">%</span>
-                                  </div>
-                                  <Button
-                                    size="sm" variant="ghost" className="h-6 w-6 p-0 text-green-600 hover:text-green-700"
-                                    disabled={savingUserCommission === user.id || !userCommissions[user.id!]}
-                                    onClick={() => handleSaveUserCommission(user.id!)}
-                                    title="Salvar comissão"
-                                  >
-                                    <CheckCircle size={12} />
-                                  </Button>
-                                </div>
-                              )}
-                              {user.status === "pending" && (
+                              {user.email === OWNER_EMAIL ? (
+                                <span className="text-xs text-muted-foreground flex items-center gap-1">
+                                  <ShieldCheck size={12} className="text-[#C0181A]" />
+                                  Proprietário
+                                </span>
+                              ) : (
                                 <>
-                                  <Button size="sm" className="h-7 text-xs gap-1 bg-green-600 hover:bg-green-700" onClick={() => handleApprove(user.id!)}>
-                                    <CheckCircle size={11} />
-                                    Aprovar
-                                  </Button>
-                                  <Button size="sm" variant="outline" className="h-7 text-xs border-red-200 text-red-600 hover:bg-red-50" onClick={() => handleSuspend(user.id!)}>
-                                    Recusar
-                                  </Button>
+                                  {user.role === "supplier" && (
+                                    <div className="flex items-center gap-1">
+                                      <div className="relative">
+                                        <Input
+                                          type="number" min="0" max="100" step="0.01" placeholder="Comis.%"
+                                          value={userCommissions[user.id!] !== undefined ? userCommissions[user.id!] : ""}
+                                          onChange={e => setUserCommissions(c => ({ ...c, [user.id!]: e.target.value }))}
+                                          className="w-20 h-6 text-xs pr-5 py-0"
+                                        />
+                                        <span className="absolute right-1.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">%</span>
+                                      </div>
+                                      <Button
+                                        size="sm" variant="ghost" className="h-6 w-6 p-0 text-green-600 hover:text-green-700"
+                                        disabled={savingUserCommission === user.id || !userCommissions[user.id!]}
+                                        onClick={() => handleSaveUserCommission(user.id!)}
+                                        title="Salvar comissão"
+                                      >
+                                        <CheckCircle size={12} />
+                                      </Button>
+                                    </div>
+                                  )}
+                                  {user.status === "pending" && (
+                                    <>
+                                      <Button size="sm" className="h-7 text-xs gap-1 bg-green-600 hover:bg-green-700" onClick={() => handleApprove(user.id!)}>
+                                        <CheckCircle size={11} />
+                                        Aprovar
+                                      </Button>
+                                      <Button size="sm" variant="outline" className="h-7 text-xs border-red-200 text-red-600 hover:bg-red-50" onClick={() => handleSuspend(user.id!)}>
+                                        Recusar
+                                      </Button>
+                                    </>
+                                  )}
+                                  {user.status === "approved" && user.role !== "admin" && (
+                                    <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => handleSuspend(user.id!)}>
+                                      Suspender
+                                    </Button>
+                                  )}
+                                  {user.status === "suspended" && (
+                                    <Button size="sm" className="h-7 text-xs bg-green-600 hover:bg-green-700" onClick={() => handleApprove(user.id!)}>
+                                      Reativar
+                                    </Button>
+                                  )}
                                 </>
-                              )}
-                              {user.status === "approved" && user.role !== "admin" && (
-                                <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => handleSuspend(user.id!)}>
-                                  Suspender
-                                </Button>
-                              )}
-                              {user.status === "suspended" && (
-                                <Button size="sm" className="h-7 text-xs bg-green-600 hover:bg-green-700" onClick={() => handleApprove(user.id!)}>
-                                  Reativar
-                                </Button>
                               )}
                             </div>
                           </td>
