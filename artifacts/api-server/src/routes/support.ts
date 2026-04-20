@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { db, usersTable, productsTable, ordersTable, orderItemsTable, quotesTable, quoteItemsTable, reviewsTable } from "@workspace/db";
-import { eq, desc, sql, and } from "drizzle-orm";
+import { eq, desc, sql, and, ilike, or } from "drizzle-orm";
 import { authMiddleware, requireAdminOrSupport, type AuthRequest } from "../middlewares/auth";
 
 const router: IRouter = Router();
@@ -170,6 +170,148 @@ router.get("/support/suppliers/:id/summary", authMiddleware, requireAdminOrSuppo
     avaliacoes: Number(reviewStats?.count ?? 0),
     notaMedia: reviewStats?.avg ?? null,
   });
+});
+
+/* ── Overview stats for support dashboard ───────────────────────────────── */
+router.get("/support/overview", authMiddleware, requireAdminOrSupport, async (_req: AuthRequest, res): Promise<void> => {
+  const [buyerStats] = await db
+    .select({
+      total: sql<number>`count(*)`,
+      pending: sql<number>`count(*) filter (where ${usersTable.status} = 'pending')`,
+      approved: sql<number>`count(*) filter (where ${usersTable.status} = 'approved')`,
+    })
+    .from(usersTable)
+    .where(eq(usersTable.role, "buyer"));
+
+  const [supplierStats] = await db
+    .select({
+      total: sql<number>`count(*)`,
+      approved: sql<number>`count(*) filter (where ${usersTable.status} = 'approved')`,
+    })
+    .from(usersTable)
+    .where(eq(usersTable.role, "supplier"));
+
+  const [orderStats] = await db
+    .select({
+      total: sql<number>`count(*)`,
+      gmv: sql<number>`coalesce(sum(${ordersTable.total}), 0)`,
+      pending: sql<number>`count(*) filter (where ${ordersTable.status} = 'pendente')`,
+    })
+    .from(ordersTable);
+
+  res.json({
+    compradores: { total: Number(buyerStats?.total ?? 0), pendentes: Number(buyerStats?.pending ?? 0), aprovados: Number(buyerStats?.approved ?? 0) },
+    fornecedores: { total: Number(supplierStats?.total ?? 0), ativos: Number(supplierStats?.approved ?? 0) },
+    pedidos: { total: Number(orderStats?.total ?? 0), gmv: Number(orderStats?.gmv ?? 0), pendentes: Number(orderStats?.pending ?? 0) },
+  });
+});
+
+/* ── List all buyers ────────────────────────────────────────────────────── */
+router.get("/support/buyers", authMiddleware, requireAdminOrSupport, async (req: AuthRequest, res): Promise<void> => {
+  const q = req.query.q as string | undefined;
+  const statusFilter = req.query.status as string | undefined;
+
+  let query = db
+    .select({
+      id: usersTable.id,
+      nome: usersTable.nome,
+      email: usersTable.email,
+      cnpj: usersTable.cnpj,
+      razaoSocial: usersTable.razaoSocial,
+      nomeFantasia: usersTable.nomeFantasia,
+      telefone: usersTable.telefone,
+      status: usersTable.status,
+      createdAt: usersTable.createdAt,
+      ultimoAcesso: usersTable.ultimoAcesso,
+    })
+    .from(usersTable)
+    .where(eq(usersTable.role, "buyer"))
+    .orderBy(desc(usersTable.createdAt))
+    .$dynamic();
+
+  if (q) {
+    query = query.where(
+      and(
+        eq(usersTable.role, "buyer"),
+        or(
+          ilike(usersTable.nome, `%${q}%`),
+          ilike(usersTable.email, `%${q}%`),
+          ilike(usersTable.cnpj, `%${q}%`),
+          ilike(usersTable.razaoSocial, `%${q}%`),
+        )
+      )
+    );
+  } else if (statusFilter && statusFilter !== "all") {
+    query = query.where(and(eq(usersTable.role, "buyer"), eq(usersTable.status, statusFilter)));
+  }
+
+  const buyers = await query.limit(100);
+  res.json(buyers);
+});
+
+/* ── Buyer profile ──────────────────────────────────────────────────────── */
+router.get("/support/buyers/:id/profile", authMiddleware, requireAdminOrSupport, async (req: AuthRequest, res): Promise<void> => {
+  const id = parseInt(req.params.id, 10);
+  const [buyer] = await db
+    .select({
+      id: usersTable.id,
+      nome: usersTable.nome,
+      email: usersTable.email,
+      cnpj: usersTable.cnpj,
+      razaoSocial: usersTable.razaoSocial,
+      nomeFantasia: usersTable.nomeFantasia,
+      telefone: usersTable.telefone,
+      status: usersTable.status,
+      emailVerificado: usersTable.emailVerificado,
+      createdAt: usersTable.createdAt,
+      ultimoAcesso: usersTable.ultimoAcesso,
+    })
+    .from(usersTable)
+    .where(and(eq(usersTable.id, id), eq(usersTable.role, "buyer")));
+
+  if (!buyer) { res.status(404).json({ message: "Comprador não encontrado" }); return; }
+  res.json(buyer);
+});
+
+/* ── Buyer orders ───────────────────────────────────────────────────────── */
+router.get("/support/buyers/:id/orders", authMiddleware, requireAdminOrSupport, async (req: AuthRequest, res): Promise<void> => {
+  const buyerId = parseInt(req.params.id, 10);
+
+  const orders = await db
+    .select({
+      id: ordersTable.id,
+      status: ordersTable.status,
+      total: ordersTable.total,
+      createdAt: ordersTable.createdAt,
+      supplierId: ordersTable.supplierId,
+    })
+    .from(ordersTable)
+    .where(eq(ordersTable.buyerId, buyerId))
+    .orderBy(desc(ordersTable.createdAt))
+    .limit(50);
+
+  const [stats] = await db
+    .select({
+      count: sql<number>`count(*)`,
+      total: sql<number>`coalesce(sum(${ordersTable.total}), 0)`,
+    })
+    .from(ordersTable)
+    .where(eq(ordersTable.buyerId, buyerId));
+
+  res.json({ orders, total: Number(stats?.count ?? 0), totalGasto: Number(stats?.total ?? 0) });
+});
+
+/* ── Buyer quotes ───────────────────────────────────────────────────────── */
+router.get("/support/buyers/:id/quotes", authMiddleware, requireAdminOrSupport, async (req: AuthRequest, res): Promise<void> => {
+  const buyerId = parseInt(req.params.id, 10);
+  const quotes = await db
+    .select()
+    .from(quotesTable)
+    .where(eq(quotesTable.buyerId, buyerId))
+    .orderBy(desc(quotesTable.createdAt))
+    .limit(50);
+
+  res.json({ quotes, total: quotes.length });
 });
 
 export default router;
