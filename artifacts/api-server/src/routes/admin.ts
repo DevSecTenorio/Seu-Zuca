@@ -373,6 +373,23 @@ router.delete("/admin/internal-users/:id", authMiddleware, requireAdmin, async (
   res.json({ message: "Usuário excluído com sucesso" });
 });
 
+// ── Reset user password (buyer / supplier) ────────────────────────────────────
+router.patch("/admin/users/:id/reset-password", authMiddleware, requireAdmin, async (req: AuthRequest, res): Promise<void> => {
+  const id = parseInt(Array.isArray(req.params.id) ? req.params.id[0] : req.params.id, 10);
+  const { password } = req.body as { password?: string };
+
+  if (!password) { res.status(400).json({ message: "Senha é obrigatória" }); return; }
+  if (password.length < 8) { res.status(400).json({ message: "Senha deve ter pelo menos 8 caracteres" }); return; }
+
+  const [target] = await db.select().from(usersTable).where(eq(usersTable.id, id));
+  if (!target) { res.status(404).json({ message: "Usuário não encontrado" }); return; }
+
+  const passwordHash = await bcrypt.hash(password, 12);
+  await db.update(usersTable).set({ passwordHash }).where(eq(usersTable.id, id));
+
+  res.json({ message: "Senha redefinida com sucesso" });
+});
+
 // ── Per-supplier commission ───────────────────────────────────────────────────
 router.put("/admin/users/:id/commission", authMiddleware, requireAdmin, async (req: AuthRequest, res): Promise<void> => {
   const id = parseInt(Array.isArray(req.params.id) ? req.params.id[0] : req.params.id, 10);

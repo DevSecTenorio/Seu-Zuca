@@ -12,7 +12,7 @@ import {
   Users, Package, ShoppingBag, TrendingUp, CheckCircle, XCircle,
   Clock, UserPlus, LayoutDashboard, AlertCircle, Eye, EyeOff, RefreshCw,
   ImageIcon, Plus, Trash2, Edit2, GripVertical, ExternalLink, ToggleLeft, ToggleRight,
-  ShieldCheck, Headphones, UploadCloud, X as XIcon, Link as LinkIcon, FolderOpen, Tag, Star, Percent, ListOrdered
+  ShieldCheck, Headphones, UploadCloud, X as XIcon, Link as LinkIcon, FolderOpen, Tag, Star, Percent, ListOrdered, KeyRound, Copy, CheckCheck
 } from "lucide-react";
 import { useUpload } from "@workspace/object-storage-web";
 import { useToast } from "@/hooks/use-toast";
@@ -227,6 +227,147 @@ function EditUserModal({ user, onClose, onSaved }: { user: InternalUser; onClose
             </div>
           )}
         </form>
+      </div>
+    </div>
+  );
+}
+
+function ResetPasswordModal({ user, onClose }: { user: UserType; onClose: () => void }) {
+  const { toast } = useToast();
+  const [password, setPassword] = useState("");
+  const [show, setShow] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const roleColors: Record<string, string> = {
+    buyer: "bg-blue-100 text-blue-700",
+    supplier: "bg-emerald-100 text-emerald-700",
+    admin: "bg-red-100 text-red-700",
+    support: "bg-gray-100 text-gray-700",
+  };
+
+  function handleGenerate() {
+    setPassword(generatePassword());
+    setShow(true);
+  }
+
+  async function handleCopy() {
+    try { await navigator.clipboard.writeText(password); } catch { /* ignore */ }
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!password || password.length < 8) {
+      toast({ title: "A senha deve ter pelo menos 8 caracteres", variant: "destructive" }); return;
+    }
+    setLoading(true);
+    try {
+      const r = await fetch(`/api/admin/users/${user.id}/reset-password`, {
+        method: "PATCH", credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password }),
+      });
+      if (!r.ok) { const d = await r.json(); throw new Error(d.message || "Erro ao redefinir"); }
+      setSuccess(true);
+    } catch (err) {
+      toast({ title: err instanceof Error ? err.message : "Erro", variant: "destructive" });
+    } finally { setLoading(false); }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-md z-10">
+        <div className="sticky top-0 bg-white border-b px-5 py-4 flex items-center justify-between rounded-t-2xl">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center">
+              <KeyRound size={15} className="text-amber-600" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-gray-900">Redefinir senha</p>
+              <p className="text-xs text-muted-foreground">{user.email}</p>
+            </div>
+          </div>
+          <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl leading-none">&times;</button>
+        </div>
+
+        <div className="p-5">
+          {success ? (
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 text-green-700 bg-green-50 border border-green-200 rounded-lg px-4 py-3">
+                <CheckCheck size={16} />
+                <span className="text-sm font-medium">Senha redefinida com sucesso!</span>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground mb-1">Usuário</p>
+                <p className="text-sm font-medium">{user.nome}</p>
+                <span className={`inline-block mt-1 text-xs font-medium px-2 py-0.5 rounded-full ${roleColors[user.role || ""] || "bg-gray-100 text-gray-700"}`}>
+                  {roleLabel[user.role || ""] || user.role}
+                </span>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground mb-1.5">Nova senha</p>
+                <div className="flex items-center gap-2">
+                  <code className="flex-1 bg-gray-100 rounded-lg px-3 py-2 text-sm font-mono tracking-wide">{password}</code>
+                  <Button type="button" size="sm" variant="outline" onClick={handleCopy} className="h-9 gap-1.5 shrink-0">
+                    {copied ? <CheckCheck size={14} className="text-green-600" /> : <Copy size={14} />}
+                    {copied ? "Copiado" : "Copiar"}
+                  </Button>
+                </div>
+                <p className="text-xs text-amber-600 mt-2">Anote esta senha — não será exibida novamente.</p>
+              </div>
+              <Button className="w-full bg-[#C0181A] hover:bg-[#a01418]" onClick={onClose}>Fechar</Button>
+            </div>
+          ) : (
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="bg-gray-50 rounded-lg px-4 py-3 text-sm">
+                <p className="font-medium text-gray-900">{user.nome}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">{user.email}</p>
+                <span className={`inline-block mt-1.5 text-xs font-medium px-2 py-0.5 rounded-full ${roleColors[user.role || ""] || "bg-gray-100 text-gray-700"}`}>
+                  {roleLabel[user.role || ""] || user.role}
+                </span>
+              </div>
+
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <Label>Nova senha <span className="text-red-500">*</span></Label>
+                  <button type="button" onClick={handleGenerate} className="text-xs text-[#E85D00] hover:underline">
+                    Gerar senha segura
+                  </button>
+                </div>
+                <div className="relative">
+                  <Input
+                    type={show ? "text" : "password"}
+                    placeholder="Mínimo 8 caracteres"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="pr-10"
+                    required
+                    minLength={8}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShow((s) => !s)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-gray-700"
+                  >
+                    {show ? <EyeOff size={15} /> : <Eye size={15} />}
+                  </button>
+                </div>
+                <p className="text-xs text-muted-foreground">Mínimo de 8 caracteres.</p>
+              </div>
+
+              <div className="flex gap-2 pt-1">
+                <Button type="submit" disabled={loading} className="flex-1 bg-amber-500 hover:bg-amber-600 text-white">
+                  {loading ? "Salvando..." : "Redefinir senha"}
+                </Button>
+                <Button type="button" variant="outline" onClick={onClose}>Cancelar</Button>
+              </div>
+            </form>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -1587,6 +1728,7 @@ export default function AdminDashboard() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [userCommissions, setUserCommissions] = useState<Record<number, string>>({});
   const [savingUserCommission, setSavingUserCommission] = useState<number | null>(null);
+  const [resetPasswordUser, setResetPasswordUser] = useState<UserType | null>(null);
 
   async function handleSaveUserCommission(userId: number) {
     const val = userCommissions[userId];
@@ -1968,6 +2110,15 @@ export default function AdminDashboard() {
                                       Reativar
                                     </Button>
                                   )}
+                                  <Button
+                                    size="sm" variant="outline"
+                                    className="h-7 text-xs gap-1 border-amber-300 text-amber-700 hover:bg-amber-50"
+                                    onClick={() => setResetPasswordUser(user)}
+                                    title="Redefinir senha"
+                                  >
+                                    <KeyRound size={11} />
+                                    Senha
+                                  </Button>
                                 </>
                               )}
                             </div>
@@ -2079,6 +2230,10 @@ export default function AdminDashboard() {
         )}
 
       </div>
+
+      {resetPasswordUser && (
+        <ResetPasswordModal user={resetPasswordUser} onClose={() => setResetPasswordUser(null)} />
+      )}
     </Layout>
   );
 }
