@@ -7,9 +7,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   Users, Package, ShoppingBag, Star, FileText, ChevronLeft,
-  Search, TrendingUp, Building2, Phone, Mail, Hash, AlertCircle,
+  Search, Building2, Phone, Mail, Hash, AlertCircle,
   CheckCircle, Clock, XCircle, ChevronRight, Headphones, LayoutDashboard,
-  UserCheck, Calendar
+  UserCheck, Calendar, MessageSquare
 } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -24,18 +24,18 @@ type Buyer = {
   telefone?: string | null; status: string; createdAt: string; ultimoAcesso?: string | null;
 };
 type Summary = {
-  produtos: number; pedidos: number; gmv: number;
+  produtos: number; pedidos: number;
   cotacoes: number; avaliacoes: number; notaMedia: number | null;
 };
-type BuyerSummary = { total: number; totalGasto: number };
-type Product = { id: number; nome: string; sku?: string; preco?: number; estoque?: number; ativo?: boolean };
-type Order = { id: number; status: string; total: number; createdAt: string };
+type BuyerSummary = { total: number };
+type Product = { id: number; nome: string; sku?: string; estoque?: number; ativo?: boolean };
+type Order = { id: number; status: string; createdAt: string };
 type Quote = { id: number; status: string; createdAt: string };
 type Review = { id: number; nota: number; comentario?: string | null; aprovado: boolean; createdAt: string };
 type Overview = {
   compradores: { total: number; pendentes: number; aprovados: number };
   fornecedores: { total: number; ativos: number };
-  pedidos: { total: number; gmv: number; pendentes: number };
+  pedidos: { total: number; pendentes: number };
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -51,7 +51,7 @@ const STATUS_ICON: Record<string, React.ReactNode> = {
   suspended: <AlertCircle size={12} className="text-gray-400" />,
   pendente: <Clock size={12} className="text-amber-500" />,
   confirmado: <CheckCircle size={12} className="text-blue-500" />,
-  enviado: <TrendingUp size={12} className="text-violet-500" />,
+  enviado: <Package size={12} className="text-violet-500" />,
   entregue: <CheckCircle size={12} className="text-green-500" />,
   cancelado: <XCircle size={12} className="text-destructive" />,
 };
@@ -60,16 +60,18 @@ function formatCnpj(cnpj: string) {
   const c = cnpj.replace(/\D/g, "");
   return c.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, "$1.$2.$3/$4-$5");
 }
-function BRL(v: number) {
-  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v);
-}
 function fDate(d: string) { return new Date(d).toLocaleDateString("pt-BR"); }
 function fDateTime(d: string) {
-  return new Date(d).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
+  return new Date(d).toLocaleString("pt-BR", {
+    day: "2-digit", month: "2-digit", year: "numeric",
+    hour: "2-digit", minute: "2-digit",
+  });
 }
 
 // ─── Shared mini-components ───────────────────────────────────────────────────
-function StatCard({ icon, label, value, sub, color }: { icon: React.ReactNode; label: string; value: string | number; sub?: string; color: string }) {
+function StatCard({ icon, label, value, sub, color }: {
+  icon: React.ReactNode; label: string; value: string | number; sub?: string; color: string;
+}) {
   return (
     <Card className="shadow-none border">
       <CardContent className="p-4 flex items-center gap-3">
@@ -179,17 +181,23 @@ function SupplierDetail({ supplier, onBack }: { supplier: Supplier; onBack: () =
 
       {loading && <div className="py-8 text-center text-sm text-muted-foreground">Carregando...</div>}
 
+      {/* Resumo — sem valores financeiros */}
       {!loading && tab === "resumo" && summary && (
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-          <StatCard icon={<Package size={18} className="text-blue-600" />} label="Produtos" value={summary.produtos} color="bg-blue-50" />
-          <StatCard icon={<ShoppingBag size={18} className="text-violet-600" />} label="Pedidos" value={summary.pedidos} color="bg-violet-50" />
-          <StatCard icon={<TrendingUp size={18} className="text-emerald-600" />} label="GMV total" value={BRL(summary.gmv)} color="bg-emerald-50" />
-          <StatCard icon={<FileText size={18} className="text-amber-600" />} label="Cotações" value={summary.cotacoes} color="bg-amber-50" />
-          <StatCard icon={<Star size={18} className="text-yellow-500" />} label="Avaliações" value={summary.avaliacoes}
-            sub={summary.notaMedia ? `Média: ${summary.notaMedia}/5` : undefined} color="bg-yellow-50" />
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <StatCard icon={<Package size={18} className="text-blue-600" />} label="Produtos cadastrados" value={summary.produtos} color="bg-blue-50" />
+          <StatCard icon={<ShoppingBag size={18} className="text-violet-600" />} label="Pedidos recebidos" value={summary.pedidos} color="bg-violet-50" />
+          <StatCard icon={<FileText size={18} className="text-amber-600" />} label="Cotações recebidas" value={summary.cotacoes} color="bg-amber-50" />
+          <StatCard
+            icon={<Star size={18} className="text-yellow-500" />}
+            label="Avaliações"
+            value={summary.avaliacoes}
+            sub={summary.notaMedia ? `Média: ${summary.notaMedia}/5` : undefined}
+            color="bg-yellow-50"
+          />
         </div>
       )}
 
+      {/* Produtos — sem coluna de preço */}
       {!loading && tab === "produtos" && (
         products.length === 0 ? <EmptyState message="Nenhum produto cadastrado" /> : (
           <Card className="shadow-none border">
@@ -199,8 +207,7 @@ function SupplierDetail({ supplier, onBack }: { supplier: Supplier; onBack: () =
                   <tr>
                     <th className="text-left px-4 py-3">Produto</th>
                     <th className="text-left px-4 py-3 hidden sm:table-cell">SKU</th>
-                    <th className="text-right px-4 py-3">Preço</th>
-                    <th className="text-right px-4 py-3 hidden sm:table-cell">Estoque</th>
+                    <th className="text-right px-4 py-3">Estoque</th>
                     <th className="text-center px-4 py-3">Status</th>
                   </tr>
                 </thead>
@@ -209,8 +216,7 @@ function SupplierDetail({ supplier, onBack }: { supplier: Supplier; onBack: () =
                     <tr key={p.id} className="hover:bg-gray-50/50">
                       <td className="px-4 py-3 font-medium">{p.nome}</td>
                       <td className="px-4 py-3 text-muted-foreground font-mono text-xs hidden sm:table-cell">{p.sku || "-"}</td>
-                      <td className="px-4 py-3 text-right">{p.preco ? BRL(p.preco) : "-"}</td>
-                      <td className="px-4 py-3 text-right hidden sm:table-cell">{p.estoque ?? "-"}</td>
+                      <td className="px-4 py-3 text-right text-muted-foreground">{p.estoque ?? "-"}</td>
                       <td className="px-4 py-3 text-center">
                         <Badge variant={p.ativo ? "default" : "secondary"} className="text-xs">{p.ativo ? "Ativo" : "Inativo"}</Badge>
                       </td>
@@ -223,6 +229,7 @@ function SupplierDetail({ supplier, onBack }: { supplier: Supplier; onBack: () =
         )
       )}
 
+      {/* Pedidos — sem coluna de total */}
       {!loading && tab === "pedidos" && (
         orders.length === 0 ? <EmptyState message="Nenhum pedido encontrado" /> : (
           <Card className="shadow-none border">
@@ -232,7 +239,6 @@ function SupplierDetail({ supplier, onBack }: { supplier: Supplier; onBack: () =
                   <tr>
                     <th className="text-left px-4 py-3">ID</th>
                     <th className="text-left px-4 py-3">Status</th>
-                    <th className="text-right px-4 py-3">Total</th>
                     <th className="text-right px-4 py-3">Data</th>
                   </tr>
                 </thead>
@@ -243,7 +249,6 @@ function SupplierDetail({ supplier, onBack }: { supplier: Supplier; onBack: () =
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-1.5">{STATUS_ICON[o.status]}<span>{STATUS_LABEL[o.status] || o.status}</span></div>
                       </td>
-                      <td className="px-4 py-3 text-right font-semibold">{BRL(o.total)}</td>
                       <td className="px-4 py-3 text-right text-muted-foreground text-xs">{fDate(o.createdAt)}</td>
                     </tr>
                   ))}
@@ -254,6 +259,7 @@ function SupplierDetail({ supplier, onBack }: { supplier: Supplier; onBack: () =
         )
       )}
 
+      {/* Cotações */}
       {!loading && tab === "cotacoes" && (
         quotes.length === 0 ? <EmptyState message="Nenhuma cotação encontrada" /> : (
           <Card className="shadow-none border">
@@ -283,6 +289,7 @@ function SupplierDetail({ supplier, onBack }: { supplier: Supplier; onBack: () =
         )
       )}
 
+      {/* Avaliações */}
       {!loading && tab === "avaliacoes" && (
         reviews.length === 0 ? <EmptyState message="Nenhuma avaliação encontrada" /> : (
           <div className="space-y-3">
@@ -325,10 +332,10 @@ function BuyerDetail({ buyer, onBack }: { buyer: Buyer; onBack: () => void }) {
       const base = `/api/support/buyers/${buyer.id}`;
       if (t === "resumo" && !summary) {
         const r = await fetch(`${base}/orders`, { credentials: "include" });
-        if (r.ok) { const d = await r.json(); setSummary({ total: d.total, totalGasto: d.totalGasto }); setOrders(d.orders || []); }
+        if (r.ok) { const d = await r.json(); setSummary({ total: d.total }); setOrders(d.orders || []); }
       } else if (t === "pedidos" && orders.length === 0) {
         const r = await fetch(`${base}/orders`, { credentials: "include" });
-        if (r.ok) { const d = await r.json(); setOrders(d.orders || []); if (!summary) setSummary({ total: d.total, totalGasto: d.totalGasto }); }
+        if (r.ok) { const d = await r.json(); setOrders(d.orders || []); if (!summary) setSummary({ total: d.total }); }
       } else if (t === "cotacoes" && quotes.length === 0) {
         const r = await fetch(`${base}/quotes`, { credentials: "include" });
         if (r.ok) { const d = await r.json(); setQuotes(d.quotes || []); }
@@ -382,14 +389,15 @@ function BuyerDetail({ buyer, onBack }: { buyer: Buyer; onBack: () => void }) {
 
       {loading && <div className="py-8 text-center text-sm text-muted-foreground">Carregando...</div>}
 
+      {/* Resumo — apenas contagens, sem valores */}
       {!loading && tab === "resumo" && (
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-2 gap-4">
           <StatCard icon={<ShoppingBag size={18} className="text-violet-600" />} label="Pedidos realizados" value={summary?.total ?? 0} color="bg-violet-50" />
-          <StatCard icon={<TrendingUp size={18} className="text-emerald-600" />} label="Total gasto" value={BRL(summary?.totalGasto ?? 0)} color="bg-emerald-50" />
           <StatCard icon={<FileText size={18} className="text-amber-600" />} label="Cotações solicitadas" value={quotes.length || "—"} color="bg-amber-50" />
         </div>
       )}
 
+      {/* Pedidos — sem coluna de total */}
       {!loading && tab === "pedidos" && (
         orders.length === 0 ? <EmptyState message="Nenhum pedido encontrado" /> : (
           <Card className="shadow-none border">
@@ -399,7 +407,6 @@ function BuyerDetail({ buyer, onBack }: { buyer: Buyer; onBack: () => void }) {
                   <tr>
                     <th className="text-left px-4 py-3">ID</th>
                     <th className="text-left px-4 py-3">Status</th>
-                    <th className="text-right px-4 py-3">Total</th>
                     <th className="text-right px-4 py-3">Data</th>
                   </tr>
                 </thead>
@@ -410,7 +417,6 @@ function BuyerDetail({ buyer, onBack }: { buyer: Buyer; onBack: () => void }) {
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-1.5">{STATUS_ICON[o.status]}<span>{STATUS_LABEL[o.status] || o.status}</span></div>
                       </td>
-                      <td className="px-4 py-3 text-right font-semibold">{BRL(o.total)}</td>
                       <td className="px-4 py-3 text-right text-muted-foreground text-xs">{fDate(o.createdAt)}</td>
                     </tr>
                   ))}
@@ -421,6 +427,7 @@ function BuyerDetail({ buyer, onBack }: { buyer: Buyer; onBack: () => void }) {
         )
       )}
 
+      {/* Cotações */}
       {!loading && tab === "cotacoes" && (
         quotes.length === 0 ? <EmptyState message="Nenhuma cotação encontrada" /> : (
           <Card className="shadow-none border">
@@ -473,7 +480,7 @@ function OverviewTab() {
       <div>
         <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">Compradores</h3>
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-          <StatCard icon={<Users size={18} className="text-blue-600" />} label="Total de compradores" value={data.compradores.total} color="bg-blue-50" />
+          <StatCard icon={<Users size={18} className="text-blue-600" />} label="Total cadastrados" value={data.compradores.total} color="bg-blue-50" />
           <StatCard icon={<UserCheck size={18} className="text-green-600" />} label="Aprovados" value={data.compradores.aprovados} color="bg-green-50" />
           <StatCard
             icon={<Clock size={18} className="text-amber-600" />}
@@ -484,19 +491,26 @@ function OverviewTab() {
           />
         </div>
       </div>
+
       <div>
         <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">Fornecedores</h3>
         <div className="grid grid-cols-2 gap-4">
-          <StatCard icon={<Building2 size={18} className="text-violet-600" />} label="Total de fornecedores" value={data.fornecedores.total} color="bg-violet-50" />
+          <StatCard icon={<Building2 size={18} className="text-violet-600" />} label="Total cadastrados" value={data.fornecedores.total} color="bg-violet-50" />
           <StatCard icon={<CheckCircle size={18} className="text-emerald-600" />} label="Ativos" value={data.fornecedores.ativos} color="bg-emerald-50" />
         </div>
       </div>
+
       <div>
         <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">Pedidos</h3>
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-2 gap-4">
           <StatCard icon={<ShoppingBag size={18} className="text-indigo-600" />} label="Total de pedidos" value={data.pedidos.total} color="bg-indigo-50" />
-          <StatCard icon={<TrendingUp size={18} className="text-emerald-600" />} label="GMV total" value={BRL(data.pedidos.gmv)} color="bg-emerald-50" />
-          <StatCard icon={<Clock size={18} className="text-amber-600" />} label="Pedidos pendentes" value={data.pedidos.pendentes} color="bg-amber-50" />
+          <StatCard
+            icon={<Clock size={18} className="text-amber-600" />}
+            label="Pedidos pendentes"
+            value={data.pedidos.pendentes}
+            sub={data.pedidos.pendentes > 0 ? "Aguardando ação" : undefined}
+            color={data.pedidos.pendentes > 0 ? "bg-amber-50" : "bg-gray-50"}
+          />
         </div>
       </div>
     </div>
@@ -605,15 +619,8 @@ function BuyersTab({ onSelect }: { onSelect: (b: Buyer) => void }) {
 
   useEffect(() => { loadBuyers(); }, []);
 
-  function handleSearch(q: string) {
-    setSearch(q);
-    loadBuyers(q, statusFilter);
-  }
-
-  function handleStatus(s: string) {
-    setStatusFilter(s);
-    loadBuyers(search, s);
-  }
+  function handleSearch(q: string) { setSearch(q); loadBuyers(q, statusFilter); }
+  function handleStatus(s: string) { setStatusFilter(s); loadBuyers(search, s); }
 
   return (
     <Card className="shadow-none border">
@@ -717,16 +724,15 @@ export default function SupportPanel() {
   }
 
   const navTabs: { id: MainTab; label: string; icon: React.ElementType }[] = [
-    { id: "overview",       label: "Visão Geral",   icon: LayoutDashboard },
-    { id: "fornecedores",   label: "Fornecedores",  icon: Building2 },
-    { id: "compradores",    label: "Compradores",   icon: Users },
+    { id: "overview",     label: "Visão Geral",  icon: LayoutDashboard },
+    { id: "fornecedores", label: "Fornecedores", icon: Building2 },
+    { id: "compradores",  label: "Compradores",  icon: Users },
   ];
 
   return (
     <Layout>
       <div className="max-w-7xl mx-auto px-4 py-8">
 
-        {/* Header */}
         <div className="flex items-center gap-3 mb-6">
           <div className="w-10 h-10 bg-blue-50 rounded-lg flex items-center justify-center shrink-0">
             <Headphones size={20} className="text-blue-600" />
@@ -737,7 +743,6 @@ export default function SupportPanel() {
           </div>
         </div>
 
-        {/* Nav tabs */}
         <div className="flex gap-1 bg-gray-100 p-1 rounded-xl w-fit mb-6 overflow-x-auto">
           {navTabs.map(t => (
             <button
@@ -751,8 +756,7 @@ export default function SupportPanel() {
           ))}
         </div>
 
-        {/* Content */}
-        {tab === "overview" && !detail && <OverviewTab />}
+        {tab === "overview" && <OverviewTab />}
 
         {tab === "fornecedores" && !detail && (
           <SuppliersTab onSelect={s => setDetail({ type: "supplier", data: s })} />
