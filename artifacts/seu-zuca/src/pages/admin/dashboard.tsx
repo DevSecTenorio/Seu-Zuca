@@ -2491,69 +2491,181 @@ export default function AdminDashboard() {
         {activeTab === "analytics" && <AnalyticsTab />}
 
         {activeTab === "relatorios" && (
-          <div className="space-y-6">
+          <div className="space-y-8">
             <div>
               <h2 className="text-lg font-semibold">Relatórios</h2>
-              <p className="text-sm text-muted-foreground mt-0.5">Filtre por período e exporte dados em PDF, Excel ou CSV.</p>
+              <p className="text-sm text-muted-foreground mt-0.5">Relatórios alinhados com os indicadores de Analytics — filtre por período e exporte em PDF, Excel ou CSV.</p>
             </div>
-            <ReportTab
-              title="Relatório de Pedidos"
-              endpoint="admin/report/orders"
-              filenamePrefix="admin_pedidos"
-              reportTypes={[
-                { value: "orders", label: "Pedidos" },
-              ]}
-              columns={[
-                { key: "id", label: "ID", format: (v) => `#${String(v).padStart(6,"0")}` },
-                { key: "data", label: "Data" },
-                { key: "comprador", label: "Comprador" },
-                { key: "fornecedor", label: "Fornecedor" },
-                { key: "total", label: "Total", format: (v) => new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL"}).format(Number(v)), align: "right" },
-                { key: "comissao", label: "Comissão", format: (v) => new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL"}).format(Number(v)), align: "right" },
-                { key: "status", label: "Status" },
-              ]}
-              summaryItems={[
-                { key: "total", label: "Total de pedidos", color: "text-blue-600", bgColor: "bg-blue-50 border-blue-200" },
-                { key: "gmv", label: "GMV", format: (v) => new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL"}).format(Number(v)), color: "text-emerald-600", bgColor: "bg-emerald-50 border-emerald-200" },
-                { key: "comissoes", label: "Comissões", format: (v) => new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL"}).format(Number(v)), color: "text-amber-600", bgColor: "bg-amber-50 border-amber-200" },
-              ]}
-            />
-            <ReportTab
-              title="Relatório de Usuários"
-              endpoint="admin/report/users"
-              filenamePrefix="admin_usuarios"
-              columns={[
-                { key: "id", label: "ID" },
-                { key: "data_cadastro", label: "Cadastro" },
-                { key: "nome", label: "Nome" },
-                { key: "email", label: "E-mail" },
-                { key: "tipo", label: "Tipo" },
-                { key: "status", label: "Status" },
-                { key: "cnpj", label: "CNPJ" },
-                { key: "nome_fantasia", label: "Nome Fantasia" },
-              ]}
-              summaryItems={[
-                { key: "total", label: "Total de usuários", color: "text-violet-600", bgColor: "bg-violet-50 border-violet-200" },
-              ]}
-            />
-            <ReportTab
-              title="Relatório de Comissões"
-              endpoint="admin/report/comissoes"
-              filenamePrefix="admin_comissoes"
-              columns={[
-                { key: "pedido", label: "Pedido", format: (v) => `#${String(v).padStart(6,"0")}` },
-                { key: "data", label: "Data" },
-                { key: "fornecedor", label: "Fornecedor" },
-                { key: "valor_pedido", label: "Valor Pedido", format: (v) => new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL"}).format(Number(v)), align: "right" },
-                { key: "comissao_plataforma", label: "Comissão", format: (v) => new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL"}).format(Number(v)), align: "right" },
-                { key: "status", label: "Status" },
-              ]}
-              summaryItems={[
-                { key: "total", label: "Pedidos com comissão", color: "text-blue-600", bgColor: "bg-blue-50 border-blue-200" },
-                { key: "totalComissoes", label: "Total comissões", format: (v) => new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL"}).format(Number(v)), color: "text-emerald-600", bgColor: "bg-emerald-50 border-emerald-200" },
-                { key: "gmv", label: "GMV período", format: (v) => new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL"}).format(Number(v)), color: "text-amber-600", bgColor: "bg-amber-50 border-amber-200" },
-              ]}
-            />
+
+            {/* ── 1. Saúde Financeira (GMV, Comissão, Ticket Médio) ─────── */}
+            <div>
+              <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">Saúde Financeira</h3>
+              <ReportTab
+                title="Pedidos — GMV, Comissão e Ticket Médio"
+                endpoint="admin/report/orders"
+                filenamePrefix="admin_pedidos"
+                columns={[
+                  { key: "id", label: "ID", format: (v) => `#${String(v).padStart(6,"0")}` },
+                  { key: "data", label: "Data" },
+                  { key: "comprador", label: "Comprador" },
+                  { key: "fornecedor", label: "Fornecedor" },
+                  { key: "total", label: "Total", format: (v) => new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL"}).format(Number(v)), align: "right" },
+                  { key: "comissao", label: "Comissão", format: (v) => new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL"}).format(Number(v)), align: "right" },
+                  { key: "status", label: "Status" },
+                ]}
+                summaryItems={[
+                  { key: "total", label: "Total de pedidos", color: "text-blue-600", bgColor: "bg-blue-50 border-blue-200" },
+                  { key: "gmv", label: "GMV", format: (v) => new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL"}).format(Number(v)), color: "text-[#C0181A]", bgColor: "bg-red-50 border-red-200" },
+                  { key: "comissoes", label: "Comissões", format: (v) => new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL"}).format(Number(v)), color: "text-amber-600", bgColor: "bg-amber-50 border-amber-200" },
+                  { key: "ticketMedio", label: "Ticket médio", format: (v) => new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL"}).format(Number(v)), color: "text-emerald-600", bgColor: "bg-emerald-50 border-emerald-200" },
+                ]}
+              />
+            </div>
+
+            {/* ── 2. Comissões e Repasses ──────────────────────────────── */}
+            <div>
+              <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">Comissões e Repasses</h3>
+              <ReportTab
+                title="Comissões por Pedido"
+                endpoint="admin/report/comissoes"
+                filenamePrefix="admin_comissoes"
+                columns={[
+                  { key: "pedido", label: "Pedido", format: (v) => `#${String(v).padStart(6,"0")}` },
+                  { key: "data", label: "Data" },
+                  { key: "fornecedor", label: "Fornecedor" },
+                  { key: "valor_pedido", label: "Valor Pedido", format: (v) => new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL"}).format(Number(v)), align: "right" },
+                  { key: "comissao_plataforma", label: "Comissão (R$)", format: (v) => new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL"}).format(Number(v)), align: "right" },
+                  { key: "pct_comissao", label: "Comissão (%)", format: (v) => `${Number(v).toFixed(2)}%`, align: "right" },
+                  { key: "status", label: "Status" },
+                ]}
+                summaryItems={[
+                  { key: "total", label: "Pedidos com comissão", color: "text-blue-600", bgColor: "bg-blue-50 border-blue-200" },
+                  { key: "totalComissoes", label: "Total comissões", format: (v) => new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL"}).format(Number(v)), color: "text-[#C0181A]", bgColor: "bg-red-50 border-red-200" },
+                  { key: "gmv", label: "GMV período", format: (v) => new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL"}).format(Number(v)), color: "text-emerald-600", bgColor: "bg-emerald-50 border-emerald-200" },
+                  { key: "pctMedio", label: "Comissão média (%)", format: (v) => `${Number(v).toFixed(2)}%`, color: "text-amber-600", bgColor: "bg-amber-50 border-amber-200" },
+                ]}
+              />
+            </div>
+
+            {/* ── 3. Top Fornecedores ──────────────────────────────────── */}
+            <div>
+              <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">Top Fornecedores</h3>
+              <ReportTab
+                title="Fornecedores — Volume, Comissão e Avaliação"
+                endpoint="admin/report/fornecedores"
+                filenamePrefix="admin_fornecedores"
+                columns={[
+                  { key: "fornecedor", label: "Fornecedor" },
+                  { key: "cnpj", label: "CNPJ" },
+                  { key: "total_pedidos", label: "Pedidos", align: "right" },
+                  { key: "gmv", label: "GMV", format: (v) => new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL"}).format(Number(v)), align: "right" },
+                  { key: "comissoes_geradas", label: "Comissão gerada", format: (v) => new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL"}).format(Number(v)), align: "right" },
+                  { key: "repasse_liquido", label: "Repasse líquido", format: (v) => new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL"}).format(Number(v)), align: "right" },
+                  { key: "avaliacao_media", label: "Avaliação", format: (v) => v != null ? `${Number(v).toFixed(1)} ★` : "—", align: "center" },
+                  { key: "compradores_unicos", label: "Compradores únicos", align: "right" },
+                  { key: "cancelados", label: "Cancelados", align: "right" },
+                ]}
+                summaryItems={[
+                  { key: "total", label: "Fornecedores ativos", color: "text-blue-600", bgColor: "bg-blue-50 border-blue-200" },
+                  { key: "totalGmv", label: "GMV total", format: (v) => new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL"}).format(Number(v)), color: "text-[#C0181A]", bgColor: "bg-red-50 border-red-200" },
+                  { key: "totalComissoes", label: "Comissões totais", format: (v) => new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL"}).format(Number(v)), color: "text-amber-600", bgColor: "bg-amber-50 border-amber-200" },
+                ]}
+              />
+            </div>
+
+            {/* ── 4. Qualidade da Plataforma ───────────────────────────── */}
+            <div>
+              <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">Qualidade da Plataforma</h3>
+              <ReportTab
+                title="Qualidade por Fornecedor — Cancelamentos e Avaliações"
+                endpoint="admin/report/qualidade"
+                filenamePrefix="admin_qualidade"
+                columns={[
+                  { key: "fornecedor", label: "Fornecedor" },
+                  { key: "total_pedidos", label: "Pedidos", align: "right" },
+                  { key: "cancelados", label: "Cancelados", align: "right" },
+                  { key: "taxa_cancelamento", label: "Taxa Cancelamento", format: (v) => `${Number(v).toFixed(1)}%`, align: "right" },
+                  { key: "total_avaliacoes", label: "Avaliações", align: "right" },
+                  { key: "avaliacao_media", label: "Avaliação Média", format: (v) => v != null ? `${Number(v).toFixed(1)} ★` : "—", align: "center" },
+                  { key: "pior_nota", label: "Pior Nota", align: "center" },
+                  { key: "melhor_nota", label: "Melhor Nota", align: "center" },
+                ]}
+                summaryItems={[
+                  { key: "total", label: "Fornecedores", color: "text-blue-600", bgColor: "bg-blue-50 border-blue-200" },
+                  { key: "avgRating", label: "Avaliação média geral", format: (v) => v != null ? `${Number(v).toFixed(1)} ★` : "—", color: "text-amber-600", bgColor: "bg-amber-50 border-amber-200" },
+                ]}
+              />
+            </div>
+
+            {/* ── 5. Categorias por Volume ─────────────────────────────── */}
+            <div>
+              <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">Categorias por Volume</h3>
+              <ReportTab
+                title="Volume de Vendas por Categoria"
+                endpoint="admin/report/categorias"
+                filenamePrefix="admin_categorias"
+                columns={[
+                  { key: "categoria", label: "Categoria" },
+                  { key: "total_pedidos", label: "Pedidos", align: "right" },
+                  { key: "unidades_vendidas", label: "Unidades", align: "right" },
+                  { key: "volume_vendas", label: "Volume (R$)", format: (v) => new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL"}).format(Number(v)), align: "right" },
+                  { key: "produtos_vendidos", label: "Produtos Únicos", align: "right" },
+                ]}
+                summaryItems={[
+                  { key: "total", label: "Categorias", color: "text-blue-600", bgColor: "bg-blue-50 border-blue-200" },
+                  { key: "totalVolume", label: "Volume total", format: (v) => new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL"}).format(Number(v)), color: "text-[#C0181A]", bgColor: "bg-red-50 border-red-200" },
+                  { key: "totalUnidades", label: "Total unidades", color: "text-emerald-600", bgColor: "bg-emerald-50 border-emerald-200" },
+                ]}
+              />
+            </div>
+
+            {/* ── 6. Comportamento dos Compradores ────────────────────── */}
+            <div>
+              <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">Compradores</h3>
+              <ReportTab
+                title="Comportamento dos Compradores — Recompra e LTV"
+                endpoint="admin/report/compradores"
+                filenamePrefix="admin_compradores"
+                columns={[
+                  { key: "comprador", label: "Comprador" },
+                  { key: "cnpj", label: "CNPJ" },
+                  { key: "total_pedidos", label: "Pedidos", align: "right" },
+                  { key: "valor_total", label: "Valor total", format: (v) => new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL"}).format(Number(v)), align: "right" },
+                  { key: "ticket_medio", label: "Ticket médio", format: (v) => new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL"}).format(Number(v)), align: "right" },
+                  { key: "fornecedores_diferentes", label: "Fornecedores", align: "right" },
+                  { key: "ultima_compra", label: "Última compra" },
+                ]}
+                summaryItems={[
+                  { key: "total", label: "Compradores ativos", color: "text-blue-600", bgColor: "bg-blue-50 border-blue-200" },
+                  { key: "totalCompras", label: "Volume total", format: (v) => new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL"}).format(Number(v)), color: "text-[#C0181A]", bgColor: "bg-red-50 border-red-200" },
+                  { key: "ticketMedio", label: "Ticket médio geral", format: (v) => new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL"}).format(Number(v)), color: "text-emerald-600", bgColor: "bg-emerald-50 border-emerald-200" },
+                  { key: "totalPedidos", label: "Total de pedidos", color: "text-amber-600", bgColor: "bg-amber-50 border-amber-200" },
+                ]}
+              />
+            </div>
+
+            {/* ── 7. Ecossistema — Usuários cadastrados ────────────────── */}
+            <div>
+              <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">Ecossistema — Novos Cadastros</h3>
+              <ReportTab
+                title="Usuários Cadastrados no Período"
+                endpoint="admin/report/users"
+                filenamePrefix="admin_usuarios"
+                columns={[
+                  { key: "id", label: "ID" },
+                  { key: "data_cadastro", label: "Cadastro" },
+                  { key: "nome", label: "Nome" },
+                  { key: "email", label: "E-mail" },
+                  { key: "tipo", label: "Tipo" },
+                  { key: "status", label: "Status" },
+                  { key: "cnpj", label: "CNPJ" },
+                  { key: "nome_fantasia", label: "Nome Fantasia" },
+                ]}
+                summaryItems={[
+                  { key: "total", label: "Novos cadastros", color: "text-violet-600", bgColor: "bg-violet-50 border-violet-200" },
+                ]}
+              />
+            </div>
           </div>
         )}
 
