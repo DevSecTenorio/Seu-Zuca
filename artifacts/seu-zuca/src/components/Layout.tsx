@@ -144,9 +144,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
                         <DropdownMenuItem onClick={() => navigate("/favoritos")}>
                           Meus Favoritos
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => navigate("/cotacoes")}>
-                          Minhas Cotações
-                        </DropdownMenuItem>
                       </>
                     )}
                     <DropdownMenuSeparator />
@@ -352,7 +349,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 <>
                   <Link href="/pedidos" onClick={() => setMobileOpen(false)} className="block py-2 text-gray-700 text-sm">Meus Pedidos</Link>
                   <Link href="/favoritos" onClick={() => setMobileOpen(false)} className="block py-2 text-gray-700 text-sm">Favoritos</Link>
-                  <Link href="/cotacoes" onClick={() => setMobileOpen(false)} className="block py-2 text-gray-700 text-sm">Cotações</Link>
                   {isAdmin && <Link href="/admin" onClick={() => setMobileOpen(false)} className="block py-2 text-gray-700 text-sm">Painel Admin</Link>}
                   {isSupplier && <Link href="/fornecedor/painel" onClick={() => setMobileOpen(false)} className="block py-2 text-gray-700 text-sm">Painel Fornecedor</Link>}
                   <button onClick={handleLogout} className="block py-2 text-red-600 font-medium text-left w-full text-sm">Sair</button>
@@ -399,7 +395,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
               <h4 className="text-white font-semibold mb-3 text-sm">Minha conta</h4>
               <ul className="space-y-2 text-sm">
                 <li><Link href="/pedidos" className="hover:text-white transition-colors">Meus pedidos</Link></li>
-                <li><Link href="/cotacoes" className="hover:text-white transition-colors">Minhas cotações</Link></li>
                 <li><Link href="/favoritos" className="hover:text-white transition-colors">Favoritos</Link></li>
               </ul>
             </div>

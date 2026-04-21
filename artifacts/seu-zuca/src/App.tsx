@@ -15,8 +15,6 @@ import Checkout from "@/pages/checkout";
 import Orders from "@/pages/orders";
 import OrderDetail from "@/pages/order-detail";
 import Wishlist from "@/pages/wishlist";
-import Quotes from "@/pages/quotes";
-import QuoteDetail from "@/pages/quote-detail";
 import SupplierDashboard from "@/pages/supplier/dashboard";
 import SupplierProductForm from "@/pages/supplier/product-form";
 import AdminDashboard from "@/pages/admin/dashboard";
@@ -53,8 +51,6 @@ function Router() {
       <Route path="/pedidos" component={Orders} />
       <Route path="/pedido/:id" component={OrderDetail} />
       <Route path="/favoritos" component={Wishlist} />
-      <Route path="/cotacoes" component={Quotes} />
-      <Route path="/cotacao/:id" component={QuoteDetail} />
       <Route path="/minha-conta" component={MinhaConta} />
       <Route path="/fornecedor/painel" component={SupplierDashboard} />
       <Route path="/fornecedor/produto/:id" component={SupplierProductForm} />

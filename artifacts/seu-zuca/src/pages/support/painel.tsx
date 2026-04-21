@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
-  Users, Package, ShoppingBag, Star, FileText, ChevronLeft,
+  Users, Package, ShoppingBag, Star, ChevronLeft,
   Search, Building2, Phone, Mail, Hash, AlertCircle,
   CheckCircle, Clock, XCircle, ChevronRight, Headphones, LayoutDashboard,
   UserCheck, Calendar, MessageSquare
@@ -25,12 +25,11 @@ type Buyer = {
 };
 type Summary = {
   produtos: number; pedidos: number;
-  cotacoes: number; avaliacoes: number; notaMedia: number | null;
+  avaliacoes: number; notaMedia: number | null;
 };
 type BuyerSummary = { total: number };
 type Product = { id: number; nome: string; sku?: string; estoque?: number; ativo?: boolean };
 type Order = { id: number; status: string; createdAt: string };
-type Quote = { id: number; status: string; createdAt: string };
 type Review = { id: number; nota: number; comentario?: string | null; aprovado: boolean; createdAt: string };
 type Overview = {
   compradores: { total: number; pendentes: number; aprovados: number };
@@ -100,11 +99,10 @@ function EmptyState({ message }: { message: string }) {
 
 // ─── Supplier detail ───────────────────────────────────────────────────────────
 function SupplierDetail({ supplier, onBack }: { supplier: Supplier; onBack: () => void }) {
-  const [tab, setTab] = useState<"resumo" | "produtos" | "pedidos" | "cotacoes" | "avaliacoes">("resumo");
+  const [tab, setTab] = useState<"resumo" | "produtos" | "pedidos" | "avaliacoes">("resumo");
   const [summary, setSummary] = useState<Summary | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
-  const [quotes, setQuotes] = useState<Quote[]>([]);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -121,15 +119,12 @@ function SupplierDetail({ supplier, onBack }: { supplier: Supplier; onBack: () =
       } else if (t === "pedidos" && orders.length === 0) {
         const r = await fetch(`${base}/orders`, { credentials: "include" });
         if (r.ok) { const d = await r.json(); setOrders(d.orders || []); }
-      } else if (t === "cotacoes" && quotes.length === 0) {
-        const r = await fetch(`${base}/quotes`, { credentials: "include" });
-        if (r.ok) { const d = await r.json(); setQuotes(d.quotes || []); }
       } else if (t === "avaliacoes" && reviews.length === 0) {
         const r = await fetch(`${base}/reviews`, { credentials: "include" });
         if (r.ok) { const d = await r.json(); setReviews(d.reviews || []); }
       }
     } finally { setLoading(false); }
-  }, [supplier.id, summary, products.length, orders.length, quotes.length, reviews.length]);
+  }, [supplier.id, summary, products.length, orders.length, reviews.length]);
 
   useEffect(() => { load("resumo"); }, []);
   function switchTab(t: typeof tab) { setTab(t); load(t); }
@@ -138,7 +133,6 @@ function SupplierDetail({ supplier, onBack }: { supplier: Supplier; onBack: () =
     { id: "resumo" as const, label: "Resumo" },
     { id: "produtos" as const, label: `Produtos${summary ? ` (${summary.produtos})` : ""}` },
     { id: "pedidos" as const, label: `Pedidos${summary ? ` (${summary.pedidos})` : ""}` },
-    { id: "cotacoes" as const, label: `Cotações${summary ? ` (${summary.cotacoes})` : ""}` },
     { id: "avaliacoes" as const, label: `Avaliações${summary ? ` (${summary.avaliacoes})` : ""}` },
   ];
 
@@ -186,7 +180,6 @@ function SupplierDetail({ supplier, onBack }: { supplier: Supplier; onBack: () =
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <StatCard icon={<Package size={18} className="text-blue-600" />} label="Produtos cadastrados" value={summary.produtos} color="bg-blue-50" />
           <StatCard icon={<ShoppingBag size={18} className="text-violet-600" />} label="Pedidos recebidos" value={summary.pedidos} color="bg-violet-50" />
-          <StatCard icon={<FileText size={18} className="text-amber-600" />} label="Cotações recebidas" value={summary.cotacoes} color="bg-amber-50" />
           <StatCard
             icon={<Star size={18} className="text-yellow-500" />}
             label="Avaliações"
@@ -259,36 +252,6 @@ function SupplierDetail({ supplier, onBack }: { supplier: Supplier; onBack: () =
         )
       )}
 
-      {/* Cotações */}
-      {!loading && tab === "cotacoes" && (
-        quotes.length === 0 ? <EmptyState message="Nenhuma cotação encontrada" /> : (
-          <Card className="shadow-none border">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="border-b text-xs text-muted-foreground">
-                  <tr>
-                    <th className="text-left px-4 py-3">ID</th>
-                    <th className="text-left px-4 py-3">Status</th>
-                    <th className="text-right px-4 py-3">Data</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y">
-                  {quotes.map((q) => (
-                    <tr key={q.id} className="hover:bg-gray-50/50">
-                      <td className="px-4 py-3 font-mono text-xs text-muted-foreground">#{q.id}</td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-1.5">{STATUS_ICON[q.status]}<span>{STATUS_LABEL[q.status] || q.status}</span></div>
-                      </td>
-                      <td className="px-4 py-3 text-right text-muted-foreground text-xs">{fDate(q.createdAt)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </Card>
-        )
-      )}
-
       {/* Avaliações */}
       {!loading && tab === "avaliacoes" && (
         reviews.length === 0 ? <EmptyState message="Nenhuma avaliação encontrada" /> : (
@@ -320,10 +283,9 @@ function SupplierDetail({ supplier, onBack }: { supplier: Supplier; onBack: () =
 
 // ─── Buyer detail ──────────────────────────────────────────────────────────────
 function BuyerDetail({ buyer, onBack }: { buyer: Buyer; onBack: () => void }) {
-  const [tab, setTab] = useState<"resumo" | "pedidos" | "cotacoes">("resumo");
+  const [tab, setTab] = useState<"resumo" | "pedidos">("resumo");
   const [summary, setSummary] = useState<BuyerSummary | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
-  const [quotes, setQuotes] = useState<Quote[]>([]);
   const [loading, setLoading] = useState(false);
 
   const load = useCallback(async (t: typeof tab) => {
@@ -336,12 +298,9 @@ function BuyerDetail({ buyer, onBack }: { buyer: Buyer; onBack: () => void }) {
       } else if (t === "pedidos" && orders.length === 0) {
         const r = await fetch(`${base}/orders`, { credentials: "include" });
         if (r.ok) { const d = await r.json(); setOrders(d.orders || []); if (!summary) setSummary({ total: d.total }); }
-      } else if (t === "cotacoes" && quotes.length === 0) {
-        const r = await fetch(`${base}/quotes`, { credentials: "include" });
-        if (r.ok) { const d = await r.json(); setQuotes(d.quotes || []); }
       }
     } finally { setLoading(false); }
-  }, [buyer.id, summary, orders.length, quotes.length]);
+  }, [buyer.id, summary, orders.length]);
 
   useEffect(() => { load("resumo"); }, []);
   function switchTab(t: typeof tab) { setTab(t); load(t); }
@@ -378,7 +337,6 @@ function BuyerDetail({ buyer, onBack }: { buyer: Buyer; onBack: () => void }) {
         {[
           { id: "resumo" as const, label: "Resumo" },
           { id: "pedidos" as const, label: `Pedidos${summary ? ` (${summary.total})` : ""}` },
-          { id: "cotacoes" as const, label: `Cotações${quotes.length > 0 ? ` (${quotes.length})` : ""}` },
         ].map((t) => (
           <button key={t.id} onClick={() => switchTab(t.id)}
             className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all ${tab === t.id ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}>
@@ -393,7 +351,6 @@ function BuyerDetail({ buyer, onBack }: { buyer: Buyer; onBack: () => void }) {
       {!loading && tab === "resumo" && (
         <div className="grid grid-cols-2 gap-4">
           <StatCard icon={<ShoppingBag size={18} className="text-violet-600" />} label="Pedidos realizados" value={summary?.total ?? 0} color="bg-violet-50" />
-          <StatCard icon={<FileText size={18} className="text-amber-600" />} label="Cotações solicitadas" value={quotes.length || "—"} color="bg-amber-50" />
         </div>
       )}
 
@@ -427,35 +384,6 @@ function BuyerDetail({ buyer, onBack }: { buyer: Buyer; onBack: () => void }) {
         )
       )}
 
-      {/* Cotações */}
-      {!loading && tab === "cotacoes" && (
-        quotes.length === 0 ? <EmptyState message="Nenhuma cotação encontrada" /> : (
-          <Card className="shadow-none border">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="border-b text-xs text-muted-foreground">
-                  <tr>
-                    <th className="text-left px-4 py-3">ID</th>
-                    <th className="text-left px-4 py-3">Status</th>
-                    <th className="text-right px-4 py-3">Data</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y">
-                  {quotes.map((q) => (
-                    <tr key={q.id} className="hover:bg-gray-50/50">
-                      <td className="px-4 py-3 font-mono text-xs text-muted-foreground">#{q.id}</td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-1.5">{STATUS_ICON[q.status]}<span>{STATUS_LABEL[q.status] || q.status}</span></div>
-                      </td>
-                      <td className="px-4 py-3 text-right text-muted-foreground text-xs">{fDate(q.createdAt)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </Card>
-        )
-      )}
     </div>
   );
 }

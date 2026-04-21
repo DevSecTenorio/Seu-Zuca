@@ -26,7 +26,6 @@ router.get("/dashboard/stats", authMiddleware, requireAdmin, async (req: AuthReq
     compradoresAprovados: Number(compradores[0]?.count || 0),
     pedidosPendentes: Number(pendentes[0]?.count || 0),
     comissoesTotais: Math.round(Number(commissionResult?.total || 0) * 100) / 100,
-    cotacoesPendentes: 0,
   });
 });
 
@@ -109,8 +108,6 @@ router.get("/supplier/stats", authMiddleware, async (req: AuthRequest, res): Pro
     comissaoDescontada: Math.round(Number(comissaoResult?.total || 0) * 100) / 100,
     produtosAtivos: Number(produtosResult?.count || 0),
     avaliacaoMedia: 4.5,
-    cotacoesRecebidas: 0,
-    cotacoesRespondidas: 0,
   });
 });
 

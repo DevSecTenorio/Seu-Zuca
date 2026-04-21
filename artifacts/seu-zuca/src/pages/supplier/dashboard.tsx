@@ -2,14 +2,13 @@ import { useState, useEffect } from "react";
 import {
   useGetSupplierStats, useListSupplierProducts, useDeleteProduct,
   useListSupplierOrders, useUpdateOrderStatus,
-  useListSupplierQuotes,
 } from "@workspace/api-client-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Layout } from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Package, TrendingUp, ShoppingBag, DollarSign, Plus, Edit, Trash2, FileText, ClipboardList, BarChart2, AlertTriangle, Star, Clock, Truck, CheckCircle, XCircle, RotateCcw, Eye, Tag } from "lucide-react";
+import { Package, TrendingUp, ShoppingBag, DollarSign, Plus, Edit, Trash2, ClipboardList, BarChart2, AlertTriangle, Star, Clock, Truck, CheckCircle, XCircle, RotateCcw, Eye, Tag } from "lucide-react";
 import { useLocation, Link } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
@@ -30,15 +29,7 @@ const ORDER_FLOW: Record<string, Array<{ next: string; label: string }>> = {
   enviado:      [{ next: "entregue", label: "Confirmar entrega" }],
 };
 
-const QUOTE_STATUS: Record<string, { label: string; color: "default" | "secondary" | "destructive" | "outline" }> = {
-  pendente:   { label: "Pendente",   color: "secondary" },
-  respondida: { label: "Respondida", color: "default" },
-  aceita:     { label: "Aceita",     color: "outline" },
-  encerrada:  { label: "Encerrada",  color: "secondary" },
-  cancelada:  { label: "Cancelada",  color: "destructive" },
-};
-
-type Tab = "produtos" | "pedidos" | "cotacoes" | "analytics";
+type Tab = "produtos" | "pedidos" | "analytics";
 
 type AnalyticsData = {
   receitaMensal: { mes: string; receita: number; pedidos: number }[];
@@ -57,7 +48,6 @@ export default function SupplierDashboard() {
   const { data: dashboard } = useGetSupplierStats({ query: { enabled: isSupplier } });
   const { data: products, isLoading: loadingProducts, refetch: refetchProducts } = useListSupplierProducts({ query: { enabled: isSupplier } });
   const { data: orders, isLoading: loadingOrders, refetch: refetchOrders } = useListSupplierOrders({ query: { enabled: isSupplier } });
-  const { data: quotes, isLoading: loadingQuotes } = useListSupplierQuotes({ query: { enabled: isSupplier } });
   const deleteMutation = useDeleteProduct();
   const updateOrderStatus = useUpdateOrderStatus();
 
@@ -108,7 +98,6 @@ export default function SupplierDashboard() {
   const tabs: { key: Tab; label: string; icon: React.ElementType }[] = [
     { key: "produtos",   label: "Produtos",   icon: Package },
     { key: "pedidos",    label: "Pedidos",    icon: ClipboardList },
-    { key: "cotacoes",   label: "Cotações",   icon: FileText },
     { key: "analytics",  label: "Analytics",  icon: BarChart2 },
   ];
 
@@ -126,7 +115,7 @@ export default function SupplierDashboard() {
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-2xl font-bold">Painel do Fornecedor</h1>
-            <p className="text-sm text-muted-foreground mt-1">Gerencie seus produtos, pedidos e cotações</p>
+            <p className="text-sm text-muted-foreground mt-1">Gerencie seus produtos e pedidos</p>
           </div>
           {tab === "produtos" && (
             <Button onClick={() => navigate("/fornecedor/produto/novo")} className="gap-2 bg-[#C0181A] hover:bg-[#a01418]">
@@ -324,65 +313,6 @@ export default function SupplierDashboard() {
                 <ClipboardList size={44} className="mx-auto mb-4 opacity-40" />
                 <p className="text-lg font-medium">Nenhum pedido recebido</p>
                 <p className="text-sm mt-1">Quando compradores realizarem pedidos, eles aparecerão aqui</p>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Cotações */}
-        {tab === "cotacoes" && (
-          <div>
-            {loadingQuotes ? (
-              <div className="space-y-3">
-                {Array.from({ length: 3 }).map((_, i) => <div key={i} className="h-24 bg-muted animate-pulse rounded-xl" />)}
-              </div>
-            ) : quotes && (quotes as unknown[]).length > 0 ? (
-              <div className="space-y-3">
-                {(quotes as Array<{
-                  id: number; status: string; createdAt: string;
-                  buyerName?: string; observacoes?: string;
-                }>).map((quote) => {
-                  const cfg = QUOTE_STATUS[quote.status] || QUOTE_STATUS.pendente;
-                  const canRespond = !["aceita", "encerrada", "cancelada"].includes(quote.status);
-                  return (
-                    <Card key={quote.id} className="border-border">
-                      <CardContent className="p-4">
-                        <div className="flex items-start justify-between gap-4">
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-1">
-                              <span className="font-mono text-sm font-bold">Cotação #{String(quote.id).padStart(4, "0")}</span>
-                              <Badge variant={cfg.color} className="text-xs">{cfg.label}</Badge>
-                            </div>
-                            <p className="text-xs text-muted-foreground">
-                              {new Date(quote.createdAt).toLocaleDateString("pt-BR")}
-                              {quote.buyerName && ` • ${quote.buyerName}`}
-                            </p>
-                            {quote.observacoes && (
-                              <p className="text-xs text-muted-foreground mt-1 line-clamp-1">{quote.observacoes}</p>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-2 shrink-0">
-                            <Link href={`/cotacao/${quote.id}`}>
-                              <Button
-                                size="sm"
-                                variant={canRespond ? "default" : "outline"}
-                                className={canRespond ? "bg-[#C0181A] hover:bg-[#a01418] text-xs h-7" : "text-xs h-7"}
-                              >
-                                {canRespond ? "Responder" : "Ver detalhes"}
-                              </Button>
-                            </Link>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="text-center py-16 text-muted-foreground">
-                <FileText size={44} className="mx-auto mb-4 opacity-40" />
-                <p className="text-lg font-medium">Nenhuma cotação recebida</p>
-                <p className="text-sm mt-1">Solicitações de cotação dos compradores aparecerão aqui</p>
               </div>
             )}
           </div>

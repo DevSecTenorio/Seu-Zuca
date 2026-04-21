@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { db, usersTable, productsTable, ordersTable, orderItemsTable, quotesTable, quoteItemsTable, reviewsTable } from "@workspace/db";
+import { db, usersTable, productsTable, ordersTable, orderItemsTable, reviewsTable } from "@workspace/db";
 import { eq, desc, sql, and, ilike, or } from "drizzle-orm";
 import { authMiddleware, requireAdminOrSupport, type AuthRequest } from "../middlewares/auth";
 
@@ -92,19 +92,6 @@ router.get("/support/suppliers/:id/orders", authMiddleware, requireAdminOrSuppor
   res.json({ orders, total: Number(totals?.count ?? 0), gmv: Number(totals?.sum ?? 0) });
 });
 
-/* ── Supplier quotes ────────────────────────────────────────────────────── */
-router.get("/support/suppliers/:id/quotes", authMiddleware, requireAdminOrSupport, async (req: AuthRequest, res): Promise<void> => {
-  const supplierId = parseInt(req.params.id, 10);
-  const quotes = await db
-    .select()
-    .from(quotesTable)
-    .where(eq(quotesTable.supplierId, supplierId))
-    .orderBy(desc(quotesTable.createdAt))
-    .limit(50);
-
-  res.json({ quotes, total: quotes.length });
-});
-
 /* ── Supplier reviews ───────────────────────────────────────────────────── */
 router.get("/support/suppliers/:id/reviews", authMiddleware, requireAdminOrSupport, async (req: AuthRequest, res): Promise<void> => {
   const supplierId = parseInt(req.params.id, 10);
@@ -149,11 +136,6 @@ router.get("/support/suppliers/:id/summary", authMiddleware, requireAdminOrSuppo
     .from(ordersTable)
     .where(eq(ordersTable.supplierId, supplierId));
 
-  const [quoteCount] = await db
-    .select({ count: sql<number>`count(*)` })
-    .from(quotesTable)
-    .where(eq(quotesTable.supplierId, supplierId));
-
   const [reviewStats] = await db
     .select({
       count: sql<number>`count(*)`,
@@ -166,7 +148,6 @@ router.get("/support/suppliers/:id/summary", authMiddleware, requireAdminOrSuppo
     produtos: Number(prodCount?.count ?? 0),
     pedidos: Number(orderStats?.count ?? 0),
     gmv: Number(orderStats?.gmv ?? 0),
-    cotacoes: Number(quoteCount?.count ?? 0),
     avaliacoes: Number(reviewStats?.count ?? 0),
     notaMedia: reviewStats?.avg ?? null,
   });
@@ -299,19 +280,6 @@ router.get("/support/buyers/:id/orders", authMiddleware, requireAdminOrSupport, 
     .where(eq(ordersTable.buyerId, buyerId));
 
   res.json({ orders, total: Number(stats?.count ?? 0), totalGasto: Number(stats?.total ?? 0) });
-});
-
-/* ── Buyer quotes ───────────────────────────────────────────────────────── */
-router.get("/support/buyers/:id/quotes", authMiddleware, requireAdminOrSupport, async (req: AuthRequest, res): Promise<void> => {
-  const buyerId = parseInt(req.params.id, 10);
-  const quotes = await db
-    .select()
-    .from(quotesTable)
-    .where(eq(quotesTable.buyerId, buyerId))
-    .orderBy(desc(quotesTable.createdAt))
-    .limit(50);
-
-  res.json({ quotes, total: quotes.length });
 });
 
 export default router;

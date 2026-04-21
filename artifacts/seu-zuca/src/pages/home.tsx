@@ -230,17 +230,6 @@ export default function Home() {
               Ver produtos
             </button>
           </div>
-          <div className="bg-gradient-to-r from-[#1a6b2a] to-[#2a8a3a] rounded-xl p-6 text-white">
-            <p className="text-sm font-medium opacity-90 mb-1">Cotação</p>
-            <h3 className="text-2xl font-black mb-1">Precisa de orçamento?</h3>
-            <p className="text-white/80 text-sm mb-4">Vários fornecedores respondem</p>
-            <button
-              onClick={() => navigate("/cotacoes")}
-              className="bg-white text-[#1a6b2a] text-sm font-bold px-4 py-2 rounded-lg hover:bg-gray-100 transition-colors"
-            >
-              Solicitar cotação
-            </button>
-          </div>
         </div>
       </section>
 

@@ -28,7 +28,7 @@ lib/
   db/src/schema/index.ts         # Drizzle schema (all tables)
 artifacts/
   api-server/                    # Express backend
-    src/routes/                  # auth, products, cart, orders, quotes, reviews, wishlist, admin, dashboard
+    src/routes/                  # auth, products, cart, orders, reviews, wishlist, admin, dashboard
   seu-zuca/                      # React frontend (Vite)
     src/
       App.tsx                    # All routes
@@ -38,7 +38,7 @@ artifacts/
         home.tsx, catalog.tsx, product.tsx
         login.tsx, register.tsx, awaiting-approval.tsx
         cart.tsx, checkout.tsx, orders.tsx
-        wishlist.tsx, quotes.tsx
+        wishlist.tsx
         supplier/dashboard.tsx, supplier/product-form.tsx
         admin/dashboard.tsx
 ```
@@ -52,7 +52,6 @@ artifacts/
 - cart_items (id, userId, productId, quantidade)
 - orders (id, buyerId, supplierId, total, status, payment_method, payment_id, comissao)
 - order_items (id, orderId, productId, quantidade, preco_unitario)
-- quotes / quote_items / quote_responses
 - reviews (id, productId, buyerId, nota, titulo, comentario, aprovado)
 - wishlists (id, userId, productId)
 - addresses (id, userId, cep, logradouro, numero, complemento, bairro, cidade, estado)
@@ -86,7 +85,6 @@ artifacts/
 - GET /products, GET /products/:id
 - GET/POST/PATCH/DELETE /cart/items
 - POST /orders, GET /orders
-- GET/POST /quotes, GET /quotes/:id, POST /quotes/:id/responses
 - GET/POST /wishlist, DELETE /wishlist/:productId
 - GET/POST/PUT/DELETE /addresses
 - GET /cep/:cep
