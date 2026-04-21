@@ -91,6 +91,10 @@ artifacts/
 - GET /supplier/stats, GET/POST /supplier/products, GET /supplier/orders
 - GET /admin/users, PATCH /admin/users/:id/approve|reject|suspend
 - GET /dashboard/stats, /dashboard/sales-chart, /dashboard/recent-orders, /dashboard/top-products
+- GET /admin/report/orders, /admin/report/users, /admin/report/comissoes (admin only)
+- GET /supplier/report (supplier's own orders report)
+- GET /buyer/report (buyer's own orders report)
+- GET /support/report?type=orders|users (admin or support)
 
 ## Environment Variables
 

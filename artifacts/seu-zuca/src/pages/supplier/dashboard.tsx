@@ -5,6 +5,7 @@ import {
 } from "@workspace/api-client-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Layout } from "@/components/Layout";
+import ReportTab from "@/components/ReportTab";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -29,7 +30,7 @@ const ORDER_FLOW: Record<string, Array<{ next: string; label: string }>> = {
   enviado:      [{ next: "entregue", label: "Confirmar entrega" }],
 };
 
-type Tab = "produtos" | "pedidos" | "analytics";
+type Tab = "produtos" | "pedidos" | "analytics" | "relatorios";
 
 type AnalyticsData = {
   receitaMensal: { mes: string; receita: number; pedidos: number }[];
@@ -96,9 +97,10 @@ export default function SupplierDashboard() {
   ];
 
   const tabs: { key: Tab; label: string; icon: React.ElementType }[] = [
-    { key: "produtos",   label: "Produtos",   icon: Package },
-    { key: "pedidos",    label: "Pedidos",    icon: ClipboardList },
-    { key: "analytics",  label: "Analytics",  icon: BarChart2 },
+    { key: "produtos",    label: "Produtos",    icon: Package },
+    { key: "pedidos",     label: "Pedidos",     icon: ClipboardList },
+    { key: "analytics",   label: "Analytics",   icon: BarChart2 },
+    { key: "relatorios",  label: "Relatórios",  icon: TrendingUp },
   ];
 
   const productList = (products as Array<{
@@ -315,6 +317,36 @@ export default function SupplierDashboard() {
                 <p className="text-sm mt-1">Quando compradores realizarem pedidos, eles aparecerão aqui</p>
               </div>
             )}
+          </div>
+        )}
+
+        {/* Relatórios */}
+        {tab === "relatorios" && (
+          <div className="space-y-4">
+            <div>
+              <h2 className="text-base font-semibold text-gray-900">Relatórios de Vendas</h2>
+              <p className="text-sm text-muted-foreground mt-0.5">Filtre seus pedidos por período e exporte em PDF, Excel ou CSV.</p>
+            </div>
+            <ReportTab
+              title="Relatório de Pedidos"
+              endpoint="supplier/report"
+              filenamePrefix="fornecedor_pedidos"
+              columns={[
+                { key: "id", label: "Pedido", format: (v) => `#${String(v).padStart(6, "0")}` },
+                { key: "data", label: "Data" },
+                { key: "comprador", label: "Comprador" },
+                { key: "cnpj_comprador", label: "CNPJ" },
+                { key: "total", label: "Valor Bruto", format: (v) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(Number(v)), align: "right" },
+                { key: "comissao", label: "Comissão", format: (v) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(Number(v)), align: "right" },
+                { key: "valor_liquido", label: "Valor Líquido", format: (v) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(Number(v)), align: "right" },
+                { key: "status", label: "Status" },
+              ]}
+              summaryItems={[
+                { key: "total", label: "Pedidos no período", color: "text-blue-600", bgColor: "bg-blue-50 border-blue-200" },
+                { key: "gmv", label: "Faturamento bruto", format: (v) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(Number(v)), color: "text-emerald-600", bgColor: "bg-emerald-50 border-emerald-200" },
+                { key: "receita", label: "Receita líquida", format: (v) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(Number(v)), color: "text-amber-600", bgColor: "bg-amber-50 border-amber-200" },
+              ]}
+            />
           </div>
         )}
 

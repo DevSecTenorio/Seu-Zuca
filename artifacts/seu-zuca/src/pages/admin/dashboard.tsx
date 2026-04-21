@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useGetDashboardStats, useAdminListUsers, useAdminApproveUser, useAdminSuspendUser, useListCategories, useCreateCategory, useUpdateCategory, useDeleteCategory } from "@workspace/api-client-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Layout } from "@/components/Layout";
+import ReportTab from "@/components/ReportTab";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,7 +13,7 @@ import {
   Users, Package, ShoppingBag, TrendingUp, CheckCircle, XCircle,
   Clock, UserPlus, LayoutDashboard, AlertCircle, Eye, EyeOff, RefreshCw,
   ImageIcon, Plus, Trash2, Edit2, GripVertical, ExternalLink, ToggleLeft, ToggleRight,
-  ShieldCheck, Headphones, UploadCloud, X as XIcon, Link as LinkIcon, FolderOpen, Tag, Star, Percent, ListOrdered, KeyRound, Copy, CheckCheck
+  ShieldCheck, Headphones, UploadCloud, X as XIcon, Link as LinkIcon, FolderOpen, Tag, Star, Percent, ListOrdered, KeyRound, Copy, CheckCheck, BarChart2
 } from "lucide-react";
 import { useUpload } from "@workspace/object-storage-web";
 import { useToast } from "@/hooks/use-toast";
@@ -1746,7 +1747,7 @@ function ReviewsModerationTab() {
 export default function AdminDashboard() {
   const { isAdmin } = useAuth();
   const { toast } = useToast();
-  const [activeTab, setActiveTab] = useState<"overview" | "users" | "create-supplier" | "internal-users" | "banners" | "categories" | "products" | "minimums" | "reviews">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "users" | "create-supplier" | "internal-users" | "banners" | "categories" | "products" | "minimums" | "reviews" | "relatorios">("overview");
   const [statusFilter, setStatusFilter] = useState("all");
   const [userCommissions, setUserCommissions] = useState<Record<number, string>>({});
   const [savingUserCommission, setSavingUserCommission] = useState<number | null>(null);
@@ -1865,6 +1866,7 @@ export default function AdminDashboard() {
     { id: "banners", label: "Banners", icon: ImageIcon },
     { id: "minimums", label: "Qtd. Mínimas", icon: ListOrdered },
     { id: "reviews", label: "Avaliações", icon: Star },
+    { id: "relatorios", label: "Relatórios", icon: BarChart2 },
   ] as const;
 
   return (
@@ -1929,21 +1931,13 @@ export default function AdminDashboard() {
             </div>
 
             {/* Extra info cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Card className="border-border shadow-none">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm text-muted-foreground font-medium">Pedidos pendentes</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <p className="text-3xl font-black text-amber-500">{dash?.pedidosPendentes ?? 0}</p>
-                </CardContent>
-              </Card>
-              <Card className="border-border shadow-none">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm text-muted-foreground font-medium">Cotações pendentes</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-3xl font-black text-violet-500">{dash?.cotacoesPendentes ?? 0}</p>
                 </CardContent>
               </Card>
               <Card className="border-border shadow-none">
@@ -2248,6 +2242,73 @@ export default function AdminDashboard() {
               <p className="text-sm text-muted-foreground mt-0.5">Aprove ou oculte avaliações feitas pelos compradores nos produtos.</p>
             </div>
             <ReviewsModerationTab />
+          </div>
+        )}
+
+        {activeTab === "relatorios" && (
+          <div className="space-y-6">
+            <div>
+              <h2 className="text-lg font-semibold">Relatórios</h2>
+              <p className="text-sm text-muted-foreground mt-0.5">Filtre por período e exporte dados em PDF, Excel ou CSV.</p>
+            </div>
+            <ReportTab
+              title="Relatório de Pedidos"
+              endpoint="admin/report/orders"
+              filenamePrefix="admin_pedidos"
+              reportTypes={[
+                { value: "orders", label: "Pedidos" },
+              ]}
+              columns={[
+                { key: "id", label: "ID", format: (v) => `#${String(v).padStart(6,"0")}` },
+                { key: "data", label: "Data" },
+                { key: "comprador", label: "Comprador" },
+                { key: "fornecedor", label: "Fornecedor" },
+                { key: "total", label: "Total", format: (v) => new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL"}).format(Number(v)), align: "right" },
+                { key: "comissao", label: "Comissão", format: (v) => new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL"}).format(Number(v)), align: "right" },
+                { key: "status", label: "Status" },
+              ]}
+              summaryItems={[
+                { key: "total", label: "Total de pedidos", color: "text-blue-600", bgColor: "bg-blue-50 border-blue-200" },
+                { key: "gmv", label: "GMV", format: (v) => new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL"}).format(Number(v)), color: "text-emerald-600", bgColor: "bg-emerald-50 border-emerald-200" },
+                { key: "comissoes", label: "Comissões", format: (v) => new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL"}).format(Number(v)), color: "text-amber-600", bgColor: "bg-amber-50 border-amber-200" },
+              ]}
+            />
+            <ReportTab
+              title="Relatório de Usuários"
+              endpoint="admin/report/users"
+              filenamePrefix="admin_usuarios"
+              columns={[
+                { key: "id", label: "ID" },
+                { key: "data_cadastro", label: "Cadastro" },
+                { key: "nome", label: "Nome" },
+                { key: "email", label: "E-mail" },
+                { key: "tipo", label: "Tipo" },
+                { key: "status", label: "Status" },
+                { key: "cnpj", label: "CNPJ" },
+                { key: "nome_fantasia", label: "Nome Fantasia" },
+              ]}
+              summaryItems={[
+                { key: "total", label: "Total de usuários", color: "text-violet-600", bgColor: "bg-violet-50 border-violet-200" },
+              ]}
+            />
+            <ReportTab
+              title="Relatório de Comissões"
+              endpoint="admin/report/comissoes"
+              filenamePrefix="admin_comissoes"
+              columns={[
+                { key: "pedido", label: "Pedido", format: (v) => `#${String(v).padStart(6,"0")}` },
+                { key: "data", label: "Data" },
+                { key: "fornecedor", label: "Fornecedor" },
+                { key: "valor_pedido", label: "Valor Pedido", format: (v) => new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL"}).format(Number(v)), align: "right" },
+                { key: "comissao_plataforma", label: "Comissão", format: (v) => new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL"}).format(Number(v)), align: "right" },
+                { key: "status", label: "Status" },
+              ]}
+              summaryItems={[
+                { key: "total", label: "Pedidos com comissão", color: "text-blue-600", bgColor: "bg-blue-50 border-blue-200" },
+                { key: "totalComissoes", label: "Total comissões", format: (v) => new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL"}).format(Number(v)), color: "text-emerald-600", bgColor: "bg-emerald-50 border-emerald-200" },
+                { key: "gmv", label: "GMV período", format: (v) => new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL"}).format(Number(v)), color: "text-amber-600", bgColor: "bg-amber-50 border-amber-200" },
+              ]}
+            />
           </div>
         )}
 

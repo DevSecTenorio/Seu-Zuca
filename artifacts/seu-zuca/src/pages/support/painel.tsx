@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Layout } from "@/components/Layout";
+import ReportTab from "@/components/ReportTab";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -9,7 +10,7 @@ import {
   Users, Package, ShoppingBag, Star, ChevronLeft,
   Search, Building2, Phone, Mail, Hash, AlertCircle,
   CheckCircle, Clock, XCircle, ChevronRight, Headphones, LayoutDashboard,
-  UserCheck, Calendar, MessageSquare
+  UserCheck, Calendar, MessageSquare, BarChart2
 } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -630,7 +631,7 @@ function BuyersTab({ onSelect }: { onSelect: (b: Buyer) => void }) {
 }
 
 // ─── Main support panel ────────────────────────────────────────────────────────
-type MainTab = "overview" | "fornecedores" | "compradores";
+type MainTab = "overview" | "fornecedores" | "compradores" | "relatorios";
 type DetailView =
   | { type: "supplier"; data: Supplier }
   | { type: "buyer"; data: Buyer }
@@ -655,6 +656,7 @@ export default function SupportPanel() {
     { id: "overview",     label: "Visão Geral",  icon: LayoutDashboard },
     { id: "fornecedores", label: "Fornecedores", icon: Building2 },
     { id: "compradores",  label: "Compradores",  icon: Users },
+    { id: "relatorios",   label: "Relatórios",   icon: BarChart2 },
   ];
 
   return (
@@ -698,6 +700,53 @@ export default function SupportPanel() {
         )}
         {tab === "compradores" && detail?.type === "buyer" && (
           <BuyerDetail buyer={detail.data} onBack={() => setDetail(null)} />
+        )}
+
+        {tab === "relatorios" && (
+          <div className="space-y-6">
+            <div>
+              <h2 className="text-lg font-semibold">Relatórios da Plataforma</h2>
+              <p className="text-sm text-muted-foreground mt-0.5">Filtre por período e exporte relatórios de pedidos e usuários.</p>
+            </div>
+            <ReportTab
+              title="Relatório de Pedidos"
+              endpoint="support/report"
+              filenamePrefix="suporte_pedidos"
+              reportTypes={[{ value: "orders", label: "Pedidos" }]}
+              defaultType="orders"
+              columns={[
+                { key: "id", label: "Pedido", format: (v) => `#${String(v).padStart(6,"0")}` },
+                { key: "data", label: "Data" },
+                { key: "comprador", label: "Comprador" },
+                { key: "fornecedor", label: "Fornecedor" },
+                { key: "total", label: "Total", format: (v) => new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL"}).format(Number(v)), align: "right" },
+                { key: "status", label: "Status" },
+              ]}
+              summaryItems={[
+                { key: "total", label: "Total de pedidos", color: "text-blue-600", bgColor: "bg-blue-50 border-blue-200" },
+                { key: "gmv", label: "GMV do período", format: (v) => new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL"}).format(Number(v)), color: "text-emerald-600", bgColor: "bg-emerald-50 border-emerald-200" },
+              ]}
+            />
+            <ReportTab
+              title="Relatório de Usuários"
+              endpoint="support/report"
+              filenamePrefix="suporte_usuarios"
+              reportTypes={[{ value: "users", label: "Usuários" }]}
+              defaultType="users"
+              columns={[
+                { key: "id", label: "ID" },
+                { key: "data_cadastro", label: "Cadastro" },
+                { key: "nome", label: "Nome" },
+                { key: "email", label: "E-mail" },
+                { key: "tipo", label: "Tipo" },
+                { key: "status", label: "Status" },
+                { key: "cnpj", label: "CNPJ" },
+              ]}
+              summaryItems={[
+                { key: "total", label: "Total de usuários", color: "text-violet-600", bgColor: "bg-violet-50 border-violet-200" },
+              ]}
+            />
+          </div>
         )}
 
       </div>

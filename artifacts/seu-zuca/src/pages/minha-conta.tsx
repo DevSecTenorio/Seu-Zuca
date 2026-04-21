@@ -7,12 +7,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { User, Package, MapPin, ShoppingBag, Heart, Phone, Building2, Mail, ChevronRight } from "lucide-react";
+import { User, Package, MapPin, ShoppingBag, Heart, Phone, Building2, Mail, ChevronRight, BarChart3 } from "lucide-react";
+import ReportTab from "@/components/ReportTab";
 import { Link } from "wouter";
 
 const BRL = (v: number) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v);
 
-type TabKey = "perfil" | "pedidos" | "enderecos" | "favoritos";
+type TabKey = "perfil" | "pedidos" | "enderecos" | "favoritos" | "relatorios";
 
 type Order = { id: number; status: string; total: number; createdAt: string; supplierId?: number };
 type Address = { id: number; cep: string; logradouro: string; numero: string; bairro: string; cidade: string; estado: string; principal?: boolean };
@@ -151,6 +152,7 @@ export default function MinhaConta() {
     ...(isApprovedBuyer ? [
       { key: "pedidos" as TabKey, label: "Pedidos", icon: ShoppingBag },
       { key: "favoritos" as TabKey, label: "Favoritos", icon: Heart },
+      { key: "relatorios" as TabKey, label: "Relatórios", icon: BarChart3 },
     ] : []),
     { key: "enderecos", label: "Endereços", icon: MapPin },
   ];
@@ -336,6 +338,26 @@ export default function MinhaConta() {
               </Button>
             )}
           </div>
+        )}
+
+        {/* Relatórios */}
+        {tab === "relatorios" && (
+          <ReportTab
+            title="Histórico de Compras"
+            endpoint="buyer/report"
+            filenamePrefix="meus_pedidos"
+            columns={[
+              { key: "id", label: "Pedido", format: (v) => `#${String(v).padStart(6, "0")}` },
+              { key: "data", label: "Data" },
+              { key: "fornecedor", label: "Fornecedor" },
+              { key: "total", label: "Total", format: (v) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(Number(v)), align: "right" },
+              { key: "status", label: "Status" },
+            ]}
+            summaryItems={[
+              { key: "total", label: "Pedidos no período", color: "text-blue-600", bgColor: "bg-blue-50 border-blue-200" },
+              { key: "totalGasto", label: "Total investido", format: (v) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(Number(v)), color: "text-emerald-600", bgColor: "bg-emerald-50 border-emerald-200" },
+            ]}
+          />
         )}
 
         {/* Favoritos */}

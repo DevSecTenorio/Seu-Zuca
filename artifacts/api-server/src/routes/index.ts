@@ -13,6 +13,7 @@ import dashboardRouter from "./dashboard";
 import bannersRouter from "./banners";
 import supportRouter from "./support";
 import storageRouter from "./storage";
+import reportsRouter from "./reports";
 
 const router: IRouter = Router();
 
@@ -30,5 +31,6 @@ router.use(dashboardRouter);
 router.use(bannersRouter);
 router.use(supportRouter);
 router.use(storageRouter);
+router.use(reportsRouter);
 
 export default router;
