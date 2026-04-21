@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { useGetDashboardStats, useAdminListUsers, useAdminApproveUser, useAdminSuspendUser, useListCategories, useCreateCategory, useUpdateCategory, useDeleteCategory } from "@workspace/api-client-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Layout } from "@/components/Layout";
@@ -239,6 +240,7 @@ function ResetPasswordModal({ user, onClose }: { user: UserType; onClose: () => 
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [mustChangePw, setMustChangePw] = useState(true);
 
   const roleColors: Record<string, string> = {
     buyer: "bg-blue-100 text-blue-700",
@@ -268,7 +270,7 @@ function ResetPasswordModal({ user, onClose }: { user: UserType; onClose: () => 
       const r = await fetch(`/api/admin/users/${user.id}/reset-password`, {
         method: "PATCH", credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password }),
+        body: JSON.stringify({ password, mustChangePassword: mustChangePw }),
       });
       if (!r.ok) { const d = await r.json(); throw new Error(d.message || "Erro ao redefinir"); }
       setSuccess(true);
@@ -277,7 +279,7 @@ function ResetPasswordModal({ user, onClose }: { user: UserType; onClose: () => 
     } finally { setLoading(false); }
   }
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
       <div className="relative bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-md z-10">
@@ -359,6 +361,19 @@ function ResetPasswordModal({ user, onClose }: { user: UserType; onClose: () => 
                 <p className="text-xs text-muted-foreground">Mínimo de 8 caracteres.</p>
               </div>
 
+              <label className="flex items-start gap-2.5 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={mustChangePw}
+                  onChange={(e) => setMustChangePw(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 rounded border-gray-300 accent-amber-500"
+                />
+                <div>
+                  <p className="text-sm font-medium text-gray-800">Obrigar troca de senha no primeiro acesso</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">O usuário será redirecionado para alterar a senha ao fazer login.</p>
+                </div>
+              </label>
+
               <div className="flex gap-2 pt-1">
                 <Button type="submit" disabled={loading} className="flex-1 bg-amber-500 hover:bg-amber-600 text-white">
                   {loading ? "Salvando..." : "Redefinir senha"}
@@ -370,7 +385,7 @@ function ResetPasswordModal({ user, onClose }: { user: UserType; onClose: () => 
         </div>
       </div>
     </div>
-  );
+  , document.body);
 }
 
 function CreateInternalUserTab({ onCreated }: { onCreated: () => void }) {

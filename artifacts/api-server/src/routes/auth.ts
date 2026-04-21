@@ -116,6 +116,7 @@ router.post("/auth/login", async (req, res): Promise<void> => {
       nomeFantasia: user.nomeFantasia,
       stripeAccountId: user.stripeAccountId,
       emailVerificado: user.emailVerificado,
+      mustChangePassword: user.mustChangePassword,
       createdAt: user.createdAt,
     },
   });
@@ -147,6 +148,7 @@ router.get("/auth/me", authMiddleware, async (req: AuthRequest, res): Promise<vo
     ramo: user.ramo,
     stripeAccountId: user.stripeAccountId,
     emailVerificado: user.emailVerificado,
+    mustChangePassword: user.mustChangePassword,
     createdAt: user.createdAt,
   });
 });
@@ -167,6 +169,28 @@ router.put("/auth/profile", authMiddleware, async (req: AuthRequest, res): Promi
     cnpj: user.cnpj, razaoSocial: user.razaoSocial, nomeFantasia: user.nomeFantasia,
     telefone: user.telefone, ramo: user.ramo, createdAt: user.createdAt,
   });
+});
+
+router.patch("/auth/change-password", authMiddleware, async (req: AuthRequest, res): Promise<void> => {
+  const { currentPassword, newPassword } = req.body as { currentPassword?: string; newPassword?: string };
+
+  if (!currentPassword || !newPassword) {
+    res.status(400).json({ message: "Senha atual e nova senha são obrigatórias" }); return;
+  }
+  if (newPassword.length < 8) {
+    res.status(400).json({ message: "Nova senha deve ter pelo menos 8 caracteres" }); return;
+  }
+
+  const [user] = await db.select().from(usersTable).where(eq(usersTable.id, req.userId!));
+  if (!user) { res.status(404).json({ message: "Usuário não encontrado" }); return; }
+
+  const valid = await bcrypt.compare(currentPassword, user.passwordHash);
+  if (!valid) { res.status(401).json({ message: "Senha atual incorreta" }); return; }
+
+  const passwordHash = await bcrypt.hash(newPassword, 12);
+  await db.update(usersTable).set({ passwordHash, mustChangePassword: false }).where(eq(usersTable.id, req.userId!));
+
+  res.json({ message: "Senha alterada com sucesso" });
 });
 
 router.post("/auth/forgot-password", async (req, res): Promise<void> => {

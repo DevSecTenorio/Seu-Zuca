@@ -26,6 +26,7 @@ import ComoFunciona from "@/pages/como-funciona";
 import SejaFornecedor from "@/pages/seja-fornecedor";
 import MinhaConta from "@/pages/minha-conta";
 import FornecedorPerfil from "@/pages/fornecedor-perfil";
+import TrocarSenha from "@/pages/trocar-senha";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient({
@@ -63,6 +64,7 @@ function Router() {
       <Route path="/quem-somos" component={QuemSomos} />
       <Route path="/como-funciona" component={ComoFunciona} />
       <Route path="/seja-fornecedor" component={SejaFornecedor} />
+      <Route path="/trocar-senha" component={TrocarSenha} />
       <Route component={NotFound} />
     </Switch>
   );

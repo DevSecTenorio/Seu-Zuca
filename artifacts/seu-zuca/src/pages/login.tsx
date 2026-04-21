@@ -21,10 +21,15 @@ export default function Login() {
     e.preventDefault();
     setError("");
     try {
-      await loginMutation.mutateAsync({ data: { email, password } });
+      const result = await loginMutation.mutateAsync({ data: { email, password } });
       await queryClient.invalidateQueries();
       toast({ title: "Login realizado com sucesso!" });
-      navigate("/");
+      const userData = (result as { user?: { mustChangePassword?: boolean } })?.user;
+      if (userData?.mustChangePassword) {
+        navigate("/trocar-senha");
+      } else {
+        navigate("/");
+      }
     } catch (err: unknown) {
       const message = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || "E-mail ou senha incorretos";
       setError(message);

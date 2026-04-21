@@ -13,6 +13,7 @@ interface User {
   telefone?: string;
   ramo?: string;
   emailVerificado?: boolean;
+  mustChangePassword?: boolean;
   stripeAccountId?: string;
   createdAt?: string;
 }

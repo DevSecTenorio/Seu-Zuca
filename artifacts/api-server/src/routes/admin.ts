@@ -376,7 +376,7 @@ router.delete("/admin/internal-users/:id", authMiddleware, requireAdmin, async (
 // ── Reset user password (buyer / supplier) ────────────────────────────────────
 router.patch("/admin/users/:id/reset-password", authMiddleware, requireAdmin, async (req: AuthRequest, res): Promise<void> => {
   const id = parseInt(Array.isArray(req.params.id) ? req.params.id[0] : req.params.id, 10);
-  const { password } = req.body as { password?: string };
+  const { password, mustChangePassword } = req.body as { password?: string; mustChangePassword?: boolean };
 
   if (!password) { res.status(400).json({ message: "Senha é obrigatória" }); return; }
   if (password.length < 8) { res.status(400).json({ message: "Senha deve ter pelo menos 8 caracteres" }); return; }
@@ -385,7 +385,7 @@ router.patch("/admin/users/:id/reset-password", authMiddleware, requireAdmin, as
   if (!target) { res.status(404).json({ message: "Usuário não encontrado" }); return; }
 
   const passwordHash = await bcrypt.hash(password, 12);
-  await db.update(usersTable).set({ passwordHash }).where(eq(usersTable.id, id));
+  await db.update(usersTable).set({ passwordHash, mustChangePassword: mustChangePassword ?? false }).where(eq(usersTable.id, id));
 
   res.json({ message: "Senha redefinida com sucesso" });
 });
