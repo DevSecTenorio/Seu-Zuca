@@ -1,15 +1,11 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { FileDown, FileSpreadsheet, FileText, Search, BarChart3, AlertCircle } from "lucide-react";
+import { FileDown, FileSpreadsheet, FileText, Search, BarChart3, AlertCircle, Download } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-
-const BRL = (v: number | string) =>
-  new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(Number(v));
 
 export type ReportColumn = {
   key: string;
@@ -27,6 +23,7 @@ export type SummaryItem = {
 };
 
 type ReportType = { value: string; label: string };
+type ExportFormat = "csv" | "xlsx" | "pdf";
 
 type Props = {
   title: string;
@@ -54,6 +51,12 @@ function fmtCell(col: ReportColumn, row: Record<string, unknown>): string {
   return String(v);
 }
 
+const FORMAT_OPTS: { value: ExportFormat; label: string; icon: React.ElementType; color: string }[] = [
+  { value: "pdf",  label: "PDF",   icon: FileText,        color: "text-red-600 border-red-300 bg-red-50"   },
+  { value: "xlsx", label: "Excel", icon: FileSpreadsheet,  color: "text-blue-600 border-blue-300 bg-blue-50" },
+  { value: "csv",  label: "CSV",   icon: FileDown,         color: "text-emerald-600 border-emerald-300 bg-emerald-50" },
+];
+
 export default function ReportTab({
   title,
   endpoint,
@@ -67,29 +70,11 @@ export default function ReportTab({
   const [from, setFrom] = useState(firstOfMonth());
   const [to, setTo] = useState(today());
   const [type, setType] = useState(defaultType || reportTypes?.[0]?.value || "");
+  const [format, setFormat] = useState<ExportFormat>("pdf");
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<Record<string, unknown>[]>([]);
   const [summary, setSummary] = useState<Record<string, unknown>>({});
   const [fetched, setFetched] = useState(false);
-
-  async function fetchReport() {
-    setLoading(true);
-    try {
-      const params = new URLSearchParams({ from, to });
-      if (type) params.set("type", type);
-      const url = `/api/${endpoint}?${params.toString()}`;
-      const r = await fetch(url, { credentials: "include" });
-      if (!r.ok) throw new Error("Erro ao carregar relatório");
-      const json = await r.json();
-      setData(json.rows || []);
-      setSummary(json.summary || {});
-      setFetched(true);
-    } catch {
-      toast({ title: "Erro ao gerar relatório", variant: "destructive" });
-    } finally {
-      setLoading(false);
-    }
-  }
 
   function getFilename(ext: string) {
     return `${filenamePrefix}_${from}_a_${to}.${ext}`;
@@ -101,8 +86,11 @@ export default function ReportTab({
     );
   }
 
-  function exportCSV() {
-    const ws = XLSX.utils.json_to_sheet(getSheetData());
+  function doCSV(rows: Record<string, unknown>[]) {
+    const sheetData = rows.map(row =>
+      Object.fromEntries(columns.map(col => [col.label, fmtCell(col, row)]))
+    );
+    const ws = XLSX.utils.json_to_sheet(sheetData);
     const csv = XLSX.utils.sheet_to_csv(ws);
     const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
@@ -111,47 +99,45 @@ export default function ReportTab({
     a.download = getFilename("csv");
     a.click();
     URL.revokeObjectURL(url);
-    toast({ title: "CSV exportado com sucesso" });
   }
 
-  function exportXLSX() {
-    const ws = XLSX.utils.json_to_sheet(getSheetData());
+  function doXLSX(rows: Record<string, unknown>[]) {
+    const sheetData = rows.map(row =>
+      Object.fromEntries(columns.map(col => [col.label, fmtCell(col, row)]))
+    );
+    const ws = XLSX.utils.json_to_sheet(sheetData);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Relatório");
-    const colWidths = columns.map(() => ({ wch: 22 }));
-    ws["!cols"] = colWidths;
+    ws["!cols"] = columns.map(() => ({ wch: 22 }));
     XLSX.writeFile(wb, getFilename("xlsx"));
-    toast({ title: "Excel exportado com sucesso" });
   }
 
-  function exportPDF() {
+  function doPDF(rows: Record<string, unknown>[], sum: Record<string, unknown>) {
     const doc = new jsPDF({ orientation: columns.length > 5 ? "landscape" : "portrait" });
-
     doc.setFontSize(16);
     doc.setFont("helvetica", "bold");
     doc.text(title, 14, 16);
-
     doc.setFontSize(10);
     doc.setFont("helvetica", "normal");
     doc.setTextColor(120);
     doc.text(`Período: ${from} a ${to}`, 14, 24);
     doc.text(`Gerado em: ${new Date().toLocaleString("pt-BR")}`, 14, 30);
 
+    let startY = 36;
     if (summaryItems && summaryItems.length > 0) {
       doc.setTextColor(0);
       doc.setFontSize(9);
       const summaryText = summaryItems
-        .map(s => `${s.label}: ${s.format ? s.format(summary[s.key]) : (summary[s.key] ?? "—")}`)
+        .map(s => `${s.label}: ${s.format ? s.format(sum[s.key]) : (sum[s.key] ?? "—")}`)
         .join("   |   ");
       doc.text(summaryText, 14, 38);
+      startY = 44;
     }
-
-    const startY = summaryItems && summaryItems.length > 0 ? 44 : 36;
 
     autoTable(doc, {
       startY,
       head: [columns.map(c => c.label)],
-      body: data.map(row => columns.map(col => fmtCell(col, row))),
+      body: rows.map(row => columns.map(col => fmtCell(col, row))),
       styles: { fontSize: 8, cellPadding: 2 },
       headStyles: { fillColor: [192, 24, 26], textColor: 255, fontStyle: "bold" },
       alternateRowStyles: { fillColor: [248, 248, 248] },
@@ -161,14 +147,59 @@ export default function ReportTab({
     });
 
     doc.save(getFilename("pdf"));
-    toast({ title: "PDF exportado com sucesso" });
+  }
+
+  async function handleGenerate() {
+    setLoading(true);
+    try {
+      const params = new URLSearchParams({ from, to });
+      if (type) params.set("type", type);
+      const url = `/api/${endpoint}?${params.toString()}`;
+      const r = await fetch(url, { credentials: "include" });
+      if (!r.ok) throw new Error(`Erro HTTP ${r.status}`);
+      const json = await r.json();
+      const rows: Record<string, unknown>[] = json.rows || [];
+      const sum: Record<string, unknown> = json.summary || {};
+
+      setData(rows);
+      setSummary(sum);
+      setFetched(true);
+
+      if (rows.length === 0) {
+        toast({ title: "Nenhum registro encontrado no período", variant: "default" });
+        return;
+      }
+
+      if (format === "csv") doCSV(rows);
+      else if (format === "xlsx") doXLSX(rows);
+      else doPDF(rows, sum);
+
+      const fmtLabel = FORMAT_OPTS.find(f => f.value === format)?.label || format.toUpperCase();
+      toast({ title: `Relatório ${fmtLabel} gerado com sucesso!` });
+    } catch (e) {
+      console.error(e);
+      toast({ title: "Erro ao gerar relatório. Tente novamente.", variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function handleReExport(fmt: ExportFormat) {
+    if (data.length === 0) return;
+    const prev = format;
+    if (fmt === "csv") doCSV(data);
+    else if (fmt === "xlsx") doXLSX(data);
+    else doPDF(data, summary);
+    const fmtLabel = FORMAT_OPTS.find(f => f.value === fmt)?.label || fmt.toUpperCase();
+    toast({ title: `${fmtLabel} exportado com sucesso` });
+    void prev;
   }
 
   const hasData = fetched && data.length > 0;
   const isEmpty = fetched && data.length === 0;
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       <Card className="shadow-none border">
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
@@ -176,7 +207,9 @@ export default function ReportTab({
             {title}
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-5">
+
+          {/* Row 1: Dates + type selector */}
           <div className="flex flex-wrap gap-3 items-end">
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">Data inicial</label>
@@ -198,9 +231,9 @@ export default function ReportTab({
                 className="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#C0181A]/30 focus:border-[#C0181A]"
               />
             </div>
-            {reportTypes && reportTypes.length > 0 && (
+            {reportTypes && reportTypes.length > 1 && (
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Tipo de relatório</label>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Tipo</label>
                 <select
                   value={type}
                   onChange={e => { setType(e.target.value); setFetched(false); setData([]); }}
@@ -212,16 +245,44 @@ export default function ReportTab({
                 </select>
               </div>
             )}
-            <Button
-              onClick={fetchReport}
-              disabled={loading}
-              className="bg-[#C0181A] hover:bg-[#a01418] gap-2"
-            >
-              <Search size={15} />
-              {loading ? "Gerando..." : "Gerar relatório"}
-            </Button>
           </div>
 
+          {/* Row 2: Format selector */}
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-2">Formato do arquivo</label>
+            <div className="flex gap-2 flex-wrap">
+              {FORMAT_OPTS.map(opt => {
+                const Icon = opt.icon;
+                const selected = format === opt.value;
+                return (
+                  <button
+                    key={opt.value}
+                    onClick={() => setFormat(opt.value)}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg border-2 text-sm font-medium transition-all ${
+                      selected
+                        ? `${opt.color} border-current ring-2 ring-offset-1 ring-current/30`
+                        : "border-gray-200 text-gray-500 bg-white hover:border-gray-300"
+                    }`}
+                  >
+                    <Icon size={16} />
+                    {opt.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Row 3: Generate button */}
+          <Button
+            onClick={handleGenerate}
+            disabled={loading}
+            className="bg-[#C0181A] hover:bg-[#a01418] gap-2 w-full sm:w-auto"
+          >
+            <Download size={16} />
+            {loading ? "Gerando..." : `Gerar e baixar ${FORMAT_OPTS.find(f => f.value === format)?.label}`}
+          </Button>
+
+          {/* Summary pills */}
           {summaryItems && hasData && (
             <div className="flex flex-wrap gap-3 pt-1">
               {summaryItems.map(s => (
@@ -238,20 +299,23 @@ export default function ReportTab({
             </div>
           )}
 
+          {/* Re-export buttons (shown only after fetching) */}
           {hasData && (
-            <div className="flex gap-2 flex-wrap pt-1">
-              <Button variant="outline" size="sm" className="gap-2 text-sm" onClick={exportCSV}>
-                <FileDown size={15} className="text-emerald-600" />
-                Exportar CSV
-              </Button>
-              <Button variant="outline" size="sm" className="gap-2 text-sm" onClick={exportXLSX}>
-                <FileSpreadsheet size={15} className="text-blue-600" />
-                Exportar Excel
-              </Button>
-              <Button variant="outline" size="sm" className="gap-2 text-sm" onClick={exportPDF}>
-                <FileText size={15} className="text-red-600" />
-                Exportar PDF
-              </Button>
+            <div className="flex gap-2 flex-wrap items-center pt-1 border-t">
+              <span className="text-xs text-muted-foreground">Baixar novamente:</span>
+              {FORMAT_OPTS.map(opt => {
+                const Icon = opt.icon;
+                return (
+                  <button
+                    key={opt.value}
+                    onClick={() => handleReExport(opt.value)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-md border text-xs font-medium text-gray-600 bg-white hover:bg-gray-50 transition-colors"
+                  >
+                    <Icon size={13} />
+                    {opt.label}
+                  </button>
+                );
+              })}
             </div>
           )}
         </CardContent>
@@ -290,17 +354,11 @@ export default function ReportTab({
                       {columns.map(col => (
                         <td
                           key={col.key}
-                          className={`px-4 py-3 text-sm ${
+                          className={`px-4 py-3 text-sm text-gray-800 ${
                             col.align === "right" ? "text-right" : col.align === "center" ? "text-center" : "text-left"
-                          } ${col.key === "status" ? "" : "text-gray-800"}`}
+                          }`}
                         >
-                          {col.key === "status" ? (
-                            <Badge variant="secondary" className="text-xs font-medium">
-                              {fmtCell(col, row)}
-                            </Badge>
-                          ) : (
-                            fmtCell(col, row)
-                          )}
+                          {fmtCell(col, row)}
                         </td>
                       ))}
                     </tr>
