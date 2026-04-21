@@ -82,6 +82,7 @@
     "@uppy/react": "^5.2.0",
     "jspdf": "^4.2.1",
     "jspdf-autotable": "^5.0.7",
+    "radix-ui": "^1.4.3",
     "xlsx": "^0.18.5"
   }
 }

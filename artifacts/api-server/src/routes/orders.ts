@@ -9,6 +9,9 @@ async function buildOrderResponse(order: typeof ordersTable.$inferSelect) {
   const items = await db.select().from(orderItemsTable).where(eq(orderItemsTable.orderId, order.id));
   const [buyer] = await db.select().from(usersTable).where(eq(usersTable.id, order.buyerId));
   const [supplier] = await db.select().from(usersTable).where(eq(usersTable.id, order.supplierId));
+  const address = order.addressId
+    ? (await db.select().from(addressesTable).where(eq(addressesTable.id, order.addressId)))[0] || null
+    : null;
 
   const detailedItems = await Promise.all(items.map(async (item) => {
     const [product] = await db.select().from(productsTable).where(eq(productsTable.id, item.productId));
@@ -19,6 +22,7 @@ async function buildOrderResponse(order: typeof ordersTable.$inferSelect) {
     ...order,
     buyerName: buyer?.nomeFantasia || buyer?.nome,
     supplierName: supplier?.nomeFantasia || supplier?.nome,
+    address,
     items: detailedItems,
   };
 }
@@ -126,6 +130,39 @@ router.post("/orders", authMiddleware, requireApprovedBuyer, async (req: AuthReq
 
   const primaryOrder = createdOrders[0];
   res.status(201).json({ ...primaryOrder, checkoutUrl: `/pedidos/${primaryOrder.id}` });
+});
+
+// BUYER — cancel own pending order
+router.put("/orders/:id/cancel", authMiddleware, requireApprovedBuyer, async (req: AuthRequest, res): Promise<void> => {
+  const raw = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+  const id = parseInt(raw, 10);
+
+  const [order] = await db.select().from(ordersTable).where(and(eq(ordersTable.id, id), eq(ordersTable.buyerId, req.userId!)));
+  if (!order) {
+    res.status(404).json({ message: "Pedido não encontrado" });
+    return;
+  }
+
+  const cancellable = ["pendente"];
+  if (!cancellable.includes(order.status)) {
+    res.status(400).json({ message: "Apenas pedidos pendentes podem ser cancelados pelo comprador" });
+    return;
+  }
+
+  const [updated] = await db.update(ordersTable).set({ status: "cancelado" }).where(eq(ordersTable.id, id)).returning();
+
+  // Restore stock
+  const items = await db.select().from(orderItemsTable).where(eq(orderItemsTable.orderId, id));
+  for (const item of items) {
+    const [product] = await db.select().from(productsTable).where(eq(productsTable.id, item.productId));
+    if (product) {
+      const newStock = product.estoque + item.quantidade;
+      await db.update(productsTable).set({ estoque: newStock, disponivel: true }).where(eq(productsTable.id, item.productId));
+    }
+  }
+
+  const result = await buildOrderResponse(updated);
+  res.json(result);
 });
 
 // SUPPLIER

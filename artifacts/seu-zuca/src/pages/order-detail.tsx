@@ -1,12 +1,12 @@
+import { useState } from "react";
 import { useParams } from "wouter";
 import { useGetOrder, useUpdateOrderStatus } from "@workspace/api-client-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Layout } from "@/components/Layout";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { Package, MapPin, User, Building2, ChevronLeft, CheckCircle2, Clock, Truck, XCircle, RotateCcw } from "lucide-react";
+import { Package, MapPin, User, Building2, ChevronLeft, CheckCircle2, Clock, Truck, XCircle, Loader2, AlertTriangle } from "lucide-react";
 import { Link } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 
@@ -32,6 +32,8 @@ export default function OrderDetail() {
   const { id } = useParams<{ id: string }>();
   const { isSupplier, isAdmin, isApprovedBuyer } = useAuth();
   const { toast } = useToast();
+  const [cancelOpen, setCancelOpen] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
 
   const { data: order, isLoading, refetch } = useGetOrder(Number(id), {
     query: { enabled: !!id }
@@ -46,6 +48,28 @@ export default function OrderDetail() {
       refetch();
     } catch {
       toast({ title: "Erro ao atualizar status", variant: "destructive" });
+    }
+  }
+
+  async function handleCancel() {
+    setCancelling(true);
+    try {
+      const r = await fetch(`/api/orders/${id}/cancel`, {
+        method: "PUT",
+        credentials: "include",
+      });
+      if (!r.ok) {
+        const err = await r.json().catch(() => ({}));
+        toast({ title: (err as { message?: string }).message || "Erro ao cancelar pedido", variant: "destructive" });
+        return;
+      }
+      toast({ title: "Pedido cancelado com sucesso" });
+      setCancelOpen(false);
+      refetch();
+    } catch {
+      toast({ title: "Erro ao cancelar pedido", variant: "destructive" });
+    } finally {
+      setCancelling(false);
     }
   }
 
@@ -144,6 +168,54 @@ export default function OrderDetail() {
                   </Button>
                 ))}
               </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Ações do comprador */}
+        {isApprovedBuyer && !isSupplier && !isAdmin && order.status === "pendente" && (
+          <Card className="border-red-100 bg-red-50/30 mb-4">
+            <CardContent className="p-4">
+              {!cancelOpen ? (
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <p className="text-sm font-medium text-gray-700">Precisa cancelar?</p>
+                    <p className="text-xs text-muted-foreground">Cancelamento disponível enquanto o pedido está pendente.</p>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="border-red-300 text-red-700 hover:bg-red-50 shrink-0"
+                    onClick={() => setCancelOpen(true)}
+                  >
+                    <XCircle size={14} className="mr-1.5" />
+                    Cancelar pedido
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <div className="flex items-start gap-2">
+                    <AlertTriangle size={16} className="text-red-600 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-semibold text-red-700">Confirmar cancelamento?</p>
+                      <p className="text-xs text-muted-foreground">Esta ação não pode ser desfeita. O estoque será restaurado.</p>
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button size="sm" variant="outline" onClick={() => setCancelOpen(false)} disabled={cancelling}>
+                      Manter pedido
+                    </Button>
+                    <Button
+                      size="sm"
+                      className="bg-red-600 hover:bg-red-700 text-white"
+                      disabled={cancelling}
+                      onClick={handleCancel}
+                    >
+                      {cancelling ? <><Loader2 size={14} className="animate-spin mr-1.5" />Cancelando...</> : "Sim, cancelar"}
+                    </Button>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
         )}
