@@ -1,4 +1,7 @@
 import { useState, useEffect, useRef } from "react";
+import {
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
+} from "recharts";
 import { useGetDashboardStats, useAdminListUsers, useAdminApproveUser, useAdminSuspendUser, useListCategories, useCreateCategory, useUpdateCategory, useDeleteCategory } from "@workspace/api-client-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Layout } from "@/components/Layout";
@@ -1743,11 +1746,249 @@ function ReviewsModerationTab() {
   );
 }
 
+// ─── Aba: Analytics ──────────────────────────────────────────────────────────
+const PERIODS = [
+  { label: "7 dias", value: "7d" },
+  { label: "30 dias", value: "30d" },
+  { label: "3 meses", value: "3m" },
+  { label: "6 meses", value: "6m" },
+] as const;
+
+const PLACEHOLDER_MONTHS = ["Nov", "Dez", "Jan", "Fev", "Mar", "Abr"];
+const CHART_DATA = PLACEHOLDER_MONTHS.map((m) => ({ mes: m, gmv: 0, comissoes: 0 }));
+
+const BRL_K = (v: number) =>
+  v >= 1000
+    ? `R$ ${(v / 1000).toFixed(0)}k`
+    : new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 }).format(v);
+
+function MetricCard({ label, value, sub, highlight }: { label: string; value: string; sub?: string; highlight?: boolean }) {
+  return (
+    <Card className={`border shadow-none ${highlight ? "border-[#C0181A]/30 bg-[#C0181A]/5" : "border-border"}`}>
+      <CardContent className="p-4">
+        <p className="text-xs text-muted-foreground mb-1">{label}</p>
+        <p className={`text-2xl font-black leading-tight ${highlight ? "text-[#C0181A]" : "text-gray-900"}`}>{value}</p>
+        {sub !== undefined && (
+          <p className="text-xs text-muted-foreground mt-1">{sub}</p>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+const ALERTS = [
+  { priority: "red",    label: "Fornecedores com avaliação abaixo de 3,5" },
+  { priority: "red",    label: "Pedidos em disputa sem movimentação" },
+  { priority: "red",    label: "Fornecedores com comissão retida / pagamento em atraso" },
+  { priority: "yellow", label: "Taxa de cancelamento acima da meta" },
+  { priority: "yellow", label: "Fornecedores inativos há 30+ dias" },
+  { priority: "green",  label: "Próximo repasse de comissões agendado" },
+] as const;
+
+const ALERT_DOT: Record<string, string> = {
+  red: "bg-red-500",
+  yellow: "bg-amber-400",
+  green: "bg-green-500",
+};
+
+function AnalyticsTab() {
+  const [period, setPeriod] = useState<"7d" | "30d" | "3m" | "6m">("30d");
+
+  return (
+    <div className="space-y-6">
+      {/* Header + period selector */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <h2 className="text-lg font-semibold">Analytics da Plataforma</h2>
+          <p className="text-sm text-muted-foreground mt-0.5">Visão estratégica de saúde financeira, comportamento e qualidade.</p>
+        </div>
+        <div className="flex gap-1 bg-gray-100 p-1 rounded-lg">
+          {PERIODS.map((p) => (
+            <button
+              key={p.value}
+              onClick={() => setPeriod(p.value)}
+              className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
+                period === p.value ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"
+              }`}
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* ── Seção 1: Saúde financeira ──────────────────────────────── */}
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+        <MetricCard label="GMV (volume total)" value="--" sub="vs período anterior: --" highlight />
+        <MetricCard label="Receita de comissões" value="--" sub="vs período anterior: --" />
+        <MetricCard label="Comissão média (%)" value="--" sub="vs período anterior: --" />
+        <MetricCard label="Total de pedidos" value="--" sub="vs período anterior: --" />
+        <MetricCard label="Ticket médio geral" value="--" sub="vs período anterior: --" />
+      </div>
+
+      {/* ── Seção 2: Gráfico de evolução financeira ────────────────── */}
+      <Card className="border shadow-none">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm font-semibold text-gray-700">Evolução financeira da plataforma</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ResponsiveContainer width="100%" height={260}>
+            <LineChart data={CHART_DATA} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+              <XAxis dataKey="mes" tick={{ fontSize: 12, fill: "#888" }} />
+              <YAxis tickFormatter={BRL_K} tick={{ fontSize: 11, fill: "#888" }} width={60} />
+              <Tooltip
+                formatter={(v: number, name: string) =>
+                  [new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v), name]
+                }
+              />
+              <Legend wrapperStyle={{ fontSize: 12 }} />
+              <Line type="monotone" dataKey="gmv" name="Volume total (GMV)" stroke="#C0181A" strokeWidth={2} dot={false} />
+              <Line type="monotone" dataKey="comissoes" name="Receita de comissões" stroke="#E85D00" strokeWidth={2} dot={false} strokeDasharray="5 3" />
+            </LineChart>
+          </ResponsiveContainer>
+          <p className="text-xs text-center text-muted-foreground mt-2">Dados serão exibidos conforme pedidos forem realizados na plataforma.</p>
+        </CardContent>
+      </Card>
+
+      {/* ── Seção 3: Top fornecedores + Alertas ───────────────────── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Top fornecedores */}
+        <Card className="border shadow-none">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-semibold text-gray-700">Top fornecedores por receita</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground py-6 text-center">Nenhum dado disponível</p>
+          </CardContent>
+        </Card>
+
+        {/* Alertas */}
+        <Card className="border shadow-none">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-semibold text-gray-700">Alertas que exigem ação</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {ALERTS.map((a, i) => (
+              <div key={i} className="flex items-center gap-2.5 py-1.5 border-b border-gray-50 last:border-0">
+                <span className={`w-2 h-2 rounded-full shrink-0 ${ALERT_DOT[a.priority]}`} />
+                <span className="text-sm text-gray-700">{a.label}</span>
+                <span className="ml-auto text-xs font-semibold text-muted-foreground">--</span>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* ── Seção 4: Qualidade + Categorias por volume ──────────────── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Qualidade */}
+        <Card className="border shadow-none">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-semibold text-gray-700">Qualidade geral da plataforma</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2.5">
+            {[
+              "Avaliação média dos fornecedores",
+              "Taxa de devolução geral",
+              "Taxa de cancelamento geral",
+              "Tempo médio de entrega",
+              "NPS estimado da plataforma",
+              "Reclamações abertas",
+            ].map((label) => (
+              <div key={label} className="flex items-center justify-between text-sm">
+                <span className="text-gray-600">{label}</span>
+                <span className="font-semibold text-gray-800">--</span>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+
+        {/* Categorias por volume */}
+        <Card className="border shadow-none">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-semibold text-gray-700">Categorias por volume de vendas</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground py-6 text-center">Nenhum dado disponível</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* ── Seção 5: Compradores + Comissões e repasses ─────────────── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Comportamento compradores */}
+        <Card className="border shadow-none">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-semibold text-gray-700">Comportamento dos compradores</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2.5">
+            {[
+              "Taxa de recompra (90 dias)",
+              "LTV médio por comprador",
+              "Compradores com apenas 1 pedido",
+              "Regiões que mais compram",
+              "Canal de origem predominante",
+            ].map((label) => (
+              <div key={label} className="flex items-center justify-between text-sm">
+                <span className="text-gray-600">{label}</span>
+                <span className="font-semibold text-gray-800">--</span>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+
+        {/* Comissões e repasses */}
+        <Card className="border shadow-none">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-semibold text-gray-700">Comissões e repasses</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2.5">
+            {[
+              { label: "Comissão acumulada no período", red: false },
+              { label: "Comissão retida (disputas em aberto)", red: true },
+              { label: "Próximo repasse aos fornecedores", red: false },
+              { label: "Fornecedor com maior comissão gerada", red: false },
+              { label: "Projeção de comissão para o mês", red: false },
+            ].map(({ label, red }) => (
+              <div key={label} className="flex items-center justify-between text-sm">
+                <span className={red ? "text-red-600 font-medium" : "text-gray-600"}>{label}</span>
+                <span className={`font-semibold ${red ? "text-red-600" : "text-gray-800"}`}>--</span>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* ── Seção 6: Ecossistema ────────────────────────────────────── */}
+      <div>
+        <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">Ecossistema da plataforma</h3>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+          {[
+            { label: "Fornecedores ativos" },
+            { label: "Compradores ativos" },
+            { label: "Novos compradores no período" },
+            { label: "Categorias ativas" },
+            { label: "Produtos publicados" },
+          ].map(({ label }) => (
+            <Card key={label} className="border shadow-none bg-gray-50">
+              <CardContent className="p-4 text-center">
+                <p className="text-2xl font-black text-gray-900">--</p>
+                <p className="text-xs text-muted-foreground mt-1 leading-snug">{label}</p>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Dashboard principal ──────────────────────────────────────────────────────
 export default function AdminDashboard() {
   const { isAdmin } = useAuth();
   const { toast } = useToast();
-  const [activeTab, setActiveTab] = useState<"overview" | "users" | "create-supplier" | "internal-users" | "banners" | "categories" | "products" | "minimums" | "reviews" | "relatorios">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "users" | "create-supplier" | "internal-users" | "banners" | "categories" | "products" | "minimums" | "reviews" | "relatorios" | "analytics">("overview");
   const [statusFilter, setStatusFilter] = useState("all");
   const [userCommissions, setUserCommissions] = useState<Record<number, string>>({});
   const [savingUserCommission, setSavingUserCommission] = useState<number | null>(null);
@@ -1867,6 +2108,7 @@ export default function AdminDashboard() {
     { id: "minimums", label: "Qtd. Mínimas", icon: ListOrdered },
     { id: "reviews", label: "Avaliações", icon: Star },
     { id: "relatorios", label: "Relatórios", icon: BarChart2 },
+    { id: "analytics", label: "Analytics", icon: TrendingUp },
   ] as const;
 
   return (
@@ -2244,6 +2486,9 @@ export default function AdminDashboard() {
             <ReviewsModerationTab />
           </div>
         )}
+
+        {/* ── Aba: Analytics ──────────────────────────────────────────────────── */}
+        {activeTab === "analytics" && <AnalyticsTab />}
 
         {activeTab === "relatorios" && (
           <div className="space-y-6">

@@ -1,0 +1,64 @@
+Na área de administração do site, crie uma nova aba chamada "Analytics" e implemente dentro dela uma página completa de analytics da plataforma. Siga estas instruções passo a passo:
+
+1. CRIAÇÃO DA ABA
+   - Encontre o componente de navegação/menu da área do administrador.
+   - Adicione uma nova aba chamada "Analytics" seguindo o mesmo padrão visual e estrutura das abas já existentes.
+   - Crie o arquivo/componente de página correspondente e conecte-o à rota da nova aba.
+
+2. SEÇÃO: SAÚDE FINANCEIRA DA PLATAFORMA (topo)
+   - Linha com 5 cards de métricas responsivos.
+   - Cards: "GMV (volume total movimentado)", "Receita de comissões", "Comissão média (%)", "Total de pedidos" e "Ticket médio geral".
+   - Cada card deve ter: rótulo em texto pequeno, espaço para valor principal e espaço para variação percentual vs período anterior (exibir "--" por padrão).
+   - Acima dos cards, adicione um seletor de período: 7 dias, 30 dias, 3 meses e 6 meses.
+
+3. SEÇÃO: GRÁFICO DE RECEITA E COMISSÕES
+   - Gráfico de linhas com duas séries: "Volume total (GMV)" e "Receita de comissões".
+   - Título: "Evolução financeira da plataforma".
+   - Eixo X: últimos 6 meses. Eixo Y: valores em R$.
+   - Dados zerados/placeholder por enquanto.
+
+4. SEÇÃO: DOIS PAINÉIS LADO A LADO
+   Painel esquerdo — "Top fornecedores por receita":
+   - Lista com ranking dos 5 fornecedores com maior volume de vendas.
+   - Cada item: posição, avatar com iniciais, nome do fornecedor, valor total vendido e barra de progresso proporcional.
+   - Exibir "Nenhum dado disponível" quando vazio.
+
+   Painel direito — "Alertas que exigem ação":
+   - Lista de alertas com indicador de prioridade (ponto colorido: vermelho, amarelo, verde).
+   - Categorias fixas de alerta:
+     · Fornecedores com avaliação abaixo de 3,5 (vermelho)
+     · Pedidos em disputa sem movimentação (vermelho)
+     · Fornecedores com pagamento em atraso / comissão retida (vermelho)
+     · Taxa de cancelamento acima da meta (amarelo)
+     · Fornecedores inativos há 30+ dias (amarelo)
+     · Próximo repasse de comissões agendado (verde)
+   - Exibir "Nenhum alerta no momento" quando sem dados.
+
+5. SEÇÃO: DOIS PAINÉIS LADO A LADO
+   Painel esquerdo — "Qualidade geral da plataforma":
+   - Linhas com rótulo + valor: Avaliação média dos fornecedores, Taxa de devolução geral, Taxa de cancelamento geral, Tempo médio de entrega, NPS estimado da plataforma, Reclamações abertas.
+   - Valores exibindo "--" por padrão.
+
+   Painel direito — "Categorias por volume de vendas":
+   - Lista com até 5 categorias, cada uma com nome, valor em R$ e barra de progresso proporcional.
+   - Exibir "Nenhum dado disponível" quando vazio.
+
+6. SEÇÃO: DOIS PAINÉIS LADO A LADO
+   Painel esquerdo — "Comportamento dos compradores":
+   - Linhas com rótulo + valor: Taxa de recompra (90 dias), LTV médio por comprador, Compradores com apenas 1 pedido, Regiões que mais compram, Canal de origem predominante.
+   - Valores exibindo "--" por padrão.
+
+   Painel direito — "Comissões e repasses":
+   - Linhas com rótulo + valor: Comissão acumulada no período, Comissão retida (disputas em aberto), Próximo repasse aos fornecedores, Fornecedor com maior comissão gerada, Projeção de comissão para o mês.
+   - Valores exibindo "--" por padrão. O campo "Comissão retida" deve ser destacado em vermelho quando maior que zero.
+
+7. SEÇÃO: ECOSSISTEMA (cards secundários)
+   - Linha com 5 cards menores: "Fornecedores ativos", "Compradores ativos", "Novos compradores no período", "Categorias ativas" e "Produtos publicados".
+   - Valores exibindo "--" por padrão.
+
+8. ESTILO
+   - Use o sistema de design já existente no projeto (cores, fontes, espaçamentos, componentes).
+   - Siga exatamente o mesmo padrão visual da área do administrador.
+   - Todos os componentes devem ser responsivos.
+   - Não conecte a nenhuma API ainda — apenas estrutura visual estática com placeholders.
+   - Não remova nem altere nenhuma outra aba ou funcionalidade existente.
