@@ -241,6 +241,15 @@ function ResetPasswordModal({ user, onClose }: { user: UserType; onClose: () => 
   const [success, setSuccess] = useState(false);
   const [copied, setCopied] = useState(false);
   const [mustChangePw, setMustChangePw] = useState(true);
+  const [portalEl, setPortalEl] = useState<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const el = document.createElement("div");
+    el.setAttribute("data-modal", "reset-password");
+    document.body.appendChild(el);
+    setPortalEl(el);
+    return () => { document.body.removeChild(el); };
+  }, []);
 
   const roleColors: Record<string, string> = {
     buyer: "bg-blue-100 text-blue-700",
@@ -254,8 +263,16 @@ function ResetPasswordModal({ user, onClose }: { user: UserType; onClose: () => 
     setShow(true);
   }
 
-  async function handleCopy() {
-    try { await navigator.clipboard.writeText(password); } catch { /* ignore */ }
+  function handleCopy() {
+    navigator.clipboard.writeText(password).catch(() => {
+      const el = document.createElement("textarea");
+      el.value = password;
+      el.style.cssText = "position:fixed;left:-9999px;top:-9999px;opacity:0";
+      document.body.appendChild(el);
+      el.select();
+      try { document.execCommand("copy"); } catch { /* ignore */ }
+      document.body.removeChild(el);
+    });
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   }
@@ -278,6 +295,8 @@ function ResetPasswordModal({ user, onClose }: { user: UserType; onClose: () => 
       toast({ title: err instanceof Error ? err.message : "Erro", variant: "destructive" });
     } finally { setLoading(false); }
   }
+
+  if (!portalEl) return null;
 
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
@@ -385,7 +404,7 @@ function ResetPasswordModal({ user, onClose }: { user: UserType; onClose: () => 
         </div>
       </div>
     </div>
-  , document.body);
+  , portalEl);
 }
 
 function CreateInternalUserTab({ onCreated }: { onCreated: () => void }) {
