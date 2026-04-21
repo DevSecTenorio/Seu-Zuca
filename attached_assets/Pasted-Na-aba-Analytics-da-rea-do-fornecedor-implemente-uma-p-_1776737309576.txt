@@ -1,0 +1,43 @@
+Na aba "Analytics" da área do fornecedor, implemente uma página de analytics completa sem dados reais (use apenas estrutura visual com placeholders e zeros). Siga estas instruções:
+
+1. LOCALIZAÇÃO
+   - Encontre o arquivo/componente responsável pela aba "Analytics" na área do fornecedor.
+   - Substitua o conteúdo atual pelo novo layout descrito abaixo.
+
+2. SEÇÃO: MÉTRICAS FINANCEIRAS (topo da página)
+   - Crie uma linha com 4 cards de métricas lado a lado (responsivo).
+   - Cards: "Receita total", "Ticket médio", "Pedidos no período" e "Margem estimada".
+   - Cada card deve ter: rótulo em texto pequeno e espaço para valor numérico (exibir "--" ou "0" por padrão).
+   - Acima dos cards, adicione um seletor de período com as opções: 7 dias, 30 dias, 3 meses e 6 meses.
+
+3. SEÇÃO: GRÁFICO DE RECEITA (abaixo dos cards)
+   - Adicione um gráfico de barras ou linha com título "Evolução da receita".
+   - O eixo X deve mostrar os últimos 6 meses (mês/ano).
+   - O eixo Y deve mostrar valores em R$.
+   - Por enquanto, preencha com dados zerados ou placeholder.
+
+4. SEÇÃO: DOIS PAINÉIS LADO A LADO
+   Painel esquerdo — "Produtos mais vendidos":
+   - Lista com até 5 produtos.
+   - Cada item: nome do produto, quantidade vendida e uma barra de progresso proporcional.
+   - Exibir mensagem "Nenhum dado disponível" quando vazio.
+
+   Painel direito — "Alertas e ações":
+   - Lista de itens de ação com ícone de status (vermelho, amarelo, verde).
+   - Categorias de alerta: produtos sem estoque, pedidos aguardando envio, devoluções em aberto, pagamento a receber.
+   - Exibir "Nenhum alerta no momento" quando vazio.
+
+5. SEÇÃO: DOIS PAINÉIS LADO A LADO (abaixo)
+   Painel esquerdo — "Qualidade e reputação":
+   - Linhas com rótulo + valor: Avaliação média, Taxa de devolução, Tempo médio de envio, Taxa de cancelamento, Reclamações abertas.
+   - Valores exibindo "--" por padrão.
+
+   Painel direito — "Catálogo e visibilidade":
+   - Linhas com rótulo + valor: Produtos ativos, Estoque crítico (menos de 5 unidades), Produtos sem venda nos últimos 30 dias, Taxa de conversão média, Anúncios com desconto ativo.
+   - Valores exibindo "--" por padrão.
+
+6. ESTILO
+   - Use o sistema de design já existente no projeto (cores, fontes, espaçamentos).
+   - Todos os componentes devem ser responsivos.
+   - Não conecte a nenhuma API ainda — apenas estrutura visual estática.
+   - Mantenha consistência visual com o restante da área do fornecedor.

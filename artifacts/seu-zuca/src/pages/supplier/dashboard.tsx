@@ -9,7 +9,7 @@ import { Layout } from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Package, TrendingUp, ShoppingBag, DollarSign, Plus, Edit, Trash2, FileText, ClipboardList, BarChart2, AlertTriangle } from "lucide-react";
+import { Package, TrendingUp, ShoppingBag, DollarSign, Plus, Edit, Trash2, FileText, ClipboardList, BarChart2, AlertTriangle, Star, Clock, Truck, CheckCircle, XCircle, RotateCcw, Eye, Tag } from "lucide-react";
 import { useLocation, Link } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
@@ -52,6 +52,7 @@ export default function SupplierDashboard() {
   const [tab, setTab] = useState<Tab>("produtos");
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
   const [loadingAnalytics, setLoadingAnalytics] = useState(false);
+  const [analyticsPeriod, setAnalyticsPeriod] = useState<"7d" | "30d" | "3m" | "6m">("30d");
 
   const { data: dashboard } = useGetSupplierStats({ query: { enabled: isSupplier } });
   const { data: products, isLoading: loadingProducts, refetch: refetchProducts } = useListSupplierProducts({ query: { enabled: isSupplier } });
@@ -390,77 +391,197 @@ export default function SupplierDashboard() {
         {/* Analytics */}
         {tab === "analytics" && (
           <div className="space-y-6">
-            {loadingAnalytics ? (
-              <div className="space-y-4">
-                <div className="h-60 bg-muted animate-pulse rounded-xl" />
-                <div className="h-40 bg-muted animate-pulse rounded-xl" />
-              </div>
-            ) : !analytics ? (
-              <div className="text-center py-16 text-muted-foreground">
-                <BarChart2 size={44} className="mx-auto mb-4 opacity-40" />
-                <p>Sem dados para exibir</p>
-              </div>
-            ) : (
-              <>
-                {/* Revenue chart */}
-                <Card className="border shadow-none">
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-base flex items-center gap-2">
-                      <TrendingUp size={16} className="text-[#C0181A]" />
-                      Receita — Últimos 6 meses
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    {analytics.receitaMensal.length === 0 ? (
-                      <p className="text-sm text-muted-foreground text-center py-8">Nenhum pedido nos últimos 6 meses</p>
-                    ) : (
-                      <ResponsiveContainer width="100%" height={220}>
-                        <BarChart data={analytics.receitaMensal} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
-                          <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                          <XAxis dataKey="mes" tick={{ fontSize: 12 }} />
-                          <YAxis tick={{ fontSize: 11 }} tickFormatter={v => `R$${(v / 1000).toFixed(0)}k`} />
-                          <Tooltip formatter={(v: number) => BRL(v)} labelFormatter={l => `Mês: ${l}`} />
-                          <Bar dataKey="receita" fill="#C0181A" radius={[4, 4, 0, 0]} name="Receita" />
-                        </BarChart>
-                      </ResponsiveContainer>
-                    )}
-                  </CardContent>
-                </Card>
 
-                {/* Top products */}
-                <Card className="border shadow-none">
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-base flex items-center gap-2">
-                      <Package size={16} className="text-[#C0181A]" />
-                      Produtos mais vendidos
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="p-0">
-                    {analytics.topProdutos.length === 0 ? (
-                      <p className="text-sm text-muted-foreground text-center py-8 px-4">Nenhuma venda registrada ainda</p>
-                    ) : (
-                      <div className="divide-y">
-                        {analytics.topProdutos.map((p, i) => (
-                          <div key={p.id} className="flex items-center gap-3 px-4 py-3">
-                            <span className="text-sm font-bold text-muted-foreground w-5">{i + 1}</span>
-                            <div className="w-9 h-9 rounded overflow-hidden bg-muted shrink-0">
-                              {p.imagemPrincipal
-                                ? <img src={p.imagemPrincipal} alt="" className="w-full h-full object-cover" />
-                                : <Package size={14} className="m-auto text-muted-foreground" />}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium line-clamp-1">{p.nome}</p>
-                              <p className="text-xs text-muted-foreground">{p.totalVendido} vendido{p.totalVendido !== 1 ? "s" : ""}</p>
-                            </div>
-                            <p className="text-sm font-bold text-[#C0181A] shrink-0">{BRL(p.receita)}</p>
-                          </div>
-                        ))}
+            {/* Period selector + metric cards */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <div>
+                  <h2 className="text-base font-semibold text-gray-900">Visão geral</h2>
+                  <p className="text-xs text-muted-foreground mt-0.5">Dados financeiros do período selecionado</p>
+                </div>
+                <div className="flex gap-1 bg-gray-100 rounded-lg p-1">
+                  {(["7d", "30d", "3m", "6m"] as const).map((p) => (
+                    <button
+                      key={p}
+                      onClick={() => setAnalyticsPeriod(p)}
+                      className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${
+                        analyticsPeriod === p
+                          ? "bg-white text-gray-900 shadow-sm"
+                          : "text-muted-foreground hover:text-gray-700"
+                      }`}
+                    >
+                      {p === "7d" ? "7 dias" : p === "30d" ? "30 dias" : p === "3m" ? "3 meses" : "6 meses"}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                {[
+                  { label: "Receita total", value: "--", icon: DollarSign, color: "text-emerald-600", bg: "bg-emerald-50" },
+                  { label: "Ticket médio", value: "--", icon: TrendingUp, color: "text-blue-600", bg: "bg-blue-50" },
+                  { label: "Pedidos no período", value: "0", icon: ShoppingBag, color: "text-purple-600", bg: "bg-purple-50" },
+                  { label: "Margem estimada", value: "--", icon: Tag, color: "text-amber-600", bg: "bg-amber-50" },
+                ].map(({ label, value, icon: Icon, color, bg }) => (
+                  <Card key={label} className="border shadow-none">
+                    <CardContent className="p-4">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs text-muted-foreground leading-tight">{label}</p>
+                          <p className="text-2xl font-bold text-gray-900 mt-1 tracking-tight">{value}</p>
+                        </div>
+                        <div className={`w-9 h-9 rounded-lg ${bg} flex items-center justify-center shrink-0`}>
+                          <Icon size={16} className={color} />
+                        </div>
                       </div>
-                    )}
-                  </CardContent>
-                </Card>
-              </>
-            )}
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
+
+            {/* Revenue chart */}
+            <Card className="border shadow-none">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <TrendingUp size={16} className="text-[#C0181A]" />
+                  Evolução da receita
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={220}>
+                  <BarChart
+                    data={[
+                      { mes: "Nov/24", receita: 0 },
+                      { mes: "Dez/24", receita: 0 },
+                      { mes: "Jan/25", receita: 0 },
+                      { mes: "Fev/25", receita: 0 },
+                      { mes: "Mar/25", receita: 0 },
+                      { mes: "Abr/25", receita: 0 },
+                    ]}
+                    margin={{ top: 5, right: 10, left: 0, bottom: 5 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                    <XAxis dataKey="mes" tick={{ fontSize: 12 }} />
+                    <YAxis tick={{ fontSize: 11 }} tickFormatter={v => `R$${(v / 1000).toFixed(0)}k`} width={48} />
+                    <Tooltip formatter={(v: number) => BRL(v)} labelFormatter={l => `Mês: ${l}`} />
+                    <Bar dataKey="receita" fill="#C0181A" radius={[4, 4, 0, 0]} name="Receita" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+
+            {/* Top products + Alerts */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {/* Top products */}
+              <Card className="border shadow-none">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Package size={16} className="text-[#C0181A]" />
+                    Produtos mais vendidos
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Package size={32} className="mx-auto mb-2 opacity-30" />
+                    <p className="text-sm">Nenhum dado disponível</p>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Alerts */}
+              <Card className="border shadow-none">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <AlertTriangle size={16} className="text-[#C0181A]" />
+                    Alertas e ações
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    {[
+                      { label: "Produtos sem estoque", icon: XCircle, color: "text-red-500", count: 0 },
+                      { label: "Pedidos aguardando envio", icon: Truck, color: "text-amber-500", count: 0 },
+                      { label: "Devoluções em aberto", icon: RotateCcw, color: "text-amber-500", count: 0 },
+                      { label: "Pagamento a receber", icon: DollarSign, color: "text-green-600", count: 0 },
+                    ].map(({ label, icon: Icon, color, count }) => (
+                      <div key={label} className="flex items-center justify-between py-2 border-b last:border-0">
+                        <div className="flex items-center gap-2.5">
+                          <Icon size={15} className={color} />
+                          <span className="text-sm text-gray-700">{label}</span>
+                        </div>
+                        <span className={`text-sm font-semibold ${count > 0 ? color : "text-muted-foreground"}`}>
+                          {count > 0 ? count : "—"}
+                        </span>
+                      </div>
+                    ))}
+                    <p className="text-xs text-muted-foreground text-center pt-2">Nenhum alerta no momento</p>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Quality + Catalog */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {/* Quality & reputation */}
+              <Card className="border shadow-none">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Star size={16} className="text-[#C0181A]" />
+                    Qualidade e reputação
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-0 divide-y">
+                    {[
+                      { label: "Avaliação média", icon: Star },
+                      { label: "Taxa de devolução", icon: RotateCcw },
+                      { label: "Tempo médio de envio", icon: Clock },
+                      { label: "Taxa de cancelamento", icon: XCircle },
+                      { label: "Reclamações abertas", icon: AlertTriangle },
+                    ].map(({ label, icon: Icon }) => (
+                      <div key={label} className="flex items-center justify-between py-2.5">
+                        <div className="flex items-center gap-2 text-sm text-gray-700">
+                          <Icon size={13} className="text-muted-foreground shrink-0" />
+                          {label}
+                        </div>
+                        <span className="text-sm font-medium text-muted-foreground">--</span>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Catalog & visibility */}
+              <Card className="border shadow-none">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Eye size={16} className="text-[#C0181A]" />
+                    Catálogo e visibilidade
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-0 divide-y">
+                    {[
+                      { label: "Produtos ativos", icon: CheckCircle },
+                      { label: "Estoque crítico (< 5 un.)", icon: AlertTriangle },
+                      { label: "Sem venda nos últimos 30 dias", icon: Package },
+                      { label: "Taxa de conversão média", icon: TrendingUp },
+                      { label: "Anúncios com desconto ativo", icon: Tag },
+                    ].map(({ label, icon: Icon }) => (
+                      <div key={label} className="flex items-center justify-between py-2.5">
+                        <div className="flex items-center gap-2 text-sm text-gray-700">
+                          <Icon size={13} className="text-muted-foreground shrink-0" />
+                          {label}
+                        </div>
+                        <span className="text-sm font-medium text-muted-foreground">--</span>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
           </div>
         )}
       </div>
