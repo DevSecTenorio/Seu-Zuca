@@ -18,7 +18,7 @@ import {
 import { useUpload } from "@workspace/object-storage-web";
 import { useToast } from "@/hooks/use-toast";
 
-const roleLabel: Record<string, string> = { admin: "Admin", buyer: "Comprador", supplier: "Fornecedor" };
+const roleLabel: Record<string, string> = { admin: "Admin", buyer: "Comprador", supplier: "Fornecedor", support: "Suporte" };
 const OWNER_EMAIL = "admin@seuzuca.com.br";
 const statusLabel: Record<string, string> = { pending: "Pendente", approved: "Aprovado", rejected: "Recusado", suspended: "Suspenso" };
 const statusVariant: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
@@ -241,15 +241,6 @@ function ResetPasswordModal({ user, onClose }: { user: UserType; onClose: () => 
   const [success, setSuccess] = useState(false);
   const [copied, setCopied] = useState(false);
   const [mustChangePw, setMustChangePw] = useState(true);
-  const [portalEl, setPortalEl] = useState<HTMLDivElement | null>(null);
-
-  useEffect(() => {
-    const el = document.createElement("div");
-    el.setAttribute("data-modal", "reset-password");
-    document.body.appendChild(el);
-    setPortalEl(el);
-    return () => { document.body.removeChild(el); };
-  }, []);
 
   const roleColors: Record<string, string> = {
     buyer: "bg-blue-100 text-blue-700",
@@ -295,8 +286,6 @@ function ResetPasswordModal({ user, onClose }: { user: UserType; onClose: () => 
       toast({ title: err instanceof Error ? err.message : "Erro", variant: "destructive" });
     } finally { setLoading(false); }
   }
-
-  if (!portalEl) return null;
 
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
@@ -404,7 +393,7 @@ function ResetPasswordModal({ user, onClose }: { user: UserType; onClose: () => 
         </div>
       </div>
     </div>
-  , portalEl);
+  , document.getElementById("modal-root")!);
 }
 
 function CreateInternalUserTab({ onCreated }: { onCreated: () => void }) {
