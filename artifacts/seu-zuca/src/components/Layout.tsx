@@ -2,8 +2,8 @@ import { Link, useLocation } from "wouter";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLogoutUser, useListCategories } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { ShoppingCart, User, Search, Menu, X, ChevronDown, LayoutGrid, LogOut, Package, BarChart2, ChevronRight, Headphones } from "lucide-react";
-import { useState, useRef } from "react";
+import { ShoppingCart, User, Search, Menu, X, ChevronDown, LayoutGrid, LogOut, Package, BarChart2, ChevronRight, Headphones, Tag, Sparkles, TrendingUp, Grid2x2 } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -26,11 +26,24 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const [mobileExpandedCat, setMobileExpandedCat] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [hoveredCat, setHoveredCat] = useState<number | null>(null);
+  const [megaOpen, setMegaOpen] = useState(false);
   const [location, navigate] = useLocation();
   const queryClient = useQueryClient();
   const logout = useLogoutUser();
   const { data: categories } = useListCategories();
   const hoverTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const megaRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!megaOpen) return;
+    function handleClick(e: MouseEvent) {
+      if (megaRef.current && !megaRef.current.contains(e.target as Node)) {
+        setMegaOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [megaOpen]);
 
   async function handleLogout() {
     await logout.mutateAsync({});
@@ -188,52 +201,154 @@ export function Layout({ children }: { children: React.ReactNode }) {
           <div className="max-w-[1280px] mx-auto px-4">
             <div className="flex items-stretch h-[42px]">
 
-              {/* "Todas as Categorias" mega dropdown */}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <button className="flex items-center gap-2 bg-[#C0181A] hover:bg-[#a01418] text-white px-4 h-full text-sm font-bold transition-colors shrink-0 mr-2">
-                    <LayoutGrid size={16} />
-                    Todas as Categorias
-                    <ChevronDown size={13} />
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="w-64 mt-0 p-0 rounded-none shadow-xl border-0" sideOffset={0}>
-                  {rootCats.map((cat) => {
-                    const subs = childrenOf(cat.id);
-                    return (
-                      <div key={cat.id} className="group relative">
-                        <DropdownMenuItem
-                          onClick={() => navigate(`/catalogo?categoryId=${cat.id}`)}
-                          className="flex items-center justify-between px-4 py-2.5 cursor-pointer hover:bg-orange-50 hover:text-[#C0181A] font-medium text-sm rounded-none"
-                        >
-                          <span>{cat.nome}</span>
-                          {subs.length > 0 && <ChevronRight size={14} className="text-gray-400" />}
-                        </DropdownMenuItem>
-                        {subs.length > 0 && (
-                          <div className="absolute left-full top-0 hidden group-hover:block bg-white shadow-xl border border-gray-100 w-56 z-50">
-                            {subs.map((sub) => (
-                              <DropdownMenuItem
-                                key={sub.id}
-                                onClick={() => navigate(`/catalogo?categoryId=${sub.id}`)}
-                                className="px-4 py-2 text-sm cursor-pointer hover:bg-orange-50 hover:text-[#C0181A] rounded-none"
-                              >
-                                {sub.nome}
-                              </DropdownMenuItem>
-                            ))}
+              {/* "Todas as Categorias" custom mega-menu */}
+              <div ref={megaRef} className="relative shrink-0 mr-2">
+                <button
+                  onClick={() => setMegaOpen((o) => !o)}
+                  className={`flex items-center gap-2 text-white px-4 h-full text-sm font-bold transition-colors ${megaOpen ? "bg-[#a01418]" : "bg-[#C0181A] hover:bg-[#a01418]"}`}
+                >
+                  <LayoutGrid size={16} />
+                  Todas as Categorias
+                  <ChevronDown size={13} className={`transition-transform ${megaOpen ? "rotate-180" : ""}`} />
+                </button>
+
+                {megaOpen && (
+                  <div className="absolute top-full left-0 z-[100] bg-white shadow-2xl border border-gray-100 rounded-b-xl"
+                    style={{ width: "min(860px, 90vw)" }}>
+                    <div className="grid grid-cols-4 gap-0 divide-x divide-gray-100">
+                      {/* Col 1 */}
+                      <div className="py-4 px-4 space-y-4">
+                        {rootCats.slice(0, 3).map((cat) => (
+                          <div key={cat.id}>
+                            <button
+                              onClick={() => { navigate(`/catalogo?categoryId=${cat.id}`); setMegaOpen(false); }}
+                              className="text-xs font-bold text-[#C0181A] uppercase tracking-wide mb-1.5 hover:underline block text-left"
+                            >
+                              {cat.nome}
+                            </button>
+                            <div className="space-y-0.5">
+                              {childrenOf(cat.id).slice(0, 5).map((sub) => (
+                                <button
+                                  key={sub.id}
+                                  onClick={() => { navigate(`/catalogo?categoryId=${sub.id}`); setMegaOpen(false); }}
+                                  className="block w-full text-left text-sm text-gray-600 py-0.5 hover:text-[#C0181A] transition-colors"
+                                >
+                                  {sub.nome}
+                                </button>
+                              ))}
+                            </div>
                           </div>
+                        ))}
+                      </div>
+                      {/* Col 2 */}
+                      <div className="py-4 px-4 space-y-4">
+                        {rootCats.slice(3, 6).map((cat) => (
+                          <div key={cat.id}>
+                            <button
+                              onClick={() => { navigate(`/catalogo?categoryId=${cat.id}`); setMegaOpen(false); }}
+                              className="text-xs font-bold text-[#C0181A] uppercase tracking-wide mb-1.5 hover:underline block text-left"
+                            >
+                              {cat.nome}
+                            </button>
+                            <div className="space-y-0.5">
+                              {childrenOf(cat.id).slice(0, 5).map((sub) => (
+                                <button
+                                  key={sub.id}
+                                  onClick={() => { navigate(`/catalogo?categoryId=${sub.id}`); setMegaOpen(false); }}
+                                  className="block w-full text-left text-sm text-gray-600 py-0.5 hover:text-[#C0181A] transition-colors"
+                                >
+                                  {sub.nome}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                      {/* Col 3 */}
+                      <div className="py-4 px-4 space-y-4">
+                        {rootCats.slice(6).map((cat) => (
+                          <div key={cat.id}>
+                            <button
+                              onClick={() => { navigate(`/catalogo?categoryId=${cat.id}`); setMegaOpen(false); }}
+                              className="text-xs font-bold text-[#C0181A] uppercase tracking-wide mb-1.5 hover:underline block text-left"
+                            >
+                              {cat.nome}
+                            </button>
+                            <div className="space-y-0.5">
+                              {childrenOf(cat.id).slice(0, 5).map((sub) => (
+                                <button
+                                  key={sub.id}
+                                  onClick={() => { navigate(`/catalogo?categoryId=${sub.id}`); setMegaOpen(false); }}
+                                  className="block w-full text-left text-sm text-gray-600 py-0.5 hover:text-[#C0181A] transition-colors"
+                                >
+                                  {sub.nome}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                        {/* Fill empty if < 3 root cats in this column */}
+                        {rootCats.slice(6).length === 0 && (
+                          <p className="text-xs text-gray-400 italic">Mais categorias em breve</p>
                         )}
                       </div>
-                    );
-                  })}
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    onClick={() => navigate("/catalogo")}
-                    className="px-4 py-2 text-sm font-semibold text-[#E85D00] cursor-pointer rounded-none"
-                  >
-                    Ver todos os produtos
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+                      {/* Col 4 — Navegação especial */}
+                      <div className="py-4 px-4 bg-gray-50 rounded-br-xl">
+                        <p className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">Navegação Rápida</p>
+                        <div className="space-y-2">
+                          <button
+                            onClick={() => { navigate("/catalogo"); setMegaOpen(false); }}
+                            className="flex items-center gap-2.5 w-full text-sm text-gray-700 hover:text-[#C0181A] transition-colors py-1.5"
+                          >
+                            <div className="w-7 h-7 rounded-lg bg-[#C0181A]/10 flex items-center justify-center shrink-0">
+                              <Grid2x2 size={13} className="text-[#C0181A]" />
+                            </div>
+                            Todos os produtos
+                          </button>
+                          <button
+                            onClick={() => { navigate("/catalogo?orderBy=createdAt"); setMegaOpen(false); }}
+                            className="flex items-center gap-2.5 w-full text-sm text-gray-700 hover:text-[#C0181A] transition-colors py-1.5"
+                          >
+                            <div className="w-7 h-7 rounded-lg bg-blue-50 flex items-center justify-center shrink-0">
+                              <Sparkles size={13} className="text-blue-500" />
+                            </div>
+                            Lançamentos
+                          </button>
+                          <button
+                            onClick={() => { navigate("/catalogo?destaque=true"); setMegaOpen(false); }}
+                            className="flex items-center gap-2.5 w-full text-sm text-gray-700 hover:text-[#C0181A] transition-colors py-1.5"
+                          >
+                            <div className="w-7 h-7 rounded-lg bg-amber-50 flex items-center justify-center shrink-0">
+                              <Tag size={13} className="text-amber-500" />
+                            </div>
+                            Promoções
+                          </button>
+                          <button
+                            onClick={() => { navigate("/catalogo?orderBy=vendas"); setMegaOpen(false); }}
+                            className="flex items-center gap-2.5 w-full text-sm text-gray-700 hover:text-[#C0181A] transition-colors py-1.5"
+                          >
+                            <div className="w-7 h-7 rounded-lg bg-green-50 flex items-center justify-center shrink-0">
+                              <TrendingUp size={13} className="text-green-600" />
+                            </div>
+                            Mais vendidos
+                          </button>
+                        </div>
+
+                        <div className="mt-4 pt-4 border-t border-gray-200">
+                          <p className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Seja fornecedor</p>
+                          <Link
+                            href="/seja-fornecedor"
+                            onClick={() => setMegaOpen(false)}
+                            className="text-sm text-[#E85D00] hover:underline font-medium"
+                          >
+                            Vender no Seu Zuca →
+                          </Link>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
 
               {/* Quick-link tabs with hover mega-menu */}
               <nav className="flex items-stretch overflow-x-auto no-scrollbar flex-1">
