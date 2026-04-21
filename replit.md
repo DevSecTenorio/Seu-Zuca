@@ -101,3 +101,16 @@ artifacts/
 - DATABASE_URL (PostgreSQL connection string)
 - SESSION_SECRET (JWT signing secret)
 - NODE_ENV
+- STRIPE_SECRET_KEY — pendente (usuário ainda criará conta no Stripe)
+- VITE_STRIPE_PUBLIC_KEY — pendente (chave pública do Stripe para o frontend)
+
+## Integrações Pendentes
+
+### Stripe (pagamentos)
+- O usuário ainda não criou a conta no Stripe.
+- Quando criar, deve acessar stripe.com → Desenvolvedores → Chaves de API e fornecer:
+  1. Chave secreta (`sk_test_...`) → salvar como `STRIPE_SECRET_KEY`
+  2. Chave pública (`pk_test_...`) → salvar como `VITE_STRIPE_PUBLIC_KEY`
+- Com as chaves em mãos, usar a integração nativa do Replit (Stripe Sandbox connector) ou salvar as chaves como secrets manualmente.
+- Fluxo planejado: ao confirmar pedido → criar Stripe Checkout Session → redirecionar comprador → webhook confirma pagamento → status do pedido atualiza para "pago".
+- A coluna `stripeSessionId` e `stripePaymentIntentId` já existem na tabela `orders` aguardando essa integração.
