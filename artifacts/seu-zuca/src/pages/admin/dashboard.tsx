@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef } from "react";
-import { createPortal } from "react-dom";
 import { useGetDashboardStats, useAdminListUsers, useAdminApproveUser, useAdminSuspendUser, useListCategories, useCreateCategory, useUpdateCategory, useDeleteCategory } from "@workspace/api-client-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Layout } from "@/components/Layout";
@@ -287,7 +286,7 @@ function ResetPasswordModal({ user, onClose }: { user: UserType; onClose: () => 
     } finally { setLoading(false); }
   }
 
-  return createPortal(
+  return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
       <div className="relative bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-md z-10">
@@ -393,7 +392,7 @@ function ResetPasswordModal({ user, onClose }: { user: UserType; onClose: () => 
         </div>
       </div>
     </div>
-  , document.getElementById("modal-root")!);
+  );
 }
 
 function CreateInternalUserTab({ onCreated }: { onCreated: () => void }) {
