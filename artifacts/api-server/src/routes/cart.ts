@@ -24,7 +24,6 @@ async function buildCart(userId: number) {
     let mensagemErro = "";
 
     if (item.quantidade < quantidadeMinima) {
-      itemValido === false;
       valido = false;
       mensagemErro = `Este produto exige no mínimo ${quantidadeMinima} unidades nesta categoria`;
       erros.push(`${product.nome}: ${mensagemErro}`);
