@@ -230,6 +230,17 @@ export default function Home() {
               Ver produtos
             </button>
           </div>
+          <div className="bg-gradient-to-r from-[#14532d] to-[#16a34a] rounded-xl p-6 text-white">
+            <p className="text-sm font-medium opacity-90 mb-1">Infraestrutura</p>
+            <h3 className="text-2xl font-black mb-1">Hidráulica & Elétrica</h3>
+            <p className="text-white/80 text-sm mb-4">Tubos, fios e conexões</p>
+            <button
+              onClick={() => navigate("/catalogo")}
+              className="bg-white text-[#14532d] text-sm font-bold px-4 py-2 rounded-lg hover:bg-gray-100 transition-colors"
+            >
+              Ver produtos
+            </button>
+          </div>
         </div>
       </section>
 
