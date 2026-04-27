@@ -264,6 +264,15 @@ router.put("/supplier/products/:id", authMiddleware, requireSupplier, async (req
     disponivel: (estoque !== undefined ? estoque : product.estoque) > 0,
   }).where(eq(productsTable.id, id)).returning();
 
+  if (imagens && Array.isArray(imagens)) {
+    await db.delete(productImagesTable).where(eq(productImagesTable.productId, id));
+    if (imagens.length > 0) {
+      await db.insert(productImagesTable).values(
+        imagens.map((url: string, i: number) => ({ productId: id, url, ordem: i }))
+      );
+    }
+  }
+
   res.json(updated);
 });
 

@@ -4,8 +4,11 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Layout } from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Lock, ShoppingCart, Heart, Truck, Package, Star, ChevronLeft, Shield, BadgePercent } from "lucide-react";
-import { useState } from "react";
+import {
+  Lock, ShoppingCart, Heart, Truck, Package, Star, ChevronLeft,
+  Shield, BadgePercent, ChevronRight, X, ZoomIn,
+} from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "wouter";
 
@@ -22,6 +25,29 @@ export default function Product() {
 
   const [qty, setQty] = useState(1);
   const [activeImg, setActiveImg] = useState(0);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+
+  const images = (product as { imagens?: string[]; imagemPrincipal?: string } | undefined)?.imagens
+    || (product?.imagemPrincipal ? [product.imagemPrincipal] : []);
+
+  const goNext = useCallback(() => {
+    if (images.length > 1) setActiveImg((i) => (i + 1) % images.length);
+  }, [images.length]);
+
+  const goPrev = useCallback(() => {
+    if (images.length > 1) setActiveImg((i) => (i - 1 + images.length) % images.length);
+  }, [images.length]);
+
+  useEffect(() => {
+    if (!lightboxOpen) return;
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === "ArrowRight") goNext();
+      if (e.key === "ArrowLeft") goPrev();
+      if (e.key === "Escape") setLightboxOpen(false);
+    }
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, [lightboxOpen, goNext, goPrev]);
 
   if (isLoading) {
     return (
@@ -54,9 +80,6 @@ export default function Product() {
     );
   }
 
-  const images = (product as { imagens?: string[]; imagemPrincipal?: string }).imagens
-    || (product.imagemPrincipal ? [product.imagemPrincipal] : []);
-
   async function handleAddToCart() {
     if (!isApprovedBuyer) { navigate("/login"); return; }
     try {
@@ -78,8 +101,69 @@ export default function Product() {
     }
   }
 
+  const p = product as {
+    imagens?: string[];
+    imagemPrincipal?: string;
+    sku?: string;
+    quantidadeMinima?: number;
+    multiplo?: number;
+    prazoFrete?: number;
+    reviews?: Array<{ id: number; buyerName: string; nota: number; titulo: string; comentario: string; createdAt: string }>;
+  } & typeof product;
+
   return (
     <Layout>
+      {/* ── Lightbox ── */}
+      {lightboxOpen && images.length > 0 && (
+        <div
+          className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center"
+          onClick={() => setLightboxOpen(false)}
+        >
+          <button
+            className="absolute top-4 right-4 text-white/80 hover:text-white bg-white/10 rounded-full p-2 transition-colors"
+            onClick={() => setLightboxOpen(false)}
+          >
+            <X size={22} />
+          </button>
+
+          {images.length > 1 && (
+            <>
+              <button
+                className="absolute left-4 top-1/2 -translate-y-1/2 text-white/80 hover:text-white bg-white/10 rounded-full p-3 transition-colors"
+                onClick={(e) => { e.stopPropagation(); goPrev(); }}
+              >
+                <ChevronLeft size={24} />
+              </button>
+              <button
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-white/80 hover:text-white bg-white/10 rounded-full p-3 transition-colors"
+                onClick={(e) => { e.stopPropagation(); goNext(); }}
+              >
+                <ChevronRight size={24} />
+              </button>
+            </>
+          )}
+
+          <img
+            src={images[activeImg]}
+            alt={product.nome}
+            className="max-h-[85vh] max-w-[85vw] object-contain rounded-xl shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          />
+
+          {images.length > 1 && (
+            <div className="absolute bottom-5 left-1/2 -translate-x-1/2 flex gap-1.5">
+              {images.map((_, i) => (
+                <button
+                  key={i}
+                  onClick={(e) => { e.stopPropagation(); setActiveImg(i); }}
+                  className={`w-2 h-2 rounded-full transition-all ${i === activeImg ? "bg-white scale-125" : "bg-white/40"}`}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       <div className="max-w-[1280px] mx-auto px-4 py-6">
         {/* Breadcrumb */}
         <nav className="flex items-center gap-2 text-sm text-gray-500 mb-6">
@@ -94,24 +178,72 @@ export default function Product() {
         </nav>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-10">
-          {/* Images */}
+          {/* ── Images ── */}
           <div className="space-y-3">
-            <div className="aspect-square bg-white border border-gray-100 rounded-xl overflow-hidden">
+            {/* Main image */}
+            <div className="relative aspect-square bg-white border border-gray-100 rounded-xl overflow-hidden group">
               {images.length > 0 ? (
-                <img src={images[activeImg]} alt={product.nome} className="w-full h-full object-cover" />
+                <>
+                  <img
+                    key={activeImg}
+                    src={images[activeImg]}
+                    alt={product.nome}
+                    className="w-full h-full object-cover transition-opacity duration-200"
+                  />
+
+                  {/* Zoom hint */}
+                  <button
+                    onClick={() => setLightboxOpen(true)}
+                    className="absolute top-3 right-3 bg-white/80 hover:bg-white text-gray-600 rounded-lg p-1.5 opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
+                    title="Ampliar"
+                  >
+                    <ZoomIn size={16} />
+                  </button>
+
+                  {/* Counter */}
+                  {images.length > 1 && (
+                    <div className="absolute bottom-3 right-3 bg-black/50 text-white text-xs font-medium px-2 py-0.5 rounded-full">
+                      {activeImg + 1}/{images.length}
+                    </div>
+                  )}
+
+                  {/* Prev / Next arrows */}
+                  {images.length > 1 && (
+                    <>
+                      <button
+                        onClick={goPrev}
+                        className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white text-gray-700 rounded-full p-1.5 opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
+                      >
+                        <ChevronLeft size={18} />
+                      </button>
+                      <button
+                        onClick={goNext}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white text-gray-700 rounded-full p-1.5 opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
+                      >
+                        <ChevronRight size={18} />
+                      </button>
+                    </>
+                  )}
+                </>
               ) : (
                 <div className="w-full h-full flex items-center justify-center text-gray-200">
                   <Package size={80} />
                 </div>
               )}
             </div>
+
+            {/* Thumbnails */}
             {images.length > 1 && (
-              <div className="flex gap-2">
+              <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-thin">
                 {images.map((img, i) => (
                   <button
                     key={i}
                     onClick={() => setActiveImg(i)}
-                    className={`w-16 h-16 rounded-lg overflow-hidden border-2 transition-colors ${i === activeImg ? "border-[#C0181A]" : "border-gray-200 hover:border-gray-300"}`}
+                    className={`shrink-0 w-16 h-16 rounded-lg overflow-hidden border-2 transition-all ${
+                      i === activeImg
+                        ? "border-[#C0181A] ring-1 ring-[#C0181A]/30"
+                        : "border-gray-200 hover:border-gray-400 opacity-70 hover:opacity-100"
+                    }`}
                   >
                     <img src={img} alt="" className="w-full h-full object-cover" />
                   </button>
@@ -120,7 +252,7 @@ export default function Product() {
             )}
           </div>
 
-          {/* Info */}
+          {/* ── Info ── */}
           <div>
             <div className="flex items-start gap-3 mb-2">
               <Badge className="bg-[#C0181A] text-white border-0 shrink-0">{product.categoryName}</Badge>
@@ -134,7 +266,7 @@ export default function Product() {
                   <Star key={i} size={14} className="text-[#FFC107] fill-[#FFC107]" />
                 ))}
               </div>
-              <span className="text-gray-500 text-sm">SKU: <span className="font-mono">{(product as { sku?: string }).sku}</span></span>
+              <span className="text-gray-500 text-sm">SKU: <span className="font-mono">{p.sku}</span></span>
             </div>
 
             <p className="text-sm text-gray-600 mb-1">
@@ -179,12 +311,12 @@ export default function Product() {
             </div>
 
             {/* Min quantity alert */}
-            {(product as { quantidadeMinima?: number }).quantidadeMinima && (
+            {p.quantidadeMinima && p.quantidadeMinima > 1 && (
               <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4 text-sm text-amber-800 flex items-center gap-2">
                 <BadgePercent size={16} className="shrink-0" />
-                Quantidade mínima: <strong>{(product as { quantidadeMinima?: number }).quantidadeMinima} {product.unidadeMedida}(s)</strong>
-                {(product as { multiplo?: number }).multiplo && (product as { multiplo?: number }).multiplo! > 1 && (
-                  <span> — múltiplos de {(product as { multiplo?: number }).multiplo}</span>
+                Quantidade mínima: <strong>{p.quantidadeMinima} {product.unidadeMedida}(s)</strong>
+                {p.multiplo && p.multiplo > 1 && (
+                  <span> — múltiplos de {p.multiplo}</span>
                 )}
               </div>
             )}
@@ -193,9 +325,15 @@ export default function Product() {
             {isApprovedBuyer && product.disponivel && (
               <div className="flex items-center gap-3 mb-4">
                 <div className="flex items-center border border-gray-200 rounded-lg bg-white overflow-hidden">
-                  <button className="px-3 py-2.5 text-gray-500 hover:text-gray-800 hover:bg-gray-50 text-lg font-medium transition-colors" onClick={() => setQty(q => Math.max(1, q - 1))}>-</button>
+                  <button
+                    className="px-3 py-2.5 text-gray-500 hover:text-gray-800 hover:bg-gray-50 text-lg font-medium transition-colors"
+                    onClick={() => setQty((q) => Math.max(p.quantidadeMinima || 1, q - (p.multiplo || 1)))}
+                  >-</button>
                   <span className="px-4 py-2 text-sm font-bold border-x border-gray-200 min-w-[3rem] text-center">{qty}</span>
-                  <button className="px-3 py-2.5 text-gray-500 hover:text-gray-800 hover:bg-gray-50 text-lg font-medium transition-colors" onClick={() => setQty(q => q + 1)}>+</button>
+                  <button
+                    className="px-3 py-2.5 text-gray-500 hover:text-gray-800 hover:bg-gray-50 text-lg font-medium transition-colors"
+                    onClick={() => setQty((q) => q + (p.multiplo || 1))}
+                  >+</button>
                 </div>
                 <button
                   onClick={handleAddToCart}
@@ -233,7 +371,7 @@ export default function Product() {
             <div className="grid grid-cols-3 gap-3">
               <div className="bg-gray-50 rounded-lg p-3 text-center">
                 <Truck size={20} className="mx-auto mb-1 text-[#C0181A]" />
-                <p className="text-xs text-gray-600 font-medium">{(product as { prazoFrete?: number }).prazoFrete || 7} dias úteis</p>
+                <p className="text-xs text-gray-600 font-medium">{p.prazoFrete || 7} dias úteis</p>
                 <p className="text-xs text-gray-400">entrega</p>
               </div>
               <div className="bg-gray-50 rounded-lg p-3 text-center">
@@ -257,13 +395,11 @@ export default function Product() {
         </div>
 
         {/* Reviews */}
-        {(product as { reviews?: unknown[] }).reviews && (product as { reviews: unknown[] }).reviews.length > 0 && (
+        {p.reviews && p.reviews.length > 0 && (
           <div className="bg-white border border-gray-100 rounded-xl p-6">
             <h2 className="text-lg font-bold text-gray-800 mb-4 pb-3 border-b border-gray-100">Avaliações dos clientes</h2>
             <div className="space-y-4">
-              {((product as {
-                reviews?: Array<{ id: number; buyerName: string; nota: number; titulo: string; comentario: string; createdAt: string }>
-              }).reviews || []).map((review) => (
+              {p.reviews.map((review) => (
                 <div key={review.id} className="border-b border-gray-100 pb-4 last:border-0">
                   <div className="flex items-center gap-2 mb-1">
                     <div className="flex">

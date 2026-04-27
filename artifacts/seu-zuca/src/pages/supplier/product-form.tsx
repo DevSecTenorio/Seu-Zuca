@@ -20,16 +20,20 @@ function ProductImagesUploader({
   onAdd,
   onRemove,
   onMoveToFirst,
+  onReorder,
 }: {
   imagens: string[];
   onAdd: (url: string) => void;
   onRemove: (url: string) => void;
   onMoveToFirst: (url: string) => void;
+  onReorder: (reordered: string[]) => void;
 }) {
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [urlInput, setUrlInput] = useState("");
   const [showUrlInput, setShowUrlInput] = useState(false);
+  const [draggedUrl, setDraggedUrl] = useState<string | null>(null);
+  const [dragOverUrl, setDragOverUrl] = useState<string | null>(null);
 
   const { uploadFile, isUploading, progress } = useUpload({
     onSuccess: (res) => {
@@ -57,9 +61,11 @@ function ProductImagesUploader({
     if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
-  function handleDrop(e: React.DragEvent) {
+  function handleDropZone(e: React.DragEvent) {
     e.preventDefault();
-    handleFiles(e.dataTransfer.files);
+    if (e.dataTransfer.files.length > 0) {
+      handleFiles(e.dataTransfer.files);
+    }
   }
 
   function handleUrlAdd() {
@@ -67,6 +73,24 @@ function ProductImagesUploader({
     if (!imagens.includes(urlInput.trim())) onAdd(urlInput.trim());
     setUrlInput("");
     setShowUrlInput(false);
+  }
+
+  function handleImgDragStart(url: string) { setDraggedUrl(url); }
+  function handleImgDragOver(e: React.DragEvent, url: string) {
+    e.preventDefault();
+    if (url !== draggedUrl) setDragOverUrl(url);
+  }
+  function handleImgDrop(targetUrl: string) {
+    if (!draggedUrl || draggedUrl === targetUrl) { setDraggedUrl(null); setDragOverUrl(null); return; }
+    const from = imagens.indexOf(draggedUrl);
+    const to = imagens.indexOf(targetUrl);
+    if (from === -1 || to === -1) { setDraggedUrl(null); setDragOverUrl(null); return; }
+    const next = [...imagens];
+    next.splice(from, 1);
+    next.splice(to, 0, draggedUrl);
+    onReorder(next);
+    setDraggedUrl(null);
+    setDragOverUrl(null);
   }
 
   return (
@@ -81,7 +105,7 @@ function ProductImagesUploader({
       <CardContent className="space-y-4">
         {/* Drop zone */}
         <div
-          onDrop={handleDrop}
+          onDrop={handleDropZone}
           onDragOver={(e) => e.preventDefault()}
           onClick={() => !isUploading && fileInputRef.current?.click()}
           className="w-full flex flex-col items-center justify-center gap-2 py-7 rounded-xl border-2 border-dashed border-gray-200 hover:border-orange-400 hover:bg-orange-50/30 transition-all cursor-pointer"
@@ -133,24 +157,52 @@ function ProductImagesUploader({
           </button>
         )}
 
-        {/* Grid de imagens */}
+        {/* Grid de imagens com reordenação */}
         {imagens.length > 0 && (
           <div>
-            <p className="text-xs text-muted-foreground mb-2">A primeira imagem é a foto principal do produto. Passe o mouse para ver as opções.</p>
+            <p className="text-xs text-muted-foreground mb-2">
+              A primeira imagem é a foto principal. <strong>Arraste</strong> para reordenar ou passe o mouse para ver opções.
+            </p>
             <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
               {imagens.map((img, i) => (
-                <div key={img} className="relative group aspect-square rounded-lg overflow-hidden bg-muted border border-gray-100">
-                  <img src={img} alt="" className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).src = "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100'><rect fill='%23f0f0f0' width='100' height='100'/><text x='50' y='55' text-anchor='middle' fill='%23999' font-size='12'>erro</text></svg>"; }} />
+                <div
+                  key={img}
+                  draggable
+                  onDragStart={() => handleImgDragStart(img)}
+                  onDragOver={(e) => handleImgDragOver(e, img)}
+                  onDrop={() => handleImgDrop(img)}
+                  onDragEnd={() => { setDraggedUrl(null); setDragOverUrl(null); }}
+                  className={`relative group aspect-square rounded-lg overflow-hidden bg-muted border-2 transition-all cursor-grab active:cursor-grabbing ${
+                    dragOverUrl === img ? "border-[#E85D00] scale-105" : "border-gray-100"
+                  } ${draggedUrl === img ? "opacity-40" : ""}`}
+                >
+                  <img
+                    src={img}
+                    alt=""
+                    className="w-full h-full object-cover pointer-events-none"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src = "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100'><rect fill='%23f0f0f0' width='100' height='100'/><text x='50' y='55' text-anchor='middle' fill='%23999' font-size='12'>erro</text></svg>";
+                    }}
+                  />
                   {i === 0 && (
-                    <div className="absolute top-1 left-1 bg-[#E85D00] text-white text-[9px] font-bold px-1.5 py-0.5 rounded">PRINCIPAL</div>
+                    <div className="absolute top-1 left-1 bg-[#E85D00] text-white text-[9px] font-bold px-1.5 py-0.5 rounded pointer-events-none">PRINCIPAL</div>
                   )}
                   <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                     {i !== 0 && (
-                      <button type="button" onClick={() => onMoveToFirst(img)} title="Definir como principal" className="w-7 h-7 bg-white/90 text-[#E85D00] rounded-full flex items-center justify-center hover:bg-white">
+                      <button
+                        type="button"
+                        onClick={() => onMoveToFirst(img)}
+                        title="Definir como principal"
+                        className="w-7 h-7 bg-white/90 text-[#E85D00] rounded-full flex items-center justify-center hover:bg-white"
+                      >
                         <Star size={13} />
                       </button>
                     )}
-                    <button type="button" onClick={() => onRemove(img)} className="w-7 h-7 bg-white/90 text-red-600 rounded-full flex items-center justify-center hover:bg-white">
+                    <button
+                      type="button"
+                      onClick={() => onRemove(img)}
+                      className="w-7 h-7 bg-white/90 text-red-600 rounded-full flex items-center justify-center hover:bg-white"
+                    >
                       <X size={13} />
                     </button>
                   </div>
@@ -339,6 +391,7 @@ export default function ProductForm() {
             onAdd={(url) => setForm((f) => ({ ...f, imagens: [...f.imagens, url] }))}
             onRemove={removeImagem}
             onMoveToFirst={moveToFirst}
+            onReorder={(reordered) => setForm((f) => ({ ...f, imagens: reordered }))}
           />
 
           <div className="flex gap-3 justify-end">
