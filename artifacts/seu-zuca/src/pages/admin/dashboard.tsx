@@ -16,7 +16,7 @@ import {
   Users, Package, ShoppingBag, TrendingUp, CheckCircle, XCircle,
   Clock, UserPlus, LayoutDashboard, AlertCircle, Eye, EyeOff, RefreshCw,
   ImageIcon, Plus, Trash2, Edit2, GripVertical, ExternalLink, ToggleLeft, ToggleRight,
-  ShieldCheck, Headphones, UploadCloud, X as XIcon, Link as LinkIcon, FolderOpen, Tag, Star, Percent, ListOrdered, KeyRound, Copy, CheckCheck, BarChart2
+  ShieldCheck, Headphones, UploadCloud, X as XIcon, Link as LinkIcon, FolderOpen, Tag, Star, Percent, ListOrdered, KeyRound, Copy, CheckCheck, BarChart2, FileText, Download
 } from "lucide-react";
 import { useUpload } from "@workspace/object-storage-web";
 import { useToast } from "@/hooks/use-toast";
@@ -31,6 +31,7 @@ const statusVariant: Record<string, "default" | "secondary" | "destructive" | "o
   suspended: "outline",
 };
 
+type UserDocumento = { tipo: string; nome: string; url: string; nomeArquivo?: string; };
 type UserType = {
   id?: number;
   nome?: string;
@@ -41,6 +42,7 @@ type UserType = {
   role?: string;
   status?: string;
   createdAt?: string;
+  documentos?: UserDocumento[];
 };
 
 function formatCnpj(cnpj: string) {
@@ -2057,6 +2059,7 @@ export default function AdminDashboard() {
   const [userCommissions, setUserCommissions] = useState<Record<number, string>>({});
   const [savingUserCommission, setSavingUserCommission] = useState<number | null>(null);
   const [resetPasswordUser, setResetPasswordUser] = useState<UserType | null>(null);
+  const [docsViewUser, setDocsViewUser] = useState<UserType | null>(null);
 
   async function handleSaveUserCommission(userId: number) {
     const val = userCommissions[userId];
@@ -2441,6 +2444,17 @@ export default function AdminDashboard() {
                                     <KeyRound size={11} />
                                     Senha
                                   </Button>
+                                  {(user.documentos?.length ?? 0) > 0 && (
+                                    <Button
+                                      size="sm" variant="outline"
+                                      className="h-7 text-xs gap-1 border-blue-300 text-blue-700 hover:bg-blue-50"
+                                      onClick={() => setDocsViewUser(user)}
+                                      title="Ver documentos enviados"
+                                    >
+                                      <FileText size={11} />
+                                      {user.documentos!.length} doc{user.documentos!.length !== 1 ? "s" : ""}
+                                    </Button>
+                                  )}
                                 </>
                               )}
                             </div>
@@ -2737,6 +2751,50 @@ export default function AdminDashboard() {
 
       {resetPasswordUser && (
         <ResetPasswordModal user={resetPasswordUser} onClose={() => setResetPasswordUser(null)} />
+      )}
+
+      {/* Modal de documentos do usuário */}
+      {docsViewUser && (
+        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4" onClick={() => setDocsViewUser(null)}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+              <div>
+                <h2 className="font-bold text-gray-900">Documentos enviados</h2>
+                <p className="text-xs text-gray-500 mt-0.5">{docsViewUser.nomeFantasia || docsViewUser.razaoSocial || docsViewUser.nome}</p>
+              </div>
+              <button onClick={() => setDocsViewUser(null)} className="text-gray-400 hover:text-gray-600 transition-colors">
+                <XIcon size={18} />
+              </button>
+            </div>
+            <div className="p-6 space-y-3">
+              {(docsViewUser.documentos?.length ?? 0) === 0 ? (
+                <p className="text-center text-sm text-muted-foreground py-6">Nenhum documento enviado</p>
+              ) : (
+                docsViewUser.documentos!.map((doc, i) => (
+                  <a
+                    key={i}
+                    href={doc.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-3 p-3 rounded-xl border border-gray-100 hover:border-[#C0181A]/30 hover:bg-red-50/30 transition-all group"
+                  >
+                    <div className="w-9 h-9 bg-blue-50 rounded-lg flex items-center justify-center shrink-0">
+                      <FileText size={18} className="text-blue-600" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-800 truncate">{doc.nome}</p>
+                      <p className="text-xs text-gray-400 truncate">{doc.nomeArquivo || doc.url.split("/").pop()}</p>
+                    </div>
+                    <ExternalLink size={14} className="text-gray-300 group-hover:text-[#C0181A] shrink-0 transition-colors" />
+                  </a>
+                ))
+              )}
+            </div>
+            <div className="px-6 pb-4">
+              <p className="text-xs text-center text-muted-foreground">Clique em um documento para abrir em nova aba</p>
+            </div>
+          </div>
+        </div>
       )}
     </Layout>
   );

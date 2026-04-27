@@ -21,7 +21,7 @@ function validateCnpj(cnpj: string): boolean {
 }
 
 router.post("/auth/register", async (req, res): Promise<void> => {
-  const { email, password, nome, role, cnpj, razaoSocial, nomeFantasia, telefone, ramo, cep, logradouro, numero, bairro, cidade, estado } = req.body;
+  const { email, password, nome, role, cnpj, razaoSocial, nomeFantasia, telefone, ramo, cep, logradouro, numero, bairro, cidade, estado, documentos } = req.body;
 
   if (!email || !password || !nome || !role) {
     res.status(400).json({ message: "Campos obrigatórios: email, senha, nome, papel" });
@@ -59,6 +59,7 @@ router.post("/auth/register", async (req, res): Promise<void> => {
     telefone,
     ramo,
     emailVerificado: true,
+    documentos: documentos ? JSON.stringify(documentos) : null,
   }).returning();
 
   const token = signToken(user.id);
