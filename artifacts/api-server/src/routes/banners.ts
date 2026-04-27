@@ -83,7 +83,16 @@ router.patch("/admin/banners/:id/toggle", authMiddleware, requireAdmin, async (r
   res.json(updated);
 });
 
-/* ── Admin: delete banner ────────────────────────────────────────────── */
+/* ── Admin: reorder banners ──────────────────────────────────────────── */
+router.patch("/admin/banners/reorder", authMiddleware, requireAdmin, async (req: AuthRequest, res): Promise<void> => {
+  const { ids } = req.body as { ids: number[] };
+  if (!Array.isArray(ids) || ids.length === 0) { res.status(400).json({ message: "ids é obrigatório" }); return; }
+  await Promise.all(ids.map((id, index) =>
+    db.update(bannersTable).set({ ordem: index + 1 }).where(eq(bannersTable.id, id))
+  ));
+  res.json({ ok: true });
+});
+
 router.delete("/admin/banners/:id", authMiddleware, requireAdmin, async (req: AuthRequest, res): Promise<void> => {
   const id = parseInt(req.params.id, 10);
   await db.delete(bannersTable).where(eq(bannersTable.id, id));

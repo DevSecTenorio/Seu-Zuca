@@ -735,6 +735,9 @@ function BannersTab() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState<typeof EMPTY_FORM>({ ...EMPTY_FORM });
+  const [draggedId, setDraggedId] = useState<number | null>(null);
+  const [dragOverId, setDragOverId] = useState<number | null>(null);
+  const [reordering, setReordering] = useState(false);
 
   async function loadBanners() {
     setLoading(true);
@@ -818,6 +821,51 @@ function BannersTab() {
       loadBanners();
     } catch {
       toast({ title: "Erro ao excluir", variant: "destructive" });
+    }
+  }
+
+  function handleDragStart(id: number) {
+    setDraggedId(id);
+  }
+
+  function handleDragOver(e: React.DragEvent, id: number) {
+    e.preventDefault();
+    if (id !== draggedId) setDragOverId(id);
+  }
+
+  function handleDragEnd() {
+    setDraggedId(null);
+    setDragOverId(null);
+  }
+
+  async function handleDrop(targetId: number) {
+    if (!draggedId || draggedId === targetId) { handleDragEnd(); return; }
+    const from = banners.findIndex((b) => b.id === draggedId);
+    const to = banners.findIndex((b) => b.id === targetId);
+    if (from === -1 || to === -1) { handleDragEnd(); return; }
+
+    const reordered = [...banners];
+    const [moved] = reordered.splice(from, 1);
+    reordered.splice(to, 0, moved);
+    setBanners(reordered);
+    handleDragEnd();
+
+    setReordering(true);
+    try {
+      const r = await fetch("/api/admin/banners/reorder", {
+        method: "PATCH",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids: reordered.map((b) => b.id) }),
+      });
+      if (!r.ok) throw new Error();
+      toast({ title: "Ordem atualizada!" });
+      loadBanners();
+    } catch {
+      toast({ title: "Erro ao reordenar", variant: "destructive" });
+      loadBanners();
+    } finally {
+      setReordering(false);
     }
   }
 
@@ -924,14 +972,30 @@ function BannersTab() {
         </div>
       ) : (
         <div className="space-y-3">
-          {banners.map((b) => (
-            <Card key={b.id} className={`shadow-none border transition-all ${b.ativo ? "border-border" : "border-dashed border-gray-200 opacity-60"}`}>
+          {reordering && <p className="text-xs text-center text-muted-foreground">Salvando nova ordem...</p>}
+          <p className="text-xs text-muted-foreground flex items-center gap-1">
+            <GripVertical size={12} /> Arraste pelo ícone para reordenar
+          </p>
+          {banners.map((b, index) => (
+            <Card
+              key={b.id}
+              draggable
+              onDragStart={() => handleDragStart(b.id)}
+              onDragOver={(e) => handleDragOver(e, b.id)}
+              onDrop={() => handleDrop(b.id)}
+              onDragEnd={handleDragEnd}
+              className={`shadow-none border transition-all ${
+                b.ativo ? "border-border" : "border-dashed border-gray-200 opacity-60"
+              } ${dragOverId === b.id ? "border-[#C0181A] border-2 scale-[1.01]" : ""} ${
+                draggedId === b.id ? "opacity-40" : ""
+              }`}
+            >
               <CardContent className="p-4">
                 <div className="flex items-start gap-4">
                   {/* Drag handle + order */}
-                  <div className="flex flex-col items-center gap-1 pt-1 shrink-0">
-                    <GripVertical size={16} className="text-gray-300" />
-                    <span className="text-xs font-bold text-gray-300">#{b.ordem}</span>
+                  <div className="flex flex-col items-center gap-1 pt-1 shrink-0 cursor-grab active:cursor-grabbing">
+                    <GripVertical size={16} className="text-gray-400" />
+                    <span className="text-xs font-bold text-gray-400">#{index + 1}</span>
                   </div>
 
                   {/* Color preview */}
