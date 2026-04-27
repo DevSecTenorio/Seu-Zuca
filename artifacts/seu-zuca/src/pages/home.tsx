@@ -80,24 +80,49 @@ function HeroBanner() {
           backgroundPosition: "center",
         }}
       >
-        {/* overlay suave para garantir legibilidade dos botões */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
+        {/* overlay em gradiente — mais denso na base para legibilidade do texto */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
 
-        {/* Botões ancorados na parte inferior esquerda */}
-        <div className="relative z-10 max-w-[1280px] mx-auto px-6 pb-8 pt-[220px] flex items-end">
-          <div className="flex gap-3">
-            <button
-              onClick={() => navigate(b.linkUrl || "/catalogo")}
-              className="bg-white text-[#C0181A] font-bold px-6 py-3 rounded-lg hover:bg-gray-100 transition-colors text-sm shadow-lg"
-            >
-              Ver ofertas
-            </button>
-            <button
-              onClick={() => navigate("/cadastro")}
-              className="bg-transparent border-2 border-white text-white font-bold px-6 py-3 rounded-lg hover:bg-white/10 transition-colors text-sm backdrop-blur-sm"
-            >
-              Criar conta B2B
-            </button>
+        {/* Texto + botões ancorados na parte inferior esquerda */}
+        <div className="relative z-10 max-w-[1280px] mx-auto px-6 pb-8 pt-[160px] flex items-end">
+          <div className="text-white">
+            {b.tag && (
+              <span className="inline-block bg-white/20 backdrop-blur-sm text-white text-xs font-semibold px-3 py-1 rounded-full mb-3">
+                {b.tag}
+              </span>
+            )}
+            {b.titulo && (
+              <h2
+                className="text-3xl md:text-4xl font-black leading-tight mb-2 whitespace-pre-line drop-shadow-lg"
+                style={{ textShadow: "0 2px 12px rgba(0,0,0,0.6)" }}
+              >
+                {b.titulo}
+              </h2>
+            )}
+            {b.destaque && (
+              <div className="inline-flex items-center bg-[#FFD700] text-[#1a1a1a] font-black text-lg px-4 py-1.5 rounded-full mb-2">
+                {b.destaque}
+              </div>
+            )}
+            {b.subtitulo && (
+              <p className="text-white/90 text-sm mb-5 drop-shadow" style={{ textShadow: "0 1px 6px rgba(0,0,0,0.7)" }}>
+                {b.subtitulo}
+              </p>
+            )}
+            <div className="flex gap-3 mt-4">
+              <button
+                onClick={() => navigate(b.linkUrl || "/catalogo")}
+                className="bg-white text-[#C0181A] font-bold px-6 py-3 rounded-lg hover:bg-gray-100 transition-colors text-sm shadow-lg"
+              >
+                Ver ofertas
+              </button>
+              <button
+                onClick={() => navigate("/cadastro")}
+                className="bg-transparent border-2 border-white text-white font-bold px-6 py-3 rounded-lg hover:bg-white/10 transition-colors text-sm backdrop-blur-sm"
+              >
+                Criar conta B2B
+              </button>
+            </div>
           </div>
         </div>
 
