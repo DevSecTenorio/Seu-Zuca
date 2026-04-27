@@ -68,6 +68,74 @@ function HeroBanner() {
   const b = banners[active] ?? banners[0];
   if (!b) return null;
 
+  /* ── Layout: imagem de fundo ocupa 100% quando disponível ──────────── */
+  if (b.imagemUrl) {
+    return (
+      <div
+        className="relative w-full overflow-hidden"
+        style={{
+          minHeight: 380,
+          backgroundImage: `url(${b.imagemUrl})`,
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+        }}
+      >
+        {/* overlay suave para garantir legibilidade dos botões */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
+
+        {/* Botões ancorados na parte inferior esquerda */}
+        <div className="relative z-10 max-w-[1280px] mx-auto px-6 pb-8 pt-[220px] flex items-end">
+          <div className="flex gap-3">
+            <button
+              onClick={() => navigate(b.linkUrl || "/catalogo")}
+              className="bg-white text-[#C0181A] font-bold px-6 py-3 rounded-lg hover:bg-gray-100 transition-colors text-sm shadow-lg"
+            >
+              Ver ofertas
+            </button>
+            <button
+              onClick={() => navigate("/cadastro")}
+              className="bg-transparent border-2 border-white text-white font-bold px-6 py-3 rounded-lg hover:bg-white/10 transition-colors text-sm backdrop-blur-sm"
+            >
+              Criar conta B2B
+            </button>
+          </div>
+        </div>
+
+        {/* Nav arrows */}
+        {banners.length > 1 && (
+          <>
+            <button
+              onClick={() => setActive((a) => (a - 1 + banners.length) % banners.length)}
+              className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 bg-black/30 hover:bg-black/50 rounded-full flex items-center justify-center text-white transition-colors z-20"
+            >
+              <ChevronLeft size={20} />
+            </button>
+            <button
+              onClick={() => setActive((a) => (a + 1) % banners.length)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 bg-black/30 hover:bg-black/50 rounded-full flex items-center justify-center text-white transition-colors z-20"
+            >
+              <ChevronRight size={20} />
+            </button>
+          </>
+        )}
+
+        {/* Dots */}
+        {banners.length > 1 && (
+          <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5 z-20">
+            {banners.map((_, i) => (
+              <button
+                key={i}
+                onClick={() => setActive(i)}
+                className={`w-2 h-2 rounded-full transition-all ${i === active ? "bg-white scale-125" : "bg-white/50"}`}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  /* ── Layout fallback: gradiente + texto (sem imagem) ─────────────────── */
   return (
     <div className={`relative bg-gradient-to-r ${b.corFundo} overflow-hidden`} style={{ minHeight: 320 }}>
       <div className="max-w-[1280px] mx-auto px-4 py-10 flex items-center justify-between gap-8">
@@ -102,13 +170,6 @@ function HeroBanner() {
             </button>
           </div>
         </div>
-
-        {/* Image */}
-        {b.imagemUrl && (
-          <div className="hidden md:block flex-shrink-0 w-72 h-56 rounded-2xl overflow-hidden shadow-2xl">
-            <img src={b.imagemUrl} alt={b.titulo} className="w-full h-full object-cover" />
-          </div>
-        )}
       </div>
 
       {/* Nav arrows */}
