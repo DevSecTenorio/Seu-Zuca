@@ -85,11 +85,13 @@ export function Layout({ children }: { children: React.ReactNode }) {
           <div className="flex items-center gap-4 h-[72px]">
             {/* Logo */}
             <Link href="/" className="flex-shrink-0">
-              <img
-                src="/logo-seuzuca.png"
-                alt="Seu Zuca — Pediu, Chegou"
-                className="h-[64px] w-auto object-contain"
-              />
+              <div className="overflow-hidden flex items-center justify-center" style={{ width: 180, height: 56 }}>
+                <img
+                  src="/logo-seuzuca.png"
+                  alt="Seu Zuca — Pediu, Chegou"
+                  style={{ transform: "scale(2.4)", transformOrigin: "center center", width: "100%", height: "100%", objectFit: "contain" }}
+                />
+              </div>
             </Link>
 
             {/* Search bar */}
@@ -489,11 +491,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <div className="max-w-[1280px] mx-auto px-4 py-10">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
             <div>
-              <div className="bg-white rounded-lg px-3 py-1.5 inline-block mb-4">
+              <div className="bg-white rounded-lg inline-block mb-4 overflow-hidden" style={{ width: 140, height: 44 }}>
                 <img
                   src="/logo-seuzuca.png"
                   alt="Seu Zuca"
-                  className="h-[40px] w-auto object-contain"
+                  style={{ transform: "scale(2.4)", transformOrigin: "center center", width: "100%", height: "100%", objectFit: "contain" }}
                 />
               </div>
               <p className="text-sm">Marketplace B2B exclusivo para Pessoas Jurídicas. Materiais de construção em grande volume.</p>

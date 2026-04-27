@@ -43,11 +43,13 @@ export default function Login() {
         <div className="w-full max-w-md">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-4 mb-8">
-            <img
-              src="/logo-seuzuca.png"
-              alt="Seu Zuca"
-              className="h-[56px] w-auto object-contain"
-            />
+            <div className="overflow-hidden flex items-center justify-center" style={{ width: 160, height: 56 }}>
+              <img
+                src="/logo-seuzuca.png"
+                alt="Seu Zuca"
+                style={{ transform: "scale(2.4)", transformOrigin: "center center", width: "100%", height: "100%", objectFit: "contain" }}
+              />
+            </div>
             <div>
               <p className="font-bold text-gray-800 text-lg leading-tight">Seja bem-vindo!</p>
               <p className="text-gray-500 text-sm">Plataforma B2B de materiais de construção</p>
