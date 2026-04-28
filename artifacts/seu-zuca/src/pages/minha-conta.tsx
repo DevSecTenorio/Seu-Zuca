@@ -17,7 +17,20 @@ type TabKey = "perfil" | "pedidos" | "enderecos" | "favoritos" | "relatorios";
 
 type Order = { id: number; status: string; total: number; createdAt: string; supplierId?: number };
 type Address = { id: number; cep: string; logradouro: string; numero: string; bairro: string; cidade: string; estado: string; principal?: boolean };
-type WishlistItem = { id: number; productId: number; productName?: string; productPrice?: number; productImage?: string };
+type WishlistItem = {
+  id: number;
+  productId: number;
+  addedAt: string;
+  product: {
+    id: number;
+    nome: string;
+    preco: number;
+    imagemPrincipal?: string;
+    slug?: string;
+    categoryName?: string;
+    supplierName?: string;
+  } | null;
+};
 
 const STATUS_LABEL: Record<string, string> = {
   pendente: "Pendente", em_separacao: "Em Separação", enviado: "Enviado",
@@ -376,17 +389,23 @@ export default function MinhaConta() {
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
                 {wishlist.map(item => (
-                  <Link key={item.id} href={`/produto/${item.productId}`}>
+                  <Link key={item.id} href={`/produto/${item.product?.slug || item.productId}`}>
                     <div className="border rounded-xl overflow-hidden hover:border-[#E85D00] transition-colors group cursor-pointer">
-                      <div className="aspect-square bg-muted overflow-hidden">
-                        {item.productImage
-                          ? <img src={item.productImage} alt={item.productName} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
-                          : <Package size={28} className="m-auto text-muted-foreground" />}
+                      <div className="aspect-square bg-muted overflow-hidden flex items-center justify-center">
+                        {item.product?.imagemPrincipal
+                          ? <img src={item.product.imagemPrincipal} alt={item.product.nome} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                          : <Package size={28} className="text-muted-foreground" />}
                       </div>
                       <div className="p-3">
-                        <p className="text-sm font-medium line-clamp-2">{item.productName || "Produto"}</p>
-                        {item.productPrice && (
-                          <p className="text-[#C0181A] font-bold text-sm mt-1">{BRL(item.productPrice)}</p>
+                        {item.product?.categoryName && (
+                          <p className="text-xs text-gray-400 mb-0.5">{item.product.categoryName}</p>
+                        )}
+                        <p className="text-sm font-medium line-clamp-2">{item.product?.nome || "Produto"}</p>
+                        {item.product?.supplierName && (
+                          <p className="text-xs text-gray-400 mt-0.5">{item.product.supplierName}</p>
+                        )}
+                        {item.product?.preco != null && (
+                          <p className="text-[#C0181A] font-bold text-sm mt-1">{BRL(item.product.preco)}</p>
                         )}
                         <Button
                           variant="ghost"
