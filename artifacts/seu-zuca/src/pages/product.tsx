@@ -94,7 +94,7 @@ export default function Product() {
   async function handleWishlist() {
     if (!isApprovedBuyer) { navigate("/login"); return; }
     try {
-      await addToWishlist.mutateAsync({ data: { productId: product!.id } });
+      await addToWishlist.mutateAsync({ productId: product!.id });
       toast({ title: "Adicionado aos favoritos" });
     } catch {
       toast({ title: "Erro ao adicionar favoritos", variant: "destructive" });

@@ -51,7 +51,7 @@ export default function Catalog() {
   async function handleWishlist(e: React.MouseEvent, productId: number) {
     e.preventDefault();
     try {
-      await wishlistMutation.mutateAsync({ data: { productId } });
+      await wishlistMutation.mutateAsync({ productId });
       toast({ title: "Adicionado aos favoritos" });
     } catch {
       toast({ title: "Faça login para adicionar favoritos", variant: "destructive" });
