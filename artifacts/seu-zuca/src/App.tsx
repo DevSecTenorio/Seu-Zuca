@@ -7,6 +7,8 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import Home from "@/pages/home";
 import Login from "@/pages/login";
 import Register from "@/pages/register";
+import RegisterBuyer from "@/pages/register-buyer";
+import RegisterSupplier from "@/pages/register-supplier";
 import AwaitingApproval from "@/pages/awaiting-approval";
 import Catalog from "@/pages/catalog";
 import Product from "@/pages/product";
@@ -42,6 +44,8 @@ function Router() {
       <Route path="/" component={Home} />
       <Route path="/login" component={Login} />
       <Route path="/cadastro" component={Register} />
+      <Route path="/cadastro/comprador" component={RegisterBuyer} />
+      <Route path="/cadastro/fornecedor" component={RegisterSupplier} />
       <Route path="/cadastro/aguardando" component={AwaitingApproval} />
       <Route path="/catalogo" component={Catalog} />
       <Route path="/categorias" component={Catalog} />

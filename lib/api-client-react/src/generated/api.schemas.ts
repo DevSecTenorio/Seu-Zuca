@@ -105,7 +105,7 @@ export interface UserListResponse {
 }
 
 export interface RejectUserBody {
-  motivo: string;
+  motivo?: string;
 }
 
 export interface CategoryMinimumRule {
@@ -300,10 +300,8 @@ export interface UpdateOrderStatusBody {
 
 export interface QuoteItem {
   id: number;
-  productId?: number;
+  productId: number;
   productName?: string;
-  produtoDescricao?: string;
-  unidadeMedida?: string;
   quantidade: number;
 }
 
@@ -323,13 +321,9 @@ export interface Quote {
   buyerName?: string;
   supplierId?: number;
   supplierName?: string;
-  titulo?: string;
-  descricao?: string;
   status: QuoteStatus;
   items?: QuoteItem[];
   observacoes?: string;
-  dataExpiracao?: string;
-  totalRespostas?: number;
   createdAt: string;
 }
 
@@ -348,7 +342,7 @@ export interface QuoteResponse {
   supplierId: number;
   supplierName?: string;
   precoTotal: number;
-  prazoEntrega: string;
+  prazoEntrega: number;
   condicoes?: string;
   valorFrete?: number;
   validadeAte?: string;
@@ -362,26 +356,21 @@ export type QuoteWithResponses = Quote & {
 
 export interface QuoteResponseBody {
   precoTotal: number;
-  prazoEntrega: string;
+  prazoEntrega: number;
   condicoes?: string;
   valorFrete?: number;
   validadeAte?: string;
 }
 
 export interface QuoteItemInput {
-  productId?: number;
-  produtoDescricao?: string;
+  productId: number;
   quantidade: number;
-  unidadeMedida?: string;
 }
 
 export interface CreateQuoteBody {
-  supplierId?: number;
-  titulo?: string;
-  descricao?: string;
-  observacoes?: string;
-  dataExpiracao?: string;
+  supplierId: number;
   items: QuoteItemInput[];
+  observacoes?: string;
 }
 
 export interface AcceptQuoteBody {

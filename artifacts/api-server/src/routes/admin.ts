@@ -3,6 +3,7 @@ import { db, usersTable, commissionsTable, categoryMinimumRulesTable, categories
 import { eq, desc, sql, and, gte, lte } from "drizzle-orm";
 import { authMiddleware, requireAdmin, requireAdminOrSupport, type AuthRequest } from "../middlewares/auth";
 import bcrypt from "bcryptjs";
+import { sendEmail, buildApprovalEmailHtml, buildRejectionEmailHtml } from "../lib/email";
 
 function validateCnpj(cnpj: string): boolean {
   const cleaned = cnpj.replace(/\D/g, "");
@@ -62,12 +63,19 @@ router.post("/admin/users/:id/approve", authMiddleware, requireAdmin, async (req
     return;
   }
 
+  await sendEmail({
+    to: user.email,
+    subject: "Cadastro aprovado — Seu Zuca",
+    html: buildApprovalEmailHtml(user.nome || user.email, user.role || "buyer"),
+  }).catch(() => {});
+
   res.json({ id: user.id, email: user.email, nome: user.nome, role: user.role, status: user.status, createdAt: user.createdAt });
 });
 
 router.post("/admin/users/:id/reject", authMiddleware, requireAdmin, async (req: AuthRequest, res): Promise<void> => {
   const raw = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
   const id = parseInt(raw, 10);
+  const { motivo } = req.body as { motivo?: string };
 
   const [target] = await db.select().from(usersTable).where(eq(usersTable.id, id));
   if (target?.email === OWNER_EMAIL) {
@@ -80,6 +88,12 @@ router.post("/admin/users/:id/reject", authMiddleware, requireAdmin, async (req:
     res.status(404).json({ message: "Usuário não encontrado" });
     return;
   }
+
+  await sendEmail({
+    to: user.email,
+    subject: "Atualização sobre seu cadastro — Seu Zuca",
+    html: buildRejectionEmailHtml(user.nome || user.email, motivo),
+  }).catch(() => {});
 
   res.json({ id: user.id, email: user.email, nome: user.nome, role: user.role, status: user.status, createdAt: user.createdAt });
 });

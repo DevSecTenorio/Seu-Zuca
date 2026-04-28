@@ -31,7 +31,7 @@ export default function SejaFornecedor() {
           <p className="text-white/90 text-lg max-w-xl mx-auto">
             Cadastre sua empresa no Seu Zuca e acesse um canal de vendas B2B exclusivo com compradores qualificados.
           </p>
-          <Link href="/cadastro">
+          <Link href="/cadastro/fornecedor">
             <button className="mt-2 px-8 py-3.5 bg-white text-[#C0181A] font-bold rounded-xl hover:bg-gray-100 transition-colors text-sm shadow-lg">
               Solicitar cadastro como fornecedor
             </button>
@@ -89,7 +89,7 @@ export default function SejaFornecedor() {
         {/* CTA final */}
         <div className="text-center space-y-3 border-t pt-10">
           <p className="text-gray-600 text-sm">Pronto para ampliar suas vendas B2B?</p>
-          <Link href="/cadastro">
+          <Link href="/cadastro/fornecedor">
             <button className="px-8 py-3.5 bg-[#C0181A] text-white font-bold rounded-xl hover:bg-[#a01418] transition-colors text-sm">
               Cadastrar minha empresa agora
             </button>

@@ -1380,7 +1380,7 @@ export const AdminRejectUserParams = zod.object({
 });
 
 export const AdminRejectUserBody = zod.object({
-  motivo: zod.string(),
+  motivo: zod.string().optional(),
 });
 
 export const AdminRejectUserResponse = zod.object({

@@ -1424,8 +1424,6 @@ components:
       properties:
         motivo:
           type: string
-      required:
-        - motivo
 
     # CATEGORIES
     Category:

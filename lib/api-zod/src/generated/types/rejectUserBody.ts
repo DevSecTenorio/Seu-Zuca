@@ -7,5 +7,5 @@
  */
 
 export interface RejectUserBody {
-  motivo: string;
+  motivo?: string;
 }

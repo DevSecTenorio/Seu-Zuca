@@ -7,6 +7,39 @@ import rateLimit from "express-rate-limit";
 import { signToken, authMiddleware, type AuthRequest } from "../middlewares/auth";
 import { sendEmail, buildPasswordResetEmailHtml, buildVerificationEmailHtml } from "../lib/email";
 
+// ── helpers de validação ────────────────────────────────────────────────────
+function buildInsertUser(fields: {
+  email: string; password: string; nome: string; role: "buyer" | "supplier";
+  cnpj: string; razaoSocial?: string; nomeFantasia?: string; telefone?: string;
+  ramo?: string; cep?: string; logradouro?: string; numero?: string;
+  complemento?: string; bairro?: string; cidade?: string; estado?: string;
+  documentos?: unknown; verificationHash: string; verificationExpiry: Date;
+}) {
+  return {
+    email: fields.email,
+    passwordHash: fields.password,
+    nome: fields.nome,
+    role: fields.role,
+    status: "pending" as const,
+    cnpj: fields.cnpj.replace(/\D/g, ""),
+    razaoSocial: fields.razaoSocial,
+    nomeFantasia: fields.nomeFantasia,
+    telefone: fields.telefone,
+    ramo: fields.ramo,
+    cep: fields.cep,
+    logradouro: fields.logradouro,
+    numero: fields.numero,
+    complemento: fields.complemento,
+    bairro: fields.bairro,
+    cidade: fields.cidade,
+    estado: fields.estado,
+    emailVerificado: false,
+    emailVerificationToken: fields.verificationHash,
+    emailVerificationExpiry: fields.verificationExpiry,
+    documentos: fields.documentos ? JSON.stringify(fields.documentos) : null,
+  };
+}
+
 const router: IRouter = Router();
 
 function validateCnpj(cnpj: string): boolean {
@@ -74,56 +107,107 @@ router.post("/auth/register", async (req, res): Promise<void> => {
   }
 
   const passwordHash = await bcrypt.hash(password, 10);
-  const status = role === "supplier" ? "approved" : "pending";
-
   const { raw: verificationRaw, hash: verificationHash } = generateToken();
   const verificationExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
-  const [user] = await db.insert(usersTable).values({
-    email,
-    passwordHash,
-    nome,
-    role,
-    status,
-    cnpj: cnpj.replace(/\D/g, ""),
-    razaoSocial,
-    nomeFantasia,
-    telefone,
-    ramo,
-    emailVerificado: false,
-    emailVerificationToken: verificationHash,
-    emailVerificationExpiry: verificationExpiry,
-    documentos: documentos ? JSON.stringify(documentos) : null,
-  }).returning();
+  const [user] = await db.insert(usersTable).values(
+    buildInsertUser({ email, password: passwordHash, nome, role, cnpj, razaoSocial, nomeFantasia, telefone, ramo, documentos, verificationHash, verificationExpiry })
+  ).returning();
 
   const verificationUrl = `${getAppBaseUrl()}/verificar-email?token=${verificationRaw}&email=${encodeURIComponent(email)}`;
-
-  await sendEmail({
-    to: email,
-    subject: "Confirme seu e-mail — Seu Zuca",
-    html: buildVerificationEmailHtml(nome, verificationUrl),
-  }).catch(() => {});
+  await sendEmail({ to: email, subject: "Confirme seu e-mail — Seu Zuca", html: buildVerificationEmailHtml(nome, verificationUrl) }).catch(() => {});
 
   const token = signToken(user.id);
   res.cookie("token", token, { httpOnly: true, maxAge: 7 * 24 * 60 * 60 * 1000, sameSite: "lax" });
 
   res.status(201).json({
     user: {
-      id: user.id,
-      email: user.email,
-      nome: user.nome,
-      role: user.role,
-      status: user.status,
-      cnpj: user.cnpj,
-      razaoSocial: user.razaoSocial,
-      nomeFantasia: user.nomeFantasia,
-      telefone: user.telefone,
-      emailVerificado: user.emailVerificado,
-      createdAt: user.createdAt,
+      id: user.id, email: user.email, nome: user.nome, role: user.role, status: user.status,
+      cnpj: user.cnpj, razaoSocial: user.razaoSocial, nomeFantasia: user.nomeFantasia,
+      telefone: user.telefone, emailVerificado: user.emailVerificado, createdAt: user.createdAt,
     },
-    message: role === "buyer"
-      ? "Cadastro realizado. Confirme seu e-mail e aguarde aprovação do administrador."
-      : "Cadastro realizado. Confirme seu e-mail para acessar a plataforma.",
+    message: "Cadastro realizado. Confirme seu e-mail e aguarde aprovação do administrador.",
+    requiresEmailVerification: true,
+  });
+});
+
+// ── /auth/register/buyer ────────────────────────────────────────────────────
+router.post("/auth/register/buyer", async (req, res): Promise<void> => {
+  const { email, password, nome, cnpj, razaoSocial, nomeFantasia, telefone, ramo, cep, logradouro, numero, complemento, bairro, cidade, estado, documentos } = req.body;
+
+  if (!email || !password || !nome || !cnpj || !razaoSocial) {
+    res.status(400).json({ message: "Campos obrigatórios: email, senha, nome, CNPJ e razão social" });
+    return;
+  }
+  if (!validateCnpj(cnpj)) {
+    res.status(400).json({ message: "CNPJ inválido" });
+    return;
+  }
+  const existing = await db.select().from(usersTable).where(eq(usersTable.email, email));
+  if (existing.length > 0) {
+    res.status(400).json({ message: "E-mail já cadastrado" });
+    return;
+  }
+
+  const passwordHash = await bcrypt.hash(password, 10);
+  const { raw: verificationRaw, hash: verificationHash } = generateToken();
+  const verificationExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+  const [user] = await db.insert(usersTable).values(
+    buildInsertUser({ email, password: passwordHash, nome, role: "buyer", cnpj, razaoSocial, nomeFantasia, telefone, ramo, cep, logradouro, numero, complemento, bairro, cidade, estado, documentos, verificationHash, verificationExpiry })
+  ).returning();
+
+  const verificationUrl = `${getAppBaseUrl()}/verificar-email?token=${verificationRaw}&email=${encodeURIComponent(email)}`;
+  await sendEmail({ to: email, subject: "Confirme seu e-mail — Seu Zuca", html: buildVerificationEmailHtml(nome, verificationUrl) }).catch(() => {});
+
+  const token = signToken(user.id);
+  res.cookie("token", token, { httpOnly: true, maxAge: 7 * 24 * 60 * 60 * 1000, sameSite: "lax" });
+  res.status(201).json({
+    user: { id: user.id, email: user.email, nome: user.nome, role: user.role, status: user.status, cnpj: user.cnpj, razaoSocial: user.razaoSocial, nomeFantasia: user.nomeFantasia, emailVerificado: user.emailVerificado, createdAt: user.createdAt },
+    message: "Cadastro realizado. Confirme seu e-mail e aguarde aprovação do administrador.",
+    requiresEmailVerification: true,
+  });
+});
+
+// ── /auth/register/supplier ────────────────────────────────────────────────
+router.post("/auth/register/supplier", async (req, res): Promise<void> => {
+  const { email, password, nome, cnpj, razaoSocial, nomeFantasia, telefone, ramo, cep, logradouro, numero, complemento, bairro, cidade, estado, documentos } = req.body;
+
+  if (!email || !password || !nome || !cnpj || !razaoSocial || !telefone) {
+    res.status(400).json({ message: "Campos obrigatórios: email, senha, nome, CNPJ, razão social e telefone" });
+    return;
+  }
+  if (!validateCnpj(cnpj)) {
+    res.status(400).json({ message: "CNPJ inválido" });
+    return;
+  }
+  const cartaoCnpjDoc = Array.isArray(documentos) && documentos.some((d: { tipo: string }) => d.tipo === "cartao_cnpj");
+  if (!cartaoCnpjDoc) {
+    res.status(400).json({ message: "Cartão CNPJ é obrigatório para fornecedores" });
+    return;
+  }
+  const existing = await db.select().from(usersTable).where(eq(usersTable.email, email));
+  if (existing.length > 0) {
+    res.status(400).json({ message: "E-mail já cadastrado" });
+    return;
+  }
+
+  const passwordHash = await bcrypt.hash(password, 10);
+  const { raw: verificationRaw, hash: verificationHash } = generateToken();
+  const verificationExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+  const [user] = await db.insert(usersTable).values(
+    buildInsertUser({ email, password: passwordHash, nome, role: "supplier", cnpj, razaoSocial, nomeFantasia, telefone, ramo, cep, logradouro, numero, complemento, bairro, cidade, estado, documentos, verificationHash, verificationExpiry })
+  ).returning();
+
+  const verificationUrl = `${getAppBaseUrl()}/verificar-email?token=${verificationRaw}&email=${encodeURIComponent(email)}`;
+  await sendEmail({ to: email, subject: "Confirme seu e-mail — Seu Zuca", html: buildVerificationEmailHtml(nome, verificationUrl) }).catch(() => {});
+
+  const token = signToken(user.id);
+  res.cookie("token", token, { httpOnly: true, maxAge: 7 * 24 * 60 * 60 * 1000, sameSite: "lax" });
+  res.status(201).json({
+    user: { id: user.id, email: user.email, nome: user.nome, role: user.role, status: user.status, cnpj: user.cnpj, razaoSocial: user.razaoSocial, nomeFantasia: user.nomeFantasia, emailVerificado: user.emailVerificado, createdAt: user.createdAt },
+    message: "Cadastro realizado. Confirme seu e-mail e aguarde aprovação do administrador.",
     requiresEmailVerification: true,
   });
 });

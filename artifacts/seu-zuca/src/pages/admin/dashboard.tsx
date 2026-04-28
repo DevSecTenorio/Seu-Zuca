@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from "recharts";
-import { useGetDashboardStats, useAdminListUsers, useAdminApproveUser, useAdminSuspendUser, useListCategories, useCreateCategory, useUpdateCategory, useDeleteCategory } from "@workspace/api-client-react";
+import { useGetDashboardStats, useAdminListUsers, useAdminApproveUser, useAdminSuspendUser, useAdminRejectUser, useListCategories, useCreateCategory, useUpdateCategory, useDeleteCategory } from "@workspace/api-client-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Layout } from "@/components/Layout";
 import ReportTab from "@/components/ReportTab";
@@ -16,7 +16,7 @@ import {
   Users, Package, ShoppingBag, TrendingUp, CheckCircle, XCircle,
   Clock, UserPlus, LayoutDashboard, AlertCircle, Eye, EyeOff, RefreshCw,
   ImageIcon, Plus, Trash2, Edit2, GripVertical, ExternalLink, ToggleLeft, ToggleRight,
-  ShieldCheck, Headphones, UploadCloud, X as XIcon, Link as LinkIcon, FolderOpen, Tag, Star, Percent, ListOrdered, KeyRound, Copy, CheckCheck, BarChart2, FileText, Download
+  ShieldCheck, Headphones, UploadCloud, X as XIcon, Link as LinkIcon, FolderOpen, Tag, Star, Percent, ListOrdered, KeyRound, Copy, CheckCheck, BarChart2, FileText, Download, Loader2, Store, Building2
 } from "lucide-react";
 import { useUpload } from "@workspace/object-storage-web";
 import { useToast } from "@/hooks/use-toast";
@@ -2050,6 +2050,77 @@ function AnalyticsTab() {
   );
 }
 
+// ─── Tabela reutilizável de usuários pendentes ────────────────────────────────
+function PendingUserTable({ users, onApprove, onReject, onDocs, onResetPassword, userCommissions, setUserCommissions, savingUserCommission, onSaveCommission }: {
+  users: UserType[];
+  onApprove: (id: number) => void;
+  onReject: (user: UserType) => void;
+  onDocs: (user: UserType) => void;
+  onResetPassword: (user: UserType) => void;
+  userCommissions: Record<number, string>;
+  setUserCommissions: React.Dispatch<React.SetStateAction<Record<number, string>>>;
+  savingUserCommission: number | null;
+  onSaveCommission: (id: number) => void;
+}) {
+  if (users.length === 0) return null;
+  return (
+    <div className="overflow-x-auto rounded-lg border border-border">
+      <table className="w-full text-sm">
+        <thead className="bg-muted/40">
+          <tr>
+            <th className="text-left px-4 py-3 text-muted-foreground font-medium text-xs">Empresa</th>
+            <th className="text-left px-4 py-3 text-muted-foreground font-medium text-xs">CNPJ</th>
+            <th className="text-left px-4 py-3 text-muted-foreground font-medium text-xs">Cadastro</th>
+            <th className="text-right px-4 py-3 text-muted-foreground font-medium text-xs">Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+          {users.map((user) => (
+            <tr key={user.id} className="border-t border-border hover:bg-muted/20 transition-colors">
+              <td className="px-4 py-3">
+                <p className="font-medium text-sm">{user.nomeFantasia || user.razaoSocial || user.nome}</p>
+                <p className="text-xs text-muted-foreground">{user.email}</p>
+                {user.ramo && <p className="text-xs text-muted-foreground mt-0.5">{user.ramo}</p>}
+              </td>
+              <td className="px-4 py-3">
+                <span className="font-mono text-xs">{user.cnpj ? user.cnpj.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, "$1.$2.$3/$4-$5") : "-"}</span>
+              </td>
+              <td className="px-4 py-3 text-muted-foreground text-xs whitespace-nowrap">
+                {user.createdAt ? new Date(user.createdAt).toLocaleDateString("pt-BR") : "-"}
+              </td>
+              <td className="px-4 py-3">
+                <div className="flex items-center gap-2 justify-end flex-wrap">
+                  {user.role === "supplier" && (
+                    <div className="flex items-center gap-1">
+                      <div className="relative">
+                        <Input type="number" min="0" max="100" step="0.01" placeholder="Comis.%" value={userCommissions[user.id!] !== undefined ? userCommissions[user.id!] : ""} onChange={e => setUserCommissions(c => ({ ...c, [user.id!]: e.target.value }))} className="w-20 h-6 text-xs pr-5 py-0" />
+                        <span className="absolute right-1.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">%</span>
+                      </div>
+                      <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-green-600 hover:text-green-700" disabled={savingUserCommission === user.id || !userCommissions[user.id!]} onClick={() => onSaveCommission(user.id!)} title="Salvar comissão"><CheckCircle size={12} /></Button>
+                    </div>
+                  )}
+                  <Button size="sm" className="h-7 text-xs gap-1 bg-green-600 hover:bg-green-700" onClick={() => onApprove(user.id!)}>
+                    <CheckCircle size={11} /> Aprovar
+                  </Button>
+                  <Button size="sm" variant="outline" className="h-7 text-xs border-red-200 text-red-600 hover:bg-red-50" onClick={() => onReject(user)}>
+                    Recusar
+                  </Button>
+                  <Button size="sm" variant="outline" className="h-7 text-xs gap-1 border-amber-300 text-amber-700 hover:bg-amber-50" onClick={() => onResetPassword(user)} title="Redefinir senha"><KeyRound size={11} />Senha</Button>
+                  {(user.documentos?.length ?? 0) > 0 && (
+                    <Button size="sm" variant="outline" className="h-7 text-xs gap-1 border-blue-300 text-blue-700 hover:bg-blue-50" onClick={() => onDocs(user)}>
+                      <FileText size={11} />{user.documentos!.length} doc{user.documentos!.length !== 1 ? "s" : ""}
+                    </Button>
+                  )}
+                </div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 // ─── Dashboard principal ──────────────────────────────────────────────────────
 export default function AdminDashboard() {
   const { isAdmin } = useAuth();
@@ -2060,6 +2131,8 @@ export default function AdminDashboard() {
   const [savingUserCommission, setSavingUserCommission] = useState<number | null>(null);
   const [resetPasswordUser, setResetPasswordUser] = useState<UserType | null>(null);
   const [docsViewUser, setDocsViewUser] = useState<UserType | null>(null);
+  const [rejectModal, setRejectModal] = useState<{ user: UserType; motivo: string } | null>(null);
+  const [rejectLoading, setRejectLoading] = useState(false);
 
   async function handleSaveUserCommission(userId: number) {
     const val = userCommissions[userId];
@@ -2080,6 +2153,7 @@ export default function AdminDashboard() {
   const { data: users, isLoading, refetch } = useAdminListUsers({ query: { enabled: isAdmin } });
   const approveMutation = useAdminApproveUser();
   const suspendMutation = useAdminSuspendUser();
+  const rejectMutation = useAdminRejectUser();
 
   if (!isAdmin) {
     return (
@@ -2103,6 +2177,21 @@ export default function AdminDashboard() {
     toast({ title: "Usuário suspenso" });
   }
 
+  async function handleRejectConfirm() {
+    if (!rejectModal) return;
+    setRejectLoading(true);
+    try {
+      await rejectMutation.mutateAsync({ id: String(rejectModal.user.id!), data: { motivo: rejectModal.motivo || undefined } });
+      refetch();
+      toast({ title: `Cadastro de ${rejectModal.user.nomeFantasia || rejectModal.user.nome} recusado` });
+      setRejectModal(null);
+    } catch {
+      toast({ title: "Erro ao recusar cadastro", variant: "destructive" });
+    } finally {
+      setRejectLoading(false);
+    }
+  }
+
   const usersData = users as { users?: UserType[] } | UserType[] | undefined;
   const allUsers: UserType[] = Array.isArray(usersData)
     ? usersData
@@ -2116,6 +2205,8 @@ export default function AdminDashboard() {
   });
 
   const pendingCount = allUsers.filter((u) => u.status === "pending").length;
+  const pendingBuyers = allUsers.filter((u) => u.status === "pending" && u.role === "buyer");
+  const pendingSuppliers = allUsers.filter((u) => u.status === "pending" && u.role === "supplier");
 
   const dash = dashboard as {
     gmvTotal?: number;
@@ -2309,7 +2400,7 @@ export default function AdminDashboard() {
               <div className="flex flex-wrap gap-2 mb-4">
                 {[
                   { v: "all", label: "Todos" },
-                  { v: "pending", label: "Pendentes", highlight: pendingCount > 0 },
+                  { v: "pending", label: "Pendentes", highlight: pendingCount > 0, count: pendingCount },
                   { v: "approved", label: "Aprovados" },
                   { v: "supplier", label: "Fornecedores" },
                   { v: "buyer", label: "Compradores" },
@@ -2327,12 +2418,41 @@ export default function AdminDashboard() {
                     }`}
                   >
                     {f.label}
-                    {f.highlight && pendingCount > 0 && (
-                      <span className="ml-1.5 bg-amber-500 text-white text-[10px] rounded-full px-1.5">{pendingCount}</span>
+                    {"count" in f && f.highlight && (f.count ?? 0) > 0 && (
+                      <span className="ml-1.5 bg-amber-500 text-white text-[10px] rounded-full px-1.5">{f.count}</span>
                     )}
                   </button>
                 ))}
               </div>
+
+              {/* Fila split — apenas quando filtro = pendentes */}
+              {statusFilter === "pending" && pendingCount > 0 && (
+                <div className="space-y-6 mb-6">
+                  {/* Fornecedores Pendentes */}
+                  {pendingSuppliers.length > 0 && (
+                    <div>
+                      <div className="flex items-center gap-2 mb-3">
+                        <span className="text-xs font-semibold uppercase tracking-wide text-emerald-700">Fornecedores aguardando aprovação</span>
+                        <span className="bg-emerald-100 text-emerald-700 text-[10px] font-bold rounded-full px-2 py-0.5">{pendingSuppliers.length}</span>
+                      </div>
+                      <PendingUserTable users={pendingSuppliers} onApprove={handleApprove} onReject={(u) => setRejectModal({ user: u, motivo: "" })} onDocs={setDocsViewUser} onResetPassword={setResetPasswordUser} userCommissions={userCommissions} setUserCommissions={setUserCommissions} savingUserCommission={savingUserCommission} onSaveCommission={handleSaveUserCommission} />
+                    </div>
+                  )}
+                  {/* Compradores Pendentes */}
+                  {pendingBuyers.length > 0 && (
+                    <div>
+                      <div className="flex items-center gap-2 mb-3">
+                        <span className="text-xs font-semibold uppercase tracking-wide text-blue-700">Compradores aguardando aprovação</span>
+                        <span className="bg-blue-100 text-blue-700 text-[10px] font-bold rounded-full px-2 py-0.5">{pendingBuyers.length}</span>
+                      </div>
+                      <PendingUserTable users={pendingBuyers} onApprove={handleApprove} onReject={(u) => setRejectModal({ user: u, motivo: "" })} onDocs={setDocsViewUser} onResetPassword={setResetPasswordUser} userCommissions={userCommissions} setUserCommissions={setUserCommissions} savingUserCommission={savingUserCommission} onSaveCommission={handleSaveUserCommission} />
+                    </div>
+                  )}
+                  {pendingSuppliers.length === 0 && pendingBuyers.length === 0 && (
+                    <div className="text-center py-8 text-muted-foreground text-sm">Nenhum cadastro pendente</div>
+                  )}
+                </div>
+              )}
 
               {isLoading ? (
                 <div className="space-y-3">
@@ -2420,7 +2540,7 @@ export default function AdminDashboard() {
                                         <CheckCircle size={11} />
                                         Aprovar
                                       </Button>
-                                      <Button size="sm" variant="outline" className="h-7 text-xs border-red-200 text-red-600 hover:bg-red-50" onClick={() => handleSuspend(user.id!)}>
+                                      <Button size="sm" variant="outline" className="h-7 text-xs border-red-200 text-red-600 hover:bg-red-50" onClick={() => setRejectModal({ user, motivo: "" })}>
                                         Recusar
                                       </Button>
                                     </>
@@ -2792,6 +2912,47 @@ export default function AdminDashboard() {
             </div>
             <div className="px-6 pb-4">
               <p className="text-xs text-center text-muted-foreground">Clique em um documento para abrir em nova aba</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Modal: Recusar cadastro ───────────────────────────────────────────── */}
+      {rejectModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/50" onClick={() => setRejectModal(null)} />
+          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+              <div>
+                <h2 className="font-bold text-gray-900">Recusar cadastro</h2>
+                <p className="text-xs text-gray-500 mt-0.5">{rejectModal.user.nomeFantasia || rejectModal.user.razaoSocial || rejectModal.user.nome}</p>
+              </div>
+              <button onClick={() => setRejectModal(null)} className="text-gray-400 hover:text-gray-600 transition-colors">
+                <XIcon size={18} />
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div className="bg-red-50 border border-red-100 rounded-lg p-3 text-sm text-red-700">
+                O usuário receberá um e-mail informando que o cadastro não foi aprovado.
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-sm">Motivo da recusa <span className="text-muted-foreground text-xs">(opcional — será enviado no e-mail)</span></Label>
+                <Textarea
+                  value={rejectModal.motivo}
+                  onChange={(e) => setRejectModal((m) => m ? { ...m, motivo: e.target.value } : null)}
+                  placeholder="Ex: Documentação incompleta, CNPJ irregular, dados inconsistentes..."
+                  className="resize-none text-sm"
+                  rows={3}
+                />
+              </div>
+              <div className="flex gap-3">
+                <Button variant="outline" className="flex-1" onClick={() => setRejectModal(null)} disabled={rejectLoading}>
+                  Cancelar
+                </Button>
+                <Button className="flex-1 bg-[#C0181A] hover:bg-[#a01416] gap-1.5" onClick={handleRejectConfirm} disabled={rejectLoading}>
+                  {rejectLoading ? <><Loader2 size={14} className="animate-spin" />Recusando...</> : <><XCircle size={14} />Confirmar recusa</>}
+                </Button>
+              </div>
             </div>
           </div>
         </div>
