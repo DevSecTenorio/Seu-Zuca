@@ -6,7 +6,7 @@ import { Layout } from "@/components/Layout";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Lock, Star, SlidersHorizontal, Building2, Heart } from "lucide-react";
-import { useAddToWishlist } from "@workspace/api-client-react";
+import { useAddToWishlist, useGetWishlist, useRemoveFromWishlist } from "@workspace/api-client-react";
 import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
 
@@ -34,6 +34,9 @@ export default function Catalog() {
   });
   const { data: categories } = useListCategories();
   const wishlistMutation = useAddToWishlist();
+  const removeFromWishlist = useRemoveFromWishlist();
+  const { data: wishlist, refetch: refetchWishlist } = useGetWishlist({ query: { enabled: isApprovedBuyer } });
+  const favIds = useMemo(() => new Set((wishlist ?? []).map((w) => w.productId)), [wishlist]);
 
   function goCategory(id: string | "all") {
     const next = new URLSearchParams(search);
@@ -50,11 +53,18 @@ export default function Catalog() {
 
   async function handleWishlist(e: React.MouseEvent, productId: number) {
     e.preventDefault();
+    if (!isApprovedBuyer) { navigate("/login"); return; }
     try {
-      await wishlistMutation.mutateAsync({ productId });
-      toast({ title: "Adicionado aos favoritos" });
+      if (favIds.has(productId)) {
+        await removeFromWishlist.mutateAsync({ productId });
+        toast({ title: "Removido dos favoritos" });
+      } else {
+        await wishlistMutation.mutateAsync({ productId });
+        toast({ title: "Adicionado aos favoritos" });
+      }
+      refetchWishlist();
     } catch {
-      toast({ title: "Faça login para adicionar favoritos", variant: "destructive" });
+      toast({ title: "Erro ao atualizar favoritos", variant: "destructive" });
     }
   }
 
@@ -176,9 +186,10 @@ export default function Catalog() {
                         )}
                         <button
                           onClick={(e) => handleWishlist(e, product.id)}
-                          className="absolute top-2 right-2 w-7 h-7 rounded-full bg-white shadow flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:text-[#C0181A]"
+                          title={favIds.has(product.id) ? "Remover dos favoritos" : "Adicionar aos favoritos"}
+                          className={`absolute top-2 right-2 w-7 h-7 rounded-full bg-white shadow flex items-center justify-center transition-all ${favIds.has(product.id) ? "opacity-100 text-[#C0181A]" : "opacity-0 group-hover:opacity-100 text-gray-400 hover:text-[#C0181A]"}`}
                         >
-                          <Heart size={13} className="text-gray-400" />
+                          <Heart size={13} className={favIds.has(product.id) ? "fill-[#C0181A]" : ""} />
                         </button>
                       </div>
                       <div className="p-3">

@@ -1,5 +1,5 @@
 import { useParams, useLocation } from "wouter";
-import { useGetProduct, useAddToCart, useAddToWishlist } from "@workspace/api-client-react";
+import { useGetProduct, useAddToCart, useAddToWishlist, useGetWishlist, useRemoveFromWishlist } from "@workspace/api-client-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Layout } from "@/components/Layout";
 import { Button } from "@/components/ui/button";
@@ -22,6 +22,9 @@ export default function Product() {
   const { data: product, isLoading } = useGetProduct(id!);
   const addToCart = useAddToCart();
   const addToWishlist = useAddToWishlist();
+  const removeFromWishlist = useRemoveFromWishlist();
+  const { data: wishlist, refetch: refetchWishlist } = useGetWishlist({ query: { enabled: isApprovedBuyer } });
+  const isFavorited = wishlist?.some((w) => w.productId === product?.id) ?? false;
 
   const [qty, setQty] = useState(1);
   const [activeImg, setActiveImg] = useState(0);
@@ -94,10 +97,16 @@ export default function Product() {
   async function handleWishlist() {
     if (!isApprovedBuyer) { navigate("/login"); return; }
     try {
-      await addToWishlist.mutateAsync({ productId: product!.id });
-      toast({ title: "Adicionado aos favoritos" });
+      if (isFavorited) {
+        await removeFromWishlist.mutateAsync({ productId: product!.id });
+        toast({ title: "Removido dos favoritos" });
+      } else {
+        await addToWishlist.mutateAsync({ productId: product!.id });
+        toast({ title: "Adicionado aos favoritos" });
+      }
+      refetchWishlist();
     } catch {
-      toast({ title: "Erro ao adicionar favoritos", variant: "destructive" });
+      toast({ title: "Erro ao atualizar favoritos", variant: "destructive" });
     }
   }
 
@@ -345,9 +354,10 @@ export default function Product() {
                 </button>
                 <button
                   onClick={handleWishlist}
-                  className="w-12 h-12 border border-gray-200 rounded-lg flex items-center justify-center hover:border-[#C0181A] hover:text-[#C0181A] transition-colors"
+                  title={isFavorited ? "Remover dos favoritos" : "Adicionar aos favoritos"}
+                  className={`w-12 h-12 border rounded-lg flex items-center justify-center transition-colors ${isFavorited ? "border-[#C0181A] text-[#C0181A]" : "border-gray-200 hover:border-[#C0181A] hover:text-[#C0181A]"}`}
                 >
-                  <Heart size={18} />
+                  <Heart size={18} className={isFavorited ? "fill-[#C0181A]" : ""} />
                 </button>
               </div>
             )}
