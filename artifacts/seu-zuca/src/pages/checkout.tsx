@@ -165,10 +165,11 @@ export default function Checkout() {
         }
       }
 
-      await createOrder.mutateAsync({ data: { addressId: finalAddressId, observacoes: paymentMethod } });
+      const orders = await createOrder.mutateAsync({ data: { addressId: finalAddressId, observacoes: "" } });
       await queryClient.invalidateQueries();
-      toast({ title: "Pedido realizado com sucesso!" });
-      navigate("/pedidos");
+      const createdOrders = Array.isArray(orders) ? orders : [orders];
+      const ids = createdOrders.map((o: { id: number }) => o.id).filter(Boolean).join(",");
+      navigate(`/pagamento?orders=${ids}&metodo=${paymentMethod}`);
     } catch (err: unknown) {
       const msg =
         (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||

@@ -27,6 +27,7 @@ import SejaFornecedor from "@/pages/seja-fornecedor";
 import MinhaConta from "@/pages/minha-conta";
 import FornecedorPerfil from "@/pages/fornecedor-perfil";
 import TrocarSenha from "@/pages/trocar-senha";
+import Payment from "@/pages/payment";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient({
@@ -52,6 +53,7 @@ function Router() {
       <Route path="/produto/:id" component={Product} />
       <Route path="/carrinho" component={Cart} />
       <Route path="/checkout" component={Checkout} />
+      <Route path="/pagamento" component={Payment} />
       <Route path="/pedidos" component={Orders} />
       <Route path="/pedido/:id" component={OrderDetail} />
       <Route path="/favoritos" component={Wishlist} />
