@@ -380,23 +380,6 @@ export default function ProductForm() {
                 <Label>Prazo de Frete (dias úteis)</Label>
                 <Input type="number" value={form.prazoFrete} onChange={(e) => setForm((f) => ({ ...f, prazoFrete: e.target.value }))} />
               </div>
-              <div className="space-y-1.5">
-                <Label>Comissão por Produto (%)</Label>
-                <div className="relative">
-                  <Input
-                    type="number"
-                    min="0"
-                    max="100"
-                    step="0.01"
-                    placeholder="Usa comissão do fornecedor ou global"
-                    value={form.comissao}
-                    onChange={(e) => setForm((f) => ({ ...f, comissao: e.target.value }))}
-                    className="pr-7"
-                  />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">%</span>
-                </div>
-                <p className="text-xs text-muted-foreground">Deixe em branco para usar a taxa padrão do seu contrato.</p>
-              </div>
               <div className="flex items-center gap-3">
                 <Switch
                   checked={form.disponivel}
