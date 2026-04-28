@@ -1,4 +1,4 @@
-import { pgTable, serial, timestamp, integer } from "drizzle-orm/pg-core";
+import { pgTable, serial, timestamp, integer, uniqueIndex } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { usersTable } from "./users";
@@ -9,7 +9,9 @@ export const wishlistsTable = pgTable("wishlists", {
   userId: integer("user_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
   productId: integer("product_id").notNull().references(() => productsTable.id, { onDelete: "cascade" }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+}, (table) => [
+  uniqueIndex("wishlists_user_product_unique").on(table.userId, table.productId),
+]);
 
 export const commissionsTable = pgTable("commissions", {
   id: serial("id").primaryKey(),

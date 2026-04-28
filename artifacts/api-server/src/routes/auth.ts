@@ -1,8 +1,11 @@
 import { Router, type IRouter } from "express";
 import { db, usersTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { eq, and, gt } from "drizzle-orm";
 import bcrypt from "bcryptjs";
+import crypto from "crypto";
+import rateLimit from "express-rate-limit";
 import { signToken, authMiddleware, type AuthRequest } from "../middlewares/auth";
+import { sendEmail, buildPasswordResetEmailHtml, buildVerificationEmailHtml } from "../lib/email";
 
 const router: IRouter = Router();
 
@@ -20,8 +23,34 @@ function validateCnpj(cnpj: string): boolean {
   return parseInt(cleaned[12]) === d1 && parseInt(cleaned[13]) === d2;
 }
 
+function generateToken(): { raw: string; hash: string } {
+  const raw = crypto.randomBytes(32).toString("hex");
+  const hash = crypto.createHash("sha256").update(raw).digest("hex");
+  return { raw, hash };
+}
+
+function getAppBaseUrl(): string {
+  const domains = process.env.REPLIT_DOMAINS?.split(",")[0];
+  if (domains) return `https://${domains}`;
+  return process.env.APP_BASE_URL || "http://localhost:80";
+}
+
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: "Muitas tentativas de login. Tente novamente em 15 minutos." },
+  keyGenerator: (req) => {
+    const forwarded = req.headers["x-forwarded-for"];
+    const ip = Array.isArray(forwarded) ? forwarded[0] : (forwarded?.split(",")[0] ?? req.socket.remoteAddress ?? "unknown");
+    return ip;
+  },
+  skip: () => process.env.NODE_ENV === "test",
+});
+
 router.post("/auth/register", async (req, res): Promise<void> => {
-  const { email, password, nome, role, cnpj, razaoSocial, nomeFantasia, telefone, ramo, cep, logradouro, numero, bairro, cidade, estado, documentos } = req.body;
+  const { email, password, nome, role, cnpj, razaoSocial, nomeFantasia, telefone, ramo, documentos } = req.body;
 
   if (!email || !password || !nome || !role) {
     res.status(400).json({ message: "Campos obrigatórios: email, senha, nome, papel" });
@@ -47,6 +76,9 @@ router.post("/auth/register", async (req, res): Promise<void> => {
   const passwordHash = await bcrypt.hash(password, 10);
   const status = role === "supplier" ? "approved" : "pending";
 
+  const { raw: verificationRaw, hash: verificationHash } = generateToken();
+  const verificationExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
   const [user] = await db.insert(usersTable).values({
     email,
     passwordHash,
@@ -58,9 +90,19 @@ router.post("/auth/register", async (req, res): Promise<void> => {
     nomeFantasia,
     telefone,
     ramo,
-    emailVerificado: true,
+    emailVerificado: false,
+    emailVerificationToken: verificationHash,
+    emailVerificationExpiry: verificationExpiry,
     documentos: documentos ? JSON.stringify(documentos) : null,
   }).returning();
+
+  const verificationUrl = `${getAppBaseUrl()}/verificar-email?token=${verificationRaw}&email=${encodeURIComponent(email)}`;
+
+  await sendEmail({
+    to: email,
+    subject: "Confirme seu e-mail — Seu Zuca",
+    html: buildVerificationEmailHtml(nome, verificationUrl),
+  }).catch(() => {});
 
   const token = signToken(user.id);
   res.cookie("token", token, { httpOnly: true, maxAge: 7 * 24 * 60 * 60 * 1000, sameSite: "lax" });
@@ -80,12 +122,13 @@ router.post("/auth/register", async (req, res): Promise<void> => {
       createdAt: user.createdAt,
     },
     message: role === "buyer"
-      ? "Cadastro realizado. Aguardando aprovação do administrador."
-      : "Cadastro realizado com sucesso.",
+      ? "Cadastro realizado. Confirme seu e-mail e aguarde aprovação do administrador."
+      : "Cadastro realizado. Confirme seu e-mail para acessar a plataforma.",
+    requiresEmailVerification: true,
   });
 });
 
-router.post("/auth/login", async (req, res): Promise<void> => {
+router.post("/auth/login", loginLimiter, async (req, res): Promise<void> => {
   const { email, password } = req.body;
 
   if (!email || !password) {
@@ -97,6 +140,14 @@ router.post("/auth/login", async (req, res): Promise<void> => {
 
   if (!user || !(await bcrypt.compare(password, user.passwordHash))) {
     res.status(401).json({ message: "E-mail ou senha incorretos" });
+    return;
+  }
+
+  if (!user.emailVerificado) {
+    res.status(403).json({
+      message: "E-mail não verificado. Verifique sua caixa de entrada e clique no link de confirmação.",
+      code: "EMAIL_NOT_VERIFIED",
+    });
     return;
   }
 
@@ -194,22 +245,139 @@ router.patch("/auth/change-password", authMiddleware, async (req: AuthRequest, r
   res.json({ message: "Senha alterada com sucesso" });
 });
 
-router.post("/auth/forgot-password", async (req, res): Promise<void> => {
+router.post("/auth/verify-email", async (req, res): Promise<void> => {
+  const { token, email } = req.body;
+
+  if (!token || !email) {
+    res.status(400).json({ message: "Token e e-mail são obrigatórios" });
+    return;
+  }
+
+  const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
+
+  const [user] = await db.select().from(usersTable).where(
+    and(
+      eq(usersTable.email, email),
+      eq(usersTable.emailVerificationToken, tokenHash),
+      gt(usersTable.emailVerificationExpiry, new Date()),
+    )
+  );
+
+  if (!user) {
+    res.status(400).json({ message: "Link de verificação inválido ou expirado" });
+    return;
+  }
+
+  if (user.emailVerificado) {
+    res.json({ message: "E-mail já verificado anteriormente" });
+    return;
+  }
+
+  await db.update(usersTable)
+    .set({ emailVerificado: true, emailVerificationToken: null, emailVerificationExpiry: null })
+    .where(eq(usersTable.id, user.id));
+
+  res.json({ message: "E-mail verificado com sucesso. Você já pode fazer login." });
+});
+
+router.post("/auth/resend-verification", async (req, res): Promise<void> => {
   const { email } = req.body;
+
   if (!email) {
     res.status(400).json({ message: "E-mail obrigatório" });
     return;
   }
+
+  const [user] = await db.select().from(usersTable).where(eq(usersTable.email, email));
+
+  if (!user || user.emailVerificado) {
+    res.json({ message: "Se o e-mail estiver cadastrado e não verificado, um novo link será enviado." });
+    return;
+  }
+
+  const { raw, hash } = generateToken();
+  const expiry = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+  await db.update(usersTable)
+    .set({ emailVerificationToken: hash, emailVerificationExpiry: expiry })
+    .where(eq(usersTable.id, user.id));
+
+  const verificationUrl = `${getAppBaseUrl()}/verificar-email?token=${raw}&email=${encodeURIComponent(email)}`;
+
+  await sendEmail({
+    to: email,
+    subject: "Confirme seu e-mail — Seu Zuca",
+    html: buildVerificationEmailHtml(user.nome, verificationUrl),
+  }).catch(() => {});
+
+  res.json({ message: "Se o e-mail estiver cadastrado e não verificado, um novo link será enviado." });
+});
+
+router.post("/auth/forgot-password", async (req, res): Promise<void> => {
+  const { email } = req.body;
+
+  if (!email) {
+    res.status(400).json({ message: "E-mail obrigatório" });
+    return;
+  }
+
+  const [user] = await db.select().from(usersTable).where(eq(usersTable.email, email));
+
   res.json({ message: "Se o e-mail estiver cadastrado, você receberá as instruções de recuperação." });
+
+  if (!user) return;
+
+  const { raw, hash } = generateToken();
+  const expiry = new Date(Date.now() + 60 * 60 * 1000);
+
+  await db.update(usersTable)
+    .set({ resetToken: hash, resetTokenExpiry: expiry })
+    .where(eq(usersTable.id, user.id));
+
+  const resetUrl = `${getAppBaseUrl()}/redefinir-senha?token=${raw}&email=${encodeURIComponent(email)}`;
+
+  await sendEmail({
+    to: email,
+    subject: "Recuperação de senha — Seu Zuca",
+    html: buildPasswordResetEmailHtml(user.nome, resetUrl),
+  }).catch(() => {});
 });
 
 router.post("/auth/reset-password", async (req, res): Promise<void> => {
-  const { token, password } = req.body;
-  if (!token || !password) {
-    res.status(400).json({ message: "Token e nova senha são obrigatórios" });
+  const { token, email, password } = req.body;
+
+  if (!token || !email || !password) {
+    res.status(400).json({ message: "Token, e-mail e nova senha são obrigatórios" });
     return;
   }
-  res.json({ message: "Senha redefinida com sucesso" });
+
+  if (password.length < 8) {
+    res.status(400).json({ message: "A nova senha deve ter pelo menos 8 caracteres" });
+    return;
+  }
+
+  const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
+
+  const [user] = await db.select().from(usersTable).where(
+    and(
+      eq(usersTable.email, email),
+      eq(usersTable.resetToken, tokenHash),
+      gt(usersTable.resetTokenExpiry, new Date()),
+    )
+  );
+
+  if (!user) {
+    res.status(400).json({ message: "Link de recuperação inválido ou expirado" });
+    return;
+  }
+
+  const passwordHash = await bcrypt.hash(password, 12);
+
+  await db.update(usersTable)
+    .set({ passwordHash, resetToken: null, resetTokenExpiry: null, mustChangePassword: false })
+    .where(eq(usersTable.id, user.id));
+
+  res.json({ message: "Senha redefinida com sucesso. Você já pode fazer login." });
 });
 
 export default router;

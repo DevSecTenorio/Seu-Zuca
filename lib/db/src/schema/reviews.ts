@@ -11,6 +11,7 @@ export const reviewsTable = pgTable("reviews", {
   supplierId: integer("supplier_id").notNull().references(() => usersTable.id),
   productId: integer("product_id").notNull().references(() => productsTable.id),
   orderId: integer("order_id").notNull().references(() => ordersTable.id),
+  titulo: text("titulo"),
   nota: integer("nota").notNull(),
   comentario: text("comentario").notNull(),
   aprovada: boolean("aprovada").notNull().default(false),

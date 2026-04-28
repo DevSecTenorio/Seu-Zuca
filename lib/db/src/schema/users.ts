@@ -15,6 +15,8 @@ export const usersTable = pgTable("users", {
   telefone: text("telefone"),
   ramo: text("ramo"),
   emailVerificado: boolean("email_verificado").notNull().default(false),
+  emailVerificationToken: text("email_verification_token"),
+  emailVerificationExpiry: timestamp("email_verification_expiry", { withTimezone: true }),
   comissao: real("comissao"),
   stripeAccountId: text("stripe_account_id"),
   resetToken: text("reset_token"),
