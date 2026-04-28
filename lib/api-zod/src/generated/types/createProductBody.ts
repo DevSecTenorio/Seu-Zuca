@@ -11,7 +11,8 @@ export interface CreateProductBody {
   descricao?: string;
   sku?: string;
   preco: number;
-  unidadeMedida: string;
+  /** ID da unidade de medida (referência à tabela unidades_medida) */
+  unidadeMedidaId: number;
   estoque: number;
   categoryId: number;
   imagens?: string[];

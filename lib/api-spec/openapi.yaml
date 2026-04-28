@@ -175,6 +175,76 @@ paths:
                 $ref: "#/components/schemas/MessageResponse"
 
   # CATEGORIES
+  /units:
+    get:
+      operationId: listUnidadesMedida
+      tags: [units]
+      summary: Listar unidades de medida
+      responses:
+        "200":
+          description: Lista de unidades de medida
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/UnidadeMedida"
+    post:
+      operationId: createUnidadeMedida
+      tags: [units]
+      summary: Criar unidade de medida (Admin)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateUnidadeMedidaBody"
+      responses:
+        "201":
+          description: Unidade criada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UnidadeMedida"
+
+  /units/{id}:
+    put:
+      operationId: updateUnidadeMedida
+      tags: [units]
+      summary: Atualizar unidade de medida (Admin)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateUnidadeMedidaBody"
+      responses:
+        "200":
+          description: Unidade atualizada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UnidadeMedida"
+    delete:
+      operationId: deleteUnidadeMedida
+      tags: [units]
+      summary: Excluir unidade de medida (Admin)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Unidade excluída
+
   /categories:
     get:
       operationId: listCategories
@@ -1457,6 +1527,36 @@ components:
         - slug
         - ativo
 
+    UnidadeMedida:
+      type: object
+      properties:
+        id:
+          type: integer
+        nome:
+          type: string
+        sigla:
+          type: string
+        ativo:
+          type: boolean
+      required:
+        - id
+        - nome
+        - sigla
+        - ativo
+
+    CreateUnidadeMedidaBody:
+      type: object
+      properties:
+        nome:
+          type: string
+        sigla:
+          type: string
+        ativo:
+          type: boolean
+      required:
+        - nome
+        - sigla
+
     CreateCategoryBody:
       type: object
       properties:
@@ -1468,8 +1568,10 @@ components:
           type: string
         parentId:
           type: integer
-        unidadeMedida:
-          type: string
+          nullable: true
+        unidadeMedidaId:
+          type: integer
+          nullable: true
         ativo:
           type: boolean
         ordem:
@@ -1618,8 +1720,9 @@ components:
           type: string
         preco:
           type: number
-        unidadeMedida:
-          type: string
+        unidadeMedidaId:
+          type: integer
+          description: "ID da unidade de medida (referência à tabela unidades_medida)"
         estoque:
           type: integer
         categoryId:
@@ -1643,7 +1746,7 @@ components:
       required:
         - nome
         - preco
-        - unidadeMedida
+        - unidadeMedidaId
         - estoque
         - categoryId
 

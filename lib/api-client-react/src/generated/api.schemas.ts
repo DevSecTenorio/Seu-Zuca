@@ -130,12 +130,25 @@ export interface Category {
   children?: Category[];
 }
 
+export interface UnidadeMedida {
+  id: number;
+  nome: string;
+  sigla: string;
+  ativo: boolean;
+}
+
+export interface CreateUnidadeMedidaBody {
+  nome: string;
+  sigla: string;
+  ativo?: boolean;
+}
+
 export interface CreateCategoryBody {
   nome: string;
   slug: string;
   descricao?: string;
-  parentId?: number;
-  unidadeMedida?: string;
+  parentId?: number | null;
+  unidadeMedidaId?: number | null;
   ativo?: boolean;
   ordem?: number;
 }
@@ -202,7 +215,8 @@ export interface CreateProductBody {
   descricao?: string;
   sku?: string;
   preco: number;
-  unidadeMedida: string;
+  /** ID da unidade de medida (referência à tabela unidades_medida) */
+  unidadeMedidaId: number;
   estoque: number;
   categoryId: number;
   imagens?: string[];

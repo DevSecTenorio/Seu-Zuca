@@ -36,6 +36,7 @@ import type {
   CreateProductBody,
   CreateQuoteBody,
   CreateReviewBody,
+  CreateUnidadeMedidaBody,
   DashboardStats,
   ErrorResponse,
   ForgotPasswordBody,
@@ -59,6 +60,7 @@ import type {
   SalesChartPoint,
   SupplierStats,
   TopProduct,
+  UnidadeMedida,
   UpdateCartItemBody,
   UpdateOrderStatusBody,
   User,
@@ -636,6 +638,338 @@ export const useResetPassword = <
   TContext
 > => {
   return useMutation(getResetPasswordMutationOptions(options));
+};
+
+/**
+ * @summary Listar unidades de medida
+ */
+export const getListUnidadesMedidaUrl = () => {
+  return `/api/units`;
+};
+
+export const listUnidadesMedida = async (
+  options?: RequestInit,
+): Promise<UnidadeMedida[]> => {
+  return customFetch<UnidadeMedida[]>(getListUnidadesMedidaUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListUnidadesMedidaQueryKey = () => {
+  return [`/api/units`] as const;
+};
+
+export const getListUnidadesMedidaQueryOptions = <
+  TData = Awaited<ReturnType<typeof listUnidadesMedida>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listUnidadesMedida>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListUnidadesMedidaQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listUnidadesMedida>>
+  > = ({ signal }) => listUnidadesMedida({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listUnidadesMedida>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListUnidadesMedidaQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listUnidadesMedida>>
+>;
+export type ListUnidadesMedidaQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Listar unidades de medida
+ */
+
+export function useListUnidadesMedida<
+  TData = Awaited<ReturnType<typeof listUnidadesMedida>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listUnidadesMedida>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListUnidadesMedidaQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Criar unidade de medida (Admin)
+ */
+export const getCreateUnidadeMedidaUrl = () => {
+  return `/api/units`;
+};
+
+export const createUnidadeMedida = async (
+  createUnidadeMedidaBody: CreateUnidadeMedidaBody,
+  options?: RequestInit,
+): Promise<UnidadeMedida> => {
+  return customFetch<UnidadeMedida>(getCreateUnidadeMedidaUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createUnidadeMedidaBody),
+  });
+};
+
+export const getCreateUnidadeMedidaMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createUnidadeMedida>>,
+    TError,
+    { data: BodyType<CreateUnidadeMedidaBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createUnidadeMedida>>,
+  TError,
+  { data: BodyType<CreateUnidadeMedidaBody> },
+  TContext
+> => {
+  const mutationKey = ["createUnidadeMedida"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createUnidadeMedida>>,
+    { data: BodyType<CreateUnidadeMedidaBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createUnidadeMedida(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateUnidadeMedidaMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createUnidadeMedida>>
+>;
+export type CreateUnidadeMedidaMutationBody = BodyType<CreateUnidadeMedidaBody>;
+export type CreateUnidadeMedidaMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Criar unidade de medida (Admin)
+ */
+export const useCreateUnidadeMedida = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createUnidadeMedida>>,
+    TError,
+    { data: BodyType<CreateUnidadeMedidaBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createUnidadeMedida>>,
+  TError,
+  { data: BodyType<CreateUnidadeMedidaBody> },
+  TContext
+> => {
+  return useMutation(getCreateUnidadeMedidaMutationOptions(options));
+};
+
+/**
+ * @summary Atualizar unidade de medida (Admin)
+ */
+export const getUpdateUnidadeMedidaUrl = (id: number) => {
+  return `/api/units/${id}`;
+};
+
+export const updateUnidadeMedida = async (
+  id: number,
+  createUnidadeMedidaBody: CreateUnidadeMedidaBody,
+  options?: RequestInit,
+): Promise<UnidadeMedida> => {
+  return customFetch<UnidadeMedida>(getUpdateUnidadeMedidaUrl(id), {
+    ...options,
+    method: "PUT",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createUnidadeMedidaBody),
+  });
+};
+
+export const getUpdateUnidadeMedidaMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateUnidadeMedida>>,
+    TError,
+    { id: number; data: BodyType<CreateUnidadeMedidaBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateUnidadeMedida>>,
+  TError,
+  { id: number; data: BodyType<CreateUnidadeMedidaBody> },
+  TContext
+> => {
+  const mutationKey = ["updateUnidadeMedida"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateUnidadeMedida>>,
+    { id: number; data: BodyType<CreateUnidadeMedidaBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return updateUnidadeMedida(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateUnidadeMedidaMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateUnidadeMedida>>
+>;
+export type UpdateUnidadeMedidaMutationBody = BodyType<CreateUnidadeMedidaBody>;
+export type UpdateUnidadeMedidaMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Atualizar unidade de medida (Admin)
+ */
+export const useUpdateUnidadeMedida = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateUnidadeMedida>>,
+    TError,
+    { id: number; data: BodyType<CreateUnidadeMedidaBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateUnidadeMedida>>,
+  TError,
+  { id: number; data: BodyType<CreateUnidadeMedidaBody> },
+  TContext
+> => {
+  return useMutation(getUpdateUnidadeMedidaMutationOptions(options));
+};
+
+/**
+ * @summary Excluir unidade de medida (Admin)
+ */
+export const getDeleteUnidadeMedidaUrl = (id: number) => {
+  return `/api/units/${id}`;
+};
+
+export const deleteUnidadeMedida = async (
+  id: number,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getDeleteUnidadeMedidaUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteUnidadeMedidaMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteUnidadeMedida>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteUnidadeMedida>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["deleteUnidadeMedida"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteUnidadeMedida>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return deleteUnidadeMedida(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteUnidadeMedidaMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteUnidadeMedida>>
+>;
+
+export type DeleteUnidadeMedidaMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Excluir unidade de medida (Admin)
+ */
+export const useDeleteUnidadeMedida = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteUnidadeMedida>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteUnidadeMedida>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getDeleteUnidadeMedidaMutationOptions(options));
 };
 
 /**

@@ -6,12 +6,9 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface CreateCategoryBody {
+export interface UnidadeMedida {
+  id: number;
   nome: string;
-  slug: string;
-  descricao?: string;
-  parentId?: number | null;
-  unidadeMedidaId?: number | null;
-  ativo?: boolean;
-  ordem?: number;
+  sigla: string;
+  ativo: boolean;
 }

@@ -1,6 +1,6 @@
 import { useParams, useLocation } from "wouter";
 import { useState, useEffect, useRef } from "react";
-import { useGetProduct, useCreateProduct, useUpdateProduct, useListCategories } from "@workspace/api-client-react";
+import { useGetProduct, useCreateProduct, useUpdateProduct, useListCategories, useListUnidadesMedida } from "@workspace/api-client-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Layout } from "@/components/Layout";
 import { Button } from "@/components/ui/button";
@@ -226,12 +226,13 @@ export default function ProductForm() {
   const [error, setError] = useState("");
 
   const { data: categories } = useListCategories();
+  const { data: units } = useListUnidadesMedida();
   const { data: product } = useGetProduct(isEditing ? id! : "", { query: { enabled: !!isEditing } });
   const createMutation = useCreateProduct();
   const updateMutation = useUpdateProduct();
 
   const [form, setForm] = useState({
-    nome: "", descricao: "", sku: "", preco: "", unidadeMedida: "", estoque: "",
+    nome: "", descricao: "", sku: "", preco: "", unidadeMedidaId: "", estoque: "",
     categoryId: "", prazoFrete: "7", alertaEstoque: "", disponivel: true,
     imagens: [] as string[],
     comissao: "",
@@ -244,7 +245,7 @@ export default function ProductForm() {
         descricao: product.descricao || "",
         sku: (product as { sku?: string }).sku || "",
         preco: String(product.preco || ""),
-        unidadeMedida: product.unidadeMedida || "",
+        unidadeMedidaId: String((product as { unidadeMedidaId?: number }).unidadeMedidaId || ""),
         estoque: String(product.estoque || ""),
         categoryId: String((product as { categoryId?: number }).categoryId || ""),
         prazoFrete: String((product as { prazoFrete?: number }).prazoFrete || "7"),
@@ -275,6 +276,7 @@ export default function ProductForm() {
     const payload = {
       ...form,
       preco: parseFloat(form.preco),
+      unidadeMedidaId: parseInt(form.unidadeMedidaId),
       estoque: parseInt(form.estoque),
       categoryId: parseInt(form.categoryId),
       prazoFrete: parseInt(form.prazoFrete),
@@ -366,7 +368,18 @@ export default function ProductForm() {
               </div>
               <div className="space-y-1.5">
                 <Label>Unidade de Medida *</Label>
-                <Input value={form.unidadeMedida} onChange={(e) => setForm((f) => ({ ...f, unidadeMedida: e.target.value }))} placeholder="saco, m², kg, unidade..." required />
+                <Select value={form.unidadeMedidaId} onValueChange={(v) => setForm((f) => ({ ...f, unidadeMedidaId: v }))}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione a unidade" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(units ?? []).filter((u) => u.ativo).map((u) => (
+                      <SelectItem key={u.id} value={String(u.id)}>
+                        {u.sigla} — {u.nome}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-1.5">
                 <Label>Estoque *</Label>

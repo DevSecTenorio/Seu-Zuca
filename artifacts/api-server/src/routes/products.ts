@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { db, productsTable, productImagesTable, categoriesTable, categoryMinimumRulesTable, usersTable, reviewsTable } from "@workspace/db";
+import { db, productsTable, productImagesTable, categoriesTable, categoryMinimumRulesTable, usersTable, reviewsTable, unidadesMedidaTable } from "@workspace/db";
 import { eq, and, ilike, sql, asc, desc } from "drizzle-orm";
 import { authMiddleware, requireSupplier, requireAdmin, type AuthRequest } from "../middlewares/auth";
 
@@ -29,7 +29,8 @@ router.get("/products", async (req, res): Promise<void> => {
     descricao: productsTable.descricao,
     sku: productsTable.sku,
     preco: productsTable.preco,
-    unidadeMedida: productsTable.unidadeMedida,
+    unidadeMedidaId: productsTable.unidadeMedidaId,
+    unidadeMedida: unidadesMedidaTable.sigla,
     estoque: productsTable.estoque,
     disponivel: productsTable.disponivel,
     aprovado: productsTable.aprovado,
@@ -43,7 +44,8 @@ router.get("/products", async (req, res): Promise<void> => {
   })
   .from(productsTable)
   .leftJoin(categoriesTable, eq(productsTable.categoryId, categoriesTable.id))
-  .leftJoin(usersTable, eq(productsTable.supplierId, usersTable.id));
+  .leftJoin(usersTable, eq(productsTable.supplierId, usersTable.id))
+  .leftJoin(unidadesMedidaTable, eq(productsTable.unidadeMedidaId, unidadesMedidaTable.id));
 
   let query;
   if (search) {
@@ -74,7 +76,7 @@ router.get("/products", async (req, res): Promise<void> => {
   res.json({ products: productsWithMinimum, total, page: pageNum, totalPages: Math.ceil(total / limitNum) });
 });
 
-// PUBLIC: get product detail (approved only for non-owners)
+// PUBLIC: get product detail
 router.get("/products/:id", async (req, res): Promise<void> => {
   const raw = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
   const idOrSlug = raw;
@@ -99,6 +101,9 @@ router.get("/products/:id", async (req, res): Promise<void> => {
   const images = await db.select().from(productImagesTable).where(eq(productImagesTable.productId, product.id));
   const reviews = await db.select().from(reviewsTable).where(and(eq(reviewsTable.productId, product.id), eq(reviewsTable.aprovada, true)));
   const [rule] = await db.select().from(categoryMinimumRulesTable).where(eq(categoryMinimumRulesTable.categoryId, product.categoryId));
+  const [unit] = product.unidadeMedidaId
+    ? await db.select().from(unidadesMedidaTable).where(eq(unidadesMedidaTable.id, product.unidadeMedidaId))
+    : [undefined];
   const mediaAvaliacao = reviews.length > 0 ? reviews.reduce((acc, r) => acc + r.nota, 0) / reviews.length : 0;
 
   const reviewsWithBuyer = await Promise.all(reviews.map(async (r) => {
@@ -108,6 +113,7 @@ router.get("/products/:id", async (req, res): Promise<void> => {
 
   res.json({
     ...product,
+    unidadeMedida: unit?.sigla || "",
     imagens: images.map((i) => i.url),
     category: category ? { ...category, minimumRule: rule || null } : null,
     supplier: supplier ? { id: supplier.id, nome: supplier.nome, nomeFantasia: supplier.nomeFantasia, razaoSocial: supplier.razaoSocial } : null,
@@ -135,7 +141,7 @@ router.get("/products/:id/reviews", async (req, res): Promise<void> => {
   res.json(reviewsWithBuyer);
 });
 
-// ADMIN: list all products (including pending approval)
+// ADMIN: list all products
 router.get("/admin/products", authMiddleware, requireAdmin, async (req: AuthRequest, res): Promise<void> => {
   const { aprovado, page = "1" } = req.query;
   const pageNum = parseInt(String(page), 10);
@@ -148,7 +154,8 @@ router.get("/admin/products", authMiddleware, requireAdmin, async (req: AuthRequ
     slug: productsTable.slug,
     sku: productsTable.sku,
     preco: productsTable.preco,
-    unidadeMedida: productsTable.unidadeMedida,
+    unidadeMedidaId: productsTable.unidadeMedidaId,
+    unidadeMedida: unidadesMedidaTable.sigla,
     estoque: productsTable.estoque,
     disponivel: productsTable.disponivel,
     aprovado: productsTable.aprovado,
@@ -160,7 +167,8 @@ router.get("/admin/products", authMiddleware, requireAdmin, async (req: AuthRequ
   })
   .from(productsTable)
   .leftJoin(categoriesTable, eq(productsTable.categoryId, categoriesTable.id))
-  .leftJoin(usersTable, eq(productsTable.supplierId, usersTable.id));
+  .leftJoin(usersTable, eq(productsTable.supplierId, usersTable.id))
+  .leftJoin(unidadesMedidaTable, eq(productsTable.unidadeMedidaId, unidadesMedidaTable.id));
 
   if (aprovado === "false") {
     query = query.where(eq(productsTable.aprovado, false)) as typeof query;
@@ -193,7 +201,31 @@ router.put("/admin/products/:id/reject", authMiddleware, requireAdmin, async (re
 
 // SUPPLIER: list own products
 router.get("/supplier/products", authMiddleware, requireSupplier, async (req: AuthRequest, res): Promise<void> => {
-  const products = await db.select().from(productsTable).where(eq(productsTable.supplierId, req.userId!));
+  const products = await db.select({
+    id: productsTable.id,
+    nome: productsTable.nome,
+    slug: productsTable.slug,
+    descricao: productsTable.descricao,
+    sku: productsTable.sku,
+    preco: productsTable.preco,
+    unidadeMedidaId: productsTable.unidadeMedidaId,
+    unidadeMedida: unidadesMedidaTable.sigla,
+    estoque: productsTable.estoque,
+    alertaEstoque: productsTable.alertaEstoque,
+    disponivel: productsTable.disponivel,
+    aprovado: productsTable.aprovado,
+    comissao: productsTable.comissao,
+    categoryId: productsTable.categoryId,
+    supplierId: productsTable.supplierId,
+    imagemPrincipal: productsTable.imagemPrincipal,
+    prazoFrete: productsTable.prazoFrete,
+    regioesAtendidas: productsTable.regioesAtendidas,
+    createdAt: productsTable.createdAt,
+  })
+  .from(productsTable)
+  .leftJoin(unidadesMedidaTable, eq(productsTable.unidadeMedidaId, unidadesMedidaTable.id))
+  .where(eq(productsTable.supplierId, req.userId!));
+
   const result = await Promise.all(products.map(async (p) => {
     const [category] = await db.select().from(categoriesTable).where(eq(categoriesTable.id, p.categoryId));
     const images = await db.select().from(productImagesTable).where(eq(productImagesTable.productId, p.id));
@@ -203,11 +235,11 @@ router.get("/supplier/products", authMiddleware, requireSupplier, async (req: Au
   res.json(result);
 });
 
-// SUPPLIER: create product (pending approval)
+// SUPPLIER: create product
 router.post("/supplier/products", authMiddleware, requireSupplier, async (req: AuthRequest, res): Promise<void> => {
-  const { nome, descricao, sku, preco, unidadeMedida, estoque, categoryId, imagens, prazoFrete, regioesAtendidas, alertaEstoque, comissao } = req.body;
+  const { nome, descricao, sku, preco, unidadeMedidaId, estoque, categoryId, imagens, prazoFrete, regioesAtendidas, alertaEstoque, comissao } = req.body;
 
-  if (!nome || !preco || !unidadeMedida || !categoryId) {
+  if (!nome || !preco || !unidadeMedidaId || !categoryId) {
     res.status(400).json({ message: "Campos obrigatórios: nome, preço, unidade de medida, categoria" });
     return;
   }
@@ -218,7 +250,7 @@ router.post("/supplier/products", authMiddleware, requireSupplier, async (req: A
     descricao,
     sku,
     preco,
-    unidadeMedida,
+    unidadeMedidaId: Number(unidadeMedidaId),
     estoque: estoque || 0,
     categoryId,
     supplierId: req.userId!,
@@ -245,7 +277,7 @@ router.post("/supplier/products", authMiddleware, requireSupplier, async (req: A
 router.put("/supplier/products/:id", authMiddleware, requireSupplier, async (req: AuthRequest, res): Promise<void> => {
   const raw = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
   const id = parseInt(raw, 10);
-  const { nome, descricao, sku, preco, unidadeMedida, estoque, categoryId, imagens, prazoFrete, regioesAtendidas, alertaEstoque, comissao } = req.body;
+  const { nome, descricao, sku, preco, unidadeMedidaId, estoque, categoryId, imagens, prazoFrete, regioesAtendidas, alertaEstoque, comissao } = req.body;
 
   const [product] = await db.select().from(productsTable).where(and(eq(productsTable.id, id), eq(productsTable.supplierId, req.userId!)));
   if (!product) { res.status(404).json({ message: "Produto não encontrado" }); return; }
@@ -255,7 +287,7 @@ router.put("/supplier/products/:id", authMiddleware, requireSupplier, async (req
     descricao: descricao !== undefined ? descricao : product.descricao,
     sku: sku !== undefined ? sku : product.sku,
     preco: preco || product.preco,
-    unidadeMedida: unidadeMedida || product.unidadeMedida,
+    unidadeMedidaId: unidadeMedidaId != null ? Number(unidadeMedidaId) : product.unidadeMedidaId,
     estoque: estoque !== undefined ? estoque : product.estoque,
     categoryId: categoryId || product.categoryId,
     imagemPrincipal: imagens?.[0] || product.imagemPrincipal,

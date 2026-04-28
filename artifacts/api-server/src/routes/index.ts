@@ -15,6 +15,7 @@ import supportRouter from "./support";
 import storageRouter from "./storage";
 import reportsRouter from "./reports";
 import paymentsRouter from "./payments";
+import unitsRouter from "./units";
 
 const router: IRouter = Router();
 
@@ -34,5 +35,6 @@ router.use(supportRouter);
 router.use(storageRouter);
 router.use(reportsRouter);
 router.use(paymentsRouter);
+router.use(unitsRouter);
 
 export default router;

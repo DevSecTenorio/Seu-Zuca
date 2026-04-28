@@ -3,6 +3,7 @@ import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { categoriesTable } from "./categories";
 import { usersTable } from "./users";
+import { unidadesMedidaTable } from "./units";
 
 export const productsTable = pgTable("products", {
   id: serial("id").primaryKey(),
@@ -11,7 +12,7 @@ export const productsTable = pgTable("products", {
   descricao: text("descricao"),
   sku: text("sku"),
   preco: real("preco").notNull(),
-  unidadeMedida: text("unidade_medida").notNull().default("un"),
+  unidadeMedidaId: integer("unidade_medida_id").references(() => unidadesMedidaTable.id),
   estoque: integer("estoque").notNull().default(0),
   alertaEstoque: integer("alerta_estoque").notNull().default(10),
   disponivel: boolean("disponivel").notNull().default(true),

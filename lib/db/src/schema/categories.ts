@@ -1,6 +1,7 @@
 import { pgTable, text, serial, timestamp, boolean, integer } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
+import { unidadesMedidaTable } from "./units";
 
 export const categoriesTable = pgTable("categories", {
   id: serial("id").primaryKey(),
@@ -8,7 +9,7 @@ export const categoriesTable = pgTable("categories", {
   slug: text("slug").notNull().unique(),
   descricao: text("descricao"),
   parentId: integer("parent_id"),
-  unidadeMedida: text("unidade_medida").notNull().default("un"),
+  unidadeMedidaId: integer("unidade_medida_id").references(() => unidadesMedidaTable.id),
   ativo: boolean("ativo").notNull().default(true),
   ordem: integer("ordem").notNull().default(0),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

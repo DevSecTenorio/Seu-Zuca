@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from "recharts";
-import { useGetDashboardStats, useAdminListUsers, useAdminApproveUser, useAdminSuspendUser, useAdminRejectUser, useListCategories, useCreateCategory, useUpdateCategory, useDeleteCategory } from "@workspace/api-client-react";
+import { useGetDashboardStats, useAdminListUsers, useAdminApproveUser, useAdminSuspendUser, useAdminRejectUser, useListCategories, useCreateCategory, useUpdateCategory, useDeleteCategory, useListUnidadesMedida, useCreateUnidadeMedida, useUpdateUnidadeMedida, useDeleteUnidadeMedida } from "@workspace/api-client-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Layout } from "@/components/Layout";
 import ReportTab from "@/components/ReportTab";
@@ -1262,14 +1262,150 @@ function CreateSupplierTab({ onCreated }: { onCreated: () => void }) {
   );
 }
 
-// ─── Aba: Categorias ─────────────────────────────────────────────────────────
-type CatType = { id: number; nome: string; slug?: string; icone?: string; descricao?: string; parentId?: number | null; ordem?: number };
+// ─── Aba: Unidades de Medida ──────────────────────────────────────────────────
+type UnitType = { id: number; nome: string; sigla: string; ativo: boolean };
+const EMPTY_UNIT = { nome: "", sigla: "", ativo: true };
 
-const EMPTY_CAT = { nome: "", slug: "", icone: "", descricao: "" };
+function UnitsTab() {
+  const { toast } = useToast();
+  const { data: rawUnits, refetch } = useListUnidadesMedida();
+  const createMutation = useCreateUnidadeMedida();
+  const updateMutation = useUpdateUnidadeMedida();
+  const deleteMutation = useDeleteUnidadeMedida();
+  const [form, setForm] = useState({ ...EMPTY_UNIT });
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
+
+  const units = (rawUnits as unknown as UnitType[]) || [];
+
+  function startEdit(u: UnitType) {
+    setEditingId(u.id);
+    setForm({ nome: u.nome, sigla: u.sigla, ativo: u.ativo });
+  }
+
+  function cancelEdit() { setEditingId(null); setForm({ ...EMPTY_UNIT }); }
+
+  async function handleSave(e: React.FormEvent) {
+    e.preventDefault();
+    if (!form.nome || !form.sigla) { toast({ title: "Nome e sigla são obrigatórios", variant: "destructive" }); return; }
+    try {
+      if (editingId) {
+        await updateMutation.mutateAsync({ id: String(editingId), data: { nome: form.nome, sigla: form.sigla, ativo: form.ativo } });
+        toast({ title: "Unidade atualizada!" });
+      } else {
+        await createMutation.mutateAsync({ data: { nome: form.nome, sigla: form.sigla, ativo: form.ativo } });
+        toast({ title: "Unidade criada!" });
+      }
+      setForm({ ...EMPTY_UNIT });
+      setEditingId(null);
+      refetch();
+    } catch (err) {
+      toast({ title: err instanceof Error ? err.message : "Erro ao salvar", variant: "destructive" });
+    }
+  }
+
+  async function handleDelete(id: number) {
+    try {
+      await deleteMutation.mutateAsync({ id: String(id) });
+      toast({ title: "Unidade excluída" });
+      setConfirmDeleteId(null);
+      refetch();
+    } catch {
+      toast({ title: "Não é possível excluir esta unidade", variant: "destructive" });
+      setConfirmDeleteId(null);
+    }
+  }
+
+  return (
+    <div className="grid md:grid-cols-2 gap-6">
+      <Card className="shadow-none border">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Tag size={17} className="text-[#C0181A]" />
+            {editingId ? "Editar Unidade" : "Nova Unidade de Medida"}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSave} className="space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>Nome <span className="text-red-500">*</span></Label>
+                <Input placeholder="Ex: Quilograma" value={form.nome} onChange={(e) => setForm((f) => ({ ...f, nome: e.target.value }))} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Sigla <span className="text-red-500">*</span></Label>
+                <Input placeholder="Ex: kg" value={form.sigla} onChange={(e) => setForm((f) => ({ ...f, sigla: e.target.value }))} />
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <input type="checkbox" id="ativo-unit" checked={form.ativo} onChange={(e) => setForm((f) => ({ ...f, ativo: e.target.checked }))} className="rounded" />
+              <Label htmlFor="ativo-unit" className="font-normal cursor-pointer">Ativa (visível no formulário de produto)</Label>
+            </div>
+            <div className="flex gap-2">
+              <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending} className="bg-[#C0181A] hover:bg-[#a01418]">
+                {editingId ? "Salvar alterações" : "Criar unidade"}
+              </Button>
+              {editingId && <Button type="button" variant="outline" onClick={cancelEdit}>Cancelar</Button>}
+            </div>
+          </form>
+        </CardContent>
+      </Card>
+
+      <Card className="shadow-none border">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Tag size={17} className="text-[#C0181A]" />
+            Unidades ({units.length})
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-0">
+          {units.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-8 px-4">Nenhuma unidade cadastrada</p>
+          ) : (
+            <div className="divide-y">
+              {units.map((u) => (
+                <div key={u.id} className="flex items-center gap-3 px-4 py-3 group hover:bg-gray-50">
+                  <div className="w-10 h-8 bg-blue-50 rounded-lg flex items-center justify-center shrink-0">
+                    <span className="text-xs font-bold text-blue-700">{u.sigla}</span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium">{u.nome}</p>
+                    {!u.ativo && <span className="text-xs text-muted-foreground">Inativa</span>}
+                  </div>
+                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Button variant="ghost" size="sm" className="p-1.5 h-7 w-7" onClick={() => startEdit(u)}>
+                      <Edit2 size={13} />
+                    </Button>
+                    {confirmDeleteId === u.id ? (
+                      <div className="flex gap-1 items-center">
+                        <Button variant="destructive" size="sm" className="h-6 text-xs px-2" onClick={() => handleDelete(u.id)}>Confirmar</Button>
+                        <Button variant="outline" size="sm" className="h-6 text-xs px-2" onClick={() => setConfirmDeleteId(null)}>Não</Button>
+                      </div>
+                    ) : (
+                      <Button variant="ghost" size="sm" className="p-1.5 h-7 w-7 text-muted-foreground hover:text-destructive" onClick={() => setConfirmDeleteId(u.id)}>
+                        <Trash2 size={13} />
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+// ─── Aba: Categorias ─────────────────────────────────────────────────────────
+type CatType = { id: number; nome: string; slug?: string; icone?: string; descricao?: string; parentId?: number | null; unidadeMedidaId?: number | null; ordem?: number };
+
+const EMPTY_CAT = { nome: "", slug: "", icone: "", descricao: "", parentId: "", unidadeMedidaId: "" };
 
 function CategoriesTab() {
   const { toast } = useToast();
   const { data: rawCategories, refetch } = useListCategories();
+  const { data: rawUnits } = useListUnidadesMedida();
   const createMutation = useCreateCategory();
   const updateMutation = useUpdateCategory();
   const deleteMutation = useDeleteCategory();
@@ -1278,10 +1414,18 @@ function CategoriesTab() {
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
 
   const categories = (rawCategories as unknown as CatType[]) || [];
+  const units = (rawUnits as unknown as UnitType[]) || [];
 
   function startEdit(cat: CatType) {
     setEditingId(cat.id);
-    setForm({ nome: cat.nome, slug: cat.slug || "", icone: cat.icone || "", descricao: cat.descricao || "" });
+    setForm({
+      nome: cat.nome,
+      slug: cat.slug || "",
+      icone: cat.icone || "",
+      descricao: cat.descricao || "",
+      parentId: cat.parentId ? String(cat.parentId) : "",
+      unidadeMedidaId: cat.unidadeMedidaId ? String(cat.unidadeMedidaId) : "",
+    });
   }
 
   function cancelEdit() { setEditingId(null); setForm({ ...EMPTY_CAT }); }
@@ -1289,12 +1433,20 @@ function CategoriesTab() {
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
     if (!form.nome) { toast({ title: "Nome é obrigatório", variant: "destructive" }); return; }
+    const payload = {
+      nome: form.nome,
+      slug: form.slug || form.nome.toLowerCase().replace(/\s+/g, "-"),
+      icone: form.icone || undefined,
+      descricao: form.descricao || undefined,
+      parentId: form.parentId ? Number(form.parentId) : undefined,
+      unidadeMedidaId: form.unidadeMedidaId ? Number(form.unidadeMedidaId) : undefined,
+    };
     try {
       if (editingId) {
-        await updateMutation.mutateAsync({ id: String(editingId), data: { nome: form.nome, slug: form.slug || form.nome.toLowerCase().replace(/\s+/g, "-"), icone: form.icone || undefined, descricao: form.descricao || undefined } });
+        await updateMutation.mutateAsync({ id: String(editingId), data: payload });
         toast({ title: "Categoria atualizada!" });
       } else {
-        await createMutation.mutateAsync({ data: { nome: form.nome, slug: form.slug || form.nome.toLowerCase().replace(/\s+/g, "-"), icone: form.icone || undefined, descricao: form.descricao || undefined } });
+        await createMutation.mutateAsync({ data: payload });
         toast({ title: "Categoria criada!" });
       }
       setForm({ ...EMPTY_CAT });
@@ -1338,6 +1490,32 @@ function CategoriesTab() {
               <Input placeholder="estrutura" value={form.slug} onChange={(e) => setForm((f) => ({ ...f, slug: e.target.value }))} />
             </div>
             <div className="space-y-1.5">
+              <Label>Categoria Pai (opcional)</Label>
+              <select
+                value={form.parentId}
+                onChange={(e) => setForm((f) => ({ ...f, parentId: e.target.value }))}
+                className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              >
+                <option value="">— Sem categoria pai (nível raiz) —</option>
+                {categories.filter((c) => c.id !== editingId).map((c) => (
+                  <option key={c.id} value={String(c.id)}>{c.nome}</option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Unidade de Medida padrão</Label>
+              <select
+                value={form.unidadeMedidaId}
+                onChange={(e) => setForm((f) => ({ ...f, unidadeMedidaId: e.target.value }))}
+                className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              >
+                <option value="">— Não definida —</option>
+                {units.filter((u) => u.ativo).map((u) => (
+                  <option key={u.id} value={String(u.id)}>{u.sigla} — {u.nome}</option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-1.5">
               <Label>Ícone (nome Lucide)</Label>
               <Input placeholder="building-2" value={form.icone} onChange={(e) => setForm((f) => ({ ...f, icone: e.target.value }))} />
             </div>
@@ -1376,6 +1554,9 @@ function CategoriesTab() {
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium">{cat.nome}</p>
                     {cat.slug && <p className="text-xs text-muted-foreground font-mono">/{cat.slug}</p>}
+                    {cat.parentId && (
+                      <p className="text-xs text-blue-600">↳ subcategoria de: {categories.find((c) => c.id === cat.parentId)?.nome || cat.parentId}</p>
+                    )}
                   </div>
                   <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                     <Button variant="ghost" size="sm" className="p-1.5 h-7 w-7" onClick={() => startEdit(cat)}>
@@ -2277,6 +2458,7 @@ export default function AdminDashboard() {
     { id: "create-supplier", label: "Criar Fornecedor", icon: UserPlus },
     { id: "internal-users", label: "Usuários Internos", icon: ShieldCheck },
     { id: "categories", label: "Categorias", icon: FolderOpen },
+    { id: "units", label: "Unidades", icon: Tag },
     { id: "products", label: "Produtos", icon: Package },
     { id: "banners", label: "Banners", icon: ImageIcon },
     { id: "minimums", label: "Qtd. Mínimas", icon: ListOrdered },
@@ -2665,9 +2847,19 @@ export default function AdminDashboard() {
           <div className="space-y-4">
             <div>
               <h2 className="text-lg font-semibold">Gerenciar Categorias</h2>
-              <p className="text-sm text-muted-foreground mt-0.5">Crie e edite as categorias de produtos do marketplace.</p>
+              <p className="text-sm text-muted-foreground mt-0.5">Crie e edite as categorias de produtos. Defina categoria pai para criar subcategorias.</p>
             </div>
             <CategoriesTab />
+          </div>
+        )}
+
+        {activeTab === "units" && (
+          <div className="space-y-4">
+            <div>
+              <h2 className="text-lg font-semibold">Unidades de Medida</h2>
+              <p className="text-sm text-muted-foreground mt-0.5">Gerencie as unidades de medida disponíveis no formulário de cadastro de produtos.</p>
+            </div>
+            <UnitsTab />
           </div>
         )}
 

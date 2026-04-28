@@ -113,6 +113,55 @@ export const ResetPasswordResponse = zod.object({
 });
 
 /**
+ * @summary Listar unidades de medida
+ */
+export const ListUnidadesMedidaResponseItem = zod.object({
+  id: zod.number(),
+  nome: zod.string(),
+  sigla: zod.string(),
+  ativo: zod.boolean(),
+});
+export const ListUnidadesMedidaResponse = zod.array(
+  ListUnidadesMedidaResponseItem,
+);
+
+/**
+ * @summary Criar unidade de medida (Admin)
+ */
+export const CreateUnidadeMedidaBody = zod.object({
+  nome: zod.string(),
+  sigla: zod.string(),
+  ativo: zod.boolean().optional(),
+});
+
+/**
+ * @summary Atualizar unidade de medida (Admin)
+ */
+export const UpdateUnidadeMedidaParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpdateUnidadeMedidaBody = zod.object({
+  nome: zod.string(),
+  sigla: zod.string(),
+  ativo: zod.boolean().optional(),
+});
+
+export const UpdateUnidadeMedidaResponse = zod.object({
+  id: zod.number(),
+  nome: zod.string(),
+  sigla: zod.string(),
+  ativo: zod.boolean(),
+});
+
+/**
+ * @summary Excluir unidade de medida (Admin)
+ */
+export const DeleteUnidadeMedidaParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+/**
  * @summary Listar categorias
  */
 export const ListCategoriesResponseItem = zod.object({
@@ -145,8 +194,8 @@ export const CreateCategoryBody = zod.object({
   nome: zod.string(),
   slug: zod.string(),
   descricao: zod.string().optional(),
-  parentId: zod.number().optional(),
-  unidadeMedida: zod.string().optional(),
+  parentId: zod.number().nullish(),
+  unidadeMedidaId: zod.number().nullish(),
   ativo: zod.boolean().optional(),
   ordem: zod.number().optional(),
 });
@@ -191,8 +240,8 @@ export const UpdateCategoryBody = zod.object({
   nome: zod.string(),
   slug: zod.string(),
   descricao: zod.string().optional(),
-  parentId: zod.number().optional(),
-  unidadeMedida: zod.string().optional(),
+  parentId: zod.number().nullish(),
+  unidadeMedidaId: zod.number().nullish(),
   ativo: zod.boolean().optional(),
   ordem: zod.number().optional(),
 });
@@ -485,7 +534,9 @@ export const CreateProductBody = zod.object({
   descricao: zod.string().optional(),
   sku: zod.string().optional(),
   preco: zod.number(),
-  unidadeMedida: zod.string(),
+  unidadeMedidaId: zod
+    .number()
+    .describe("ID da unidade de medida (referência à tabela unidades_medida)"),
   estoque: zod.number(),
   categoryId: zod.number(),
   imagens: zod.array(zod.string()).optional(),
@@ -512,7 +563,9 @@ export const UpdateProductBody = zod.object({
   descricao: zod.string().optional(),
   sku: zod.string().optional(),
   preco: zod.number(),
-  unidadeMedida: zod.string(),
+  unidadeMedidaId: zod
+    .number()
+    .describe("ID da unidade de medida (referência à tabela unidades_medida)"),
   estoque: zod.number(),
   categoryId: zod.number(),
   imagens: zod.array(zod.string()).optional(),

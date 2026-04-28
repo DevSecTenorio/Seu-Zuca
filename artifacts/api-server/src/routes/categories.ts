@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { db, categoriesTable, categoryMinimumRulesTable } from "@workspace/db";
+import { db, categoriesTable, categoryMinimumRulesTable, unidadesMedidaTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { authMiddleware, requireAdmin, type AuthRequest } from "../middlewares/auth";
 
@@ -8,15 +8,26 @@ const router: IRouter = Router();
 router.get("/categories", async (_req, res): Promise<void> => {
   const categories = await db.select().from(categoriesTable).orderBy(categoriesTable.ordem);
   const rules = await db.select().from(categoryMinimumRulesTable);
+  const units = await db.select().from(unidadesMedidaTable);
 
   const result = categories.map((cat) => ({
     ...cat,
+    unidadeMedida: units.find((u) => u.id === cat.unidadeMedidaId)?.sigla || "",
     minimumRule: rules.find((r) => r.categoryId === cat.id) || null,
     children: categories.filter((c) => c.parentId === cat.id),
   }));
 
   const topLevel = result.filter((c) => !c.parentId);
   res.json(topLevel);
+});
+
+router.get("/categories/all", async (_req, res): Promise<void> => {
+  const categories = await db.select().from(categoriesTable).orderBy(categoriesTable.ordem);
+  const units = await db.select().from(unidadesMedidaTable);
+  res.json(categories.map((cat) => ({
+    ...cat,
+    unidadeMedida: units.find((u) => u.id === cat.unidadeMedidaId)?.sigla || "",
+  })));
 });
 
 router.get("/categories/:id", async (req, res): Promise<void> => {
@@ -31,12 +42,15 @@ router.get("/categories/:id", async (req, res): Promise<void> => {
 
   const [rule] = await db.select().from(categoryMinimumRulesTable).where(eq(categoryMinimumRulesTable.categoryId, id));
   const children = await db.select().from(categoriesTable).where(eq(categoriesTable.parentId, id));
+  const [unit] = cat.unidadeMedidaId
+    ? await db.select().from(unidadesMedidaTable).where(eq(unidadesMedidaTable.id, cat.unidadeMedidaId))
+    : [undefined];
 
-  res.json({ ...cat, minimumRule: rule || null, children });
+  res.json({ ...cat, unidadeMedida: unit?.sigla || "", minimumRule: rule || null, children });
 });
 
 router.post("/categories", authMiddleware, requireAdmin, async (req: AuthRequest, res): Promise<void> => {
-  const { nome, slug, descricao, parentId, unidadeMedida, ativo, ordem } = req.body;
+  const { nome, slug, descricao, parentId, unidadeMedidaId, ativo, ordem } = req.body;
 
   if (!nome || !slug) {
     res.status(400).json({ message: "Nome e slug são obrigatórios" });
@@ -44,7 +58,9 @@ router.post("/categories", authMiddleware, requireAdmin, async (req: AuthRequest
   }
 
   const [cat] = await db.insert(categoriesTable).values({
-    nome, slug, descricao, parentId, unidadeMedida: unidadeMedida || "un",
+    nome, slug, descricao,
+    parentId: parentId ? Number(parentId) : null,
+    unidadeMedidaId: unidadeMedidaId ? Number(unidadeMedidaId) : null,
     ativo: ativo !== false, ordem: ordem || 0,
   }).returning();
 
@@ -54,10 +70,15 @@ router.post("/categories", authMiddleware, requireAdmin, async (req: AuthRequest
 router.put("/categories/:id", authMiddleware, requireAdmin, async (req: AuthRequest, res): Promise<void> => {
   const raw = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
   const id = parseInt(raw, 10);
-  const { nome, slug, descricao, parentId, unidadeMedida, ativo, ordem } = req.body;
+  const { nome, slug, descricao, parentId, unidadeMedidaId, ativo, ordem } = req.body;
 
   const [cat] = await db.update(categoriesTable)
-    .set({ nome, slug, descricao, parentId, unidadeMedida, ativo, ordem })
+    .set({
+      nome, slug, descricao,
+      parentId: parentId ? Number(parentId) : null,
+      unidadeMedidaId: unidadeMedidaId != null ? Number(unidadeMedidaId) : null,
+      ativo, ordem,
+    })
     .where(eq(categoriesTable.id, id))
     .returning();
 
