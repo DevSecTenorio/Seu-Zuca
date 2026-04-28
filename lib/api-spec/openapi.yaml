@@ -1636,6 +1636,10 @@ components:
             type: string
         alertaEstoque:
           type: integer
+        comissao:
+          type: number
+          nullable: true
+          description: "Comissão específica deste produto (%). Substitui a comissão do fornecedor e a global."
       required:
         - nome
         - preco

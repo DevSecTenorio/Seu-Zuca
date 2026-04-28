@@ -18,4 +18,6 @@ export interface CreateProductBody {
   prazoFrete?: number;
   regioesAtendidas?: string[];
   alertaEstoque?: number;
+  /** Comissão específica deste produto (%). Substitui a comissão do fornecedor e a global. */
+  comissao?: number | null;
 }

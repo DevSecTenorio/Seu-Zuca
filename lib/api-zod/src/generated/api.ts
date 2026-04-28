@@ -492,6 +492,12 @@ export const CreateProductBody = zod.object({
   prazoFrete: zod.number().optional(),
   regioesAtendidas: zod.array(zod.string()).optional(),
   alertaEstoque: zod.number().optional(),
+  comissao: zod
+    .number()
+    .nullish()
+    .describe(
+      "Comissão específica deste produto (%). Substitui a comissão do fornecedor e a global.",
+    ),
 });
 
 /**
@@ -513,6 +519,12 @@ export const UpdateProductBody = zod.object({
   prazoFrete: zod.number().optional(),
   regioesAtendidas: zod.array(zod.string()).optional(),
   alertaEstoque: zod.number().optional(),
+  comissao: zod
+    .number()
+    .nullish()
+    .describe(
+      "Comissão específica deste produto (%). Substitui a comissão do fornecedor e a global.",
+    ),
 });
 
 export const UpdateProductResponse = zod

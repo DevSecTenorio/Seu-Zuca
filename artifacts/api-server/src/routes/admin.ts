@@ -45,6 +45,7 @@ router.get("/admin/users", authMiddleware, requireAdmin, async (req: AuthRequest
     cnpj: u.cnpj, razaoSocial: u.razaoSocial, nomeFantasia: u.nomeFantasia,
     telefone: u.telefone, ramo: u.ramo, emailVerificado: u.emailVerificado,
     stripeAccountId: u.stripeAccountId, createdAt: u.createdAt,
+    comissao: u.comissao,
     documentos: u.documentos ? JSON.parse(u.documentos) : [],
   }));
 

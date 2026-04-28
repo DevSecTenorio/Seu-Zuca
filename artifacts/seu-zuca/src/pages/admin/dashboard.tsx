@@ -43,6 +43,7 @@ type UserType = {
   status?: string;
   createdAt?: string;
   documentos?: UserDocumento[];
+  comissao?: number | null;
 };
 
 function formatCnpj(cnpj: string) {
@@ -2151,6 +2152,21 @@ export default function AdminDashboard() {
 
   const { data: dashboard } = useGetDashboardStats({ query: { enabled: isAdmin } });
   const { data: users, isLoading, refetch } = useAdminListUsers({ query: { enabled: isAdmin } });
+
+  useEffect(() => {
+    const allU: UserType[] = Array.isArray(users)
+      ? users as UserType[]
+      : (users as { users?: UserType[] } | undefined)?.users || [];
+    const initial: Record<number, string> = {};
+    allU.forEach((u) => {
+      if (u.role === "supplier" && u.id != null && u.comissao != null) {
+        initial[u.id] = String(u.comissao);
+      }
+    });
+    if (Object.keys(initial).length > 0) {
+      setUserCommissions((prev) => ({ ...initial, ...prev }));
+    }
+  }, [users]);
   const approveMutation = useAdminApproveUser();
   const suspendMutation = useAdminSuspendUser();
   const rejectMutation = useAdminRejectUser();

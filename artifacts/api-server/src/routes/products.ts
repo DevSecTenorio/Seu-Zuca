@@ -205,7 +205,7 @@ router.get("/supplier/products", authMiddleware, requireSupplier, async (req: Au
 
 // SUPPLIER: create product (pending approval)
 router.post("/supplier/products", authMiddleware, requireSupplier, async (req: AuthRequest, res): Promise<void> => {
-  const { nome, descricao, sku, preco, unidadeMedida, estoque, categoryId, imagens, prazoFrete, regioesAtendidas, alertaEstoque } = req.body;
+  const { nome, descricao, sku, preco, unidadeMedida, estoque, categoryId, imagens, prazoFrete, regioesAtendidas, alertaEstoque, comissao } = req.body;
 
   if (!nome || !preco || !unidadeMedida || !categoryId) {
     res.status(400).json({ message: "Campos obrigatórios: nome, preço, unidade de medida, categoria" });
@@ -228,6 +228,7 @@ router.post("/supplier/products", authMiddleware, requireSupplier, async (req: A
     alertaEstoque: alertaEstoque || 10,
     disponivel: (estoque || 0) > 0,
     aprovado: false,
+    comissao: comissao != null ? Number(comissao) : null,
   }).returning();
 
   await db.update(productsTable).set({ slug: createSlug(nome, product.id) }).where(eq(productsTable.id, product.id));
@@ -244,7 +245,7 @@ router.post("/supplier/products", authMiddleware, requireSupplier, async (req: A
 router.put("/supplier/products/:id", authMiddleware, requireSupplier, async (req: AuthRequest, res): Promise<void> => {
   const raw = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
   const id = parseInt(raw, 10);
-  const { nome, descricao, sku, preco, unidadeMedida, estoque, categoryId, imagens, prazoFrete, regioesAtendidas, alertaEstoque } = req.body;
+  const { nome, descricao, sku, preco, unidadeMedida, estoque, categoryId, imagens, prazoFrete, regioesAtendidas, alertaEstoque, comissao } = req.body;
 
   const [product] = await db.select().from(productsTable).where(and(eq(productsTable.id, id), eq(productsTable.supplierId, req.userId!)));
   if (!product) { res.status(404).json({ message: "Produto não encontrado" }); return; }
@@ -262,6 +263,7 @@ router.put("/supplier/products/:id", authMiddleware, requireSupplier, async (req
     regioesAtendidas: regioesAtendidas || product.regioesAtendidas,
     alertaEstoque: alertaEstoque !== undefined ? alertaEstoque : product.alertaEstoque,
     disponivel: (estoque !== undefined ? estoque : product.estoque) > 0,
+    comissao: comissao != null ? Number(comissao) : product.comissao,
   }).where(eq(productsTable.id, id)).returning();
 
   if (imagens && Array.isArray(imagens)) {

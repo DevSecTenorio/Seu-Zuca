@@ -76,7 +76,7 @@ router.post("/orders", authMiddleware, requireApprovedBuyer, async (req: AuthReq
   }
 
   const [commissionConfig] = await db.select().from(commissionsTable);
-  const commissionRate = (commissionConfig?.percentualGlobal || 5) / 100;
+  const globalRate = (commissionConfig?.percentualGlobal ?? 5) / 100;
 
   const itemsWithProducts = await Promise.all(cartItems.map(async (item) => {
     const [product] = await db.select().from(productsTable).where(eq(productsTable.id, item.productId));
@@ -92,8 +92,18 @@ router.post("/orders", authMiddleware, requireApprovedBuyer, async (req: AuthReq
 
   const createdOrders = [];
   for (const [supplierId, items] of supplierGroups) {
-    const total = items.reduce((acc, item) => acc + (item.product?.preco || 0) * item.quantidade, 0);
-    const comissao = total * commissionRate;
+    const [supplier] = await db.select({ comissao: usersTable.comissao }).from(usersTable).where(eq(usersTable.id, supplierId));
+    const supplierRate = supplier?.comissao != null ? supplier.comissao / 100 : null;
+
+    let total = 0;
+    let comissao = 0;
+    for (const item of items) {
+      const itemTotal = (item.product?.preco || 0) * item.quantidade;
+      total += itemTotal;
+      const productComissao = item.product?.comissao;
+      const rate = productComissao != null ? productComissao / 100 : (supplierRate ?? globalRate);
+      comissao += itemTotal * rate;
+    }
 
     const [order] = await db.insert(ordersTable).values({
       buyerId: req.userId!,
