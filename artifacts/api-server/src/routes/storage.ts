@@ -1,4 +1,4 @@
-import { Router, type IRouter, type Response } from "express";
+import { Router, type IRouter, type Request, type Response } from "express";
 import { Readable } from "stream";
 import { ObjectStorageService, ObjectNotFoundError } from "../lib/objectStorage";
 import { authMiddleware, type AuthRequest } from "../middlewares/auth";
@@ -22,11 +22,11 @@ const MAX_FILE_SIZE = 10 * 1024 * 1024;
 /**
  * POST /storage/uploads/request-url
  *
- * Request a presigned URL for file upload. Requires authentication.
- * The client sends JSON metadata (name, size, contentType) — NOT the file.
- * Then uploads the file directly to the returned presigned URL.
+ * Request a presigned URL for file upload.
+ * Open to unauthenticated users (needed during registration to upload CNPJ docs).
+ * Validates MIME type and file size before issuing the URL.
  */
-router.post("/storage/uploads/request-url", authMiddleware, async (req: AuthRequest, res: Response) => {
+router.post("/storage/uploads/request-url", async (req: Request, res: Response) => {
   const { name, size, contentType } = req.body ?? {};
 
   if (!name || typeof name !== "string" || typeof size !== "number" || !contentType || typeof contentType !== "string") {
@@ -34,7 +34,7 @@ router.post("/storage/uploads/request-url", authMiddleware, async (req: AuthRequ
     return;
   }
 
-  // Validate MIME type
+  // Validate MIME type against allowlist
   if (!ALLOWED_MIME_TYPES.has(contentType)) {
     res.status(400).json({
       error: `Tipo de arquivo não permitido: ${contentType}. Permitidos: ${[...ALLOWED_MIME_TYPES].join(", ")}`,
@@ -50,14 +50,14 @@ router.post("/storage/uploads/request-url", authMiddleware, async (req: AuthRequ
     return;
   }
 
-  // Validate file name (prevent path traversal)
+  // Sanitize file name to prevent path traversal
   const safeName = name.replace(/[^a-zA-Z0-9._\- ]/g, "_").slice(0, 255);
 
   try {
     const uploadURL = await objectStorageService.getObjectEntityUploadURL();
     const objectPath = objectStorageService.normalizeObjectEntityPath(uploadURL);
 
-    req.log.info({ userId: req.userId, safeName, size, contentType }, "Upload URL requested");
+    req.log.info({ safeName, size, contentType }, "Upload URL requested");
 
     res.json({ uploadURL, objectPath, metadata: { name: safeName, size, contentType } });
   } catch (error) {
