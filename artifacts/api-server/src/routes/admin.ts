@@ -4,6 +4,7 @@ import { eq, desc, sql, and, gte, lte } from "drizzle-orm";
 import { authMiddleware, requireAdmin, requireAdminOrSupport, type AuthRequest } from "../middlewares/auth";
 import bcrypt from "bcryptjs";
 import { sendEmail, buildApprovalEmailHtml, buildRejectionEmailHtml } from "../lib/email";
+import { writeAuditLog, getClientIp } from "../lib/auditLog";
 
 function validateCnpj(cnpj: string): boolean {
   const cleaned = cnpj.replace(/\D/g, "");
@@ -70,6 +71,8 @@ router.post("/admin/users/:id/approve", authMiddleware, requireAdmin, async (req
     html: buildApprovalEmailHtml(user.nome || user.email, user.role || "buyer"),
   }).catch(() => {});
 
+  void writeAuditLog({ actorId: req.userId, action: "user.approve", targetId: user.id, targetType: "user", details: { email: user.email, role: user.role }, ip: getClientIp(req) });
+
   res.json({ id: user.id, email: user.email, nome: user.nome, role: user.role, status: user.status, createdAt: user.createdAt });
 });
 
@@ -96,6 +99,8 @@ router.post("/admin/users/:id/reject", authMiddleware, requireAdmin, async (req:
     html: buildRejectionEmailHtml(user.nome || user.email, motivo),
   }).catch(() => {});
 
+  void writeAuditLog({ actorId: req.userId, action: "user.reject", targetId: user.id, targetType: "user", details: { email: user.email, motivo }, ip: getClientIp(req) });
+
   res.json({ id: user.id, email: user.email, nome: user.nome, role: user.role, status: user.status, createdAt: user.createdAt });
 });
 
@@ -114,6 +119,8 @@ router.post("/admin/users/:id/suspend", authMiddleware, requireAdmin, async (req
     res.status(404).json({ message: "Usuário não encontrado" });
     return;
   }
+
+  void writeAuditLog({ actorId: req.userId, action: "user.suspend", targetId: user.id, targetType: "user", details: { email: user.email }, ip: getClientIp(req) });
 
   res.json({ id: user.id, email: user.email, nome: user.nome, role: user.role, status: user.status, createdAt: user.createdAt });
 });
@@ -153,6 +160,8 @@ router.post("/admin/create-supplier", authMiddleware, requireAdmin, async (req: 
     ramo,
     emailVerificado: true,
   }).returning();
+
+  void writeAuditLog({ actorId: req.userId, action: "user.create_internal", targetId: user.id, targetType: "user", details: { email: user.email, role: "supplier" }, ip: getClientIp(req) });
 
   res.status(201).json({
     id: user.id,
@@ -240,13 +249,18 @@ router.put("/admin/commission", authMiddleware, requireAdmin, async (req: AuthRe
   }
 
   const [existing] = await db.select().from(commissionsTable);
+  let result;
   if (existing) {
     const [updated] = await db.update(commissionsTable).set({ percentualGlobal }).where(eq(commissionsTable.id, existing.id)).returning();
-    res.json(updated);
+    result = updated;
   } else {
     const [created] = await db.insert(commissionsTable).values({ percentualGlobal }).returning();
-    res.json(created);
+    result = created;
   }
+
+  void writeAuditLog({ actorId: req.userId, action: "commission.update_global", details: { percentualGlobal }, ip: getClientIp(req) });
+
+  res.json(result);
 });
 
 // ── Create internal user (admin or support) ──────────────────────────────────
@@ -282,6 +296,8 @@ router.post("/admin/create-internal-user", authMiddleware, requireAdmin, async (
     emailVerificado: true,
     ramo: departamento || null,
   }).returning();
+
+  void writeAuditLog({ actorId: req.userId, action: "user.create_internal", targetId: user.id, targetType: "user", details: { email: user.email, role }, ip: getClientIp(req) });
 
   res.status(201).json({
     id: user.id,

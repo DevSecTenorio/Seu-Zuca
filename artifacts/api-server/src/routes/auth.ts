@@ -3,9 +3,13 @@ import { db, usersTable } from "@workspace/db";
 import { eq, and, gt } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
+import jwt from "jsonwebtoken";
 import rateLimit from "express-rate-limit";
-import { signToken, authMiddleware, type AuthRequest } from "../middlewares/auth";
+import { signToken, authMiddleware, revokeToken, type AuthRequest } from "../middlewares/auth";
 import { sendEmail, buildPasswordResetEmailHtml, buildVerificationEmailHtml } from "../lib/email";
+import { writeAuditLog, getClientIp } from "../lib/auditLog";
+
+const JWT_SECRET = process.env.SESSION_SECRET || "seu-zuca-secret-key";
 
 // ── helpers de validação ────────────────────────────────────────────────────
 function buildInsertUser(fields: {
@@ -258,7 +262,21 @@ router.post("/auth/login", loginLimiter, async (req, res): Promise<void> => {
   });
 });
 
-router.post("/auth/logout", async (_req, res): Promise<void> => {
+router.post("/auth/logout", async (req: AuthRequest, res): Promise<void> => {
+  const token = req.cookies?.token || req.headers.authorization?.replace("Bearer ", "");
+  if (token) {
+    // Decode without verify to get expiration (already trusted from cookie)
+    const decoded = jwt.decode(token) as { exp?: number } | null;
+    const expiresAt = decoded?.exp
+      ? new Date(decoded.exp * 1000)
+      : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+    await revokeToken(token, expiresAt);
+    await writeAuditLog({
+      actorId: req.userId,
+      action: "user.logout",
+      ip: getClientIp(req),
+    });
+  }
   res.clearCookie("token");
   res.json({ message: "Logout realizado com sucesso" });
 });
