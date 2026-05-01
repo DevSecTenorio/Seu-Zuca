@@ -68,21 +68,22 @@ function HeroBanner() {
   const b = banners[active] ?? banners[0];
   if (!b) return null;
 
-  /* ── Layout: imagem de fundo ocupa 100% quando disponível ──────────── */
+  /* ── Layout: imagem ocupa largura total e mantém proporção responsiva ── */
   if (b.imagemUrl) {
     return (
-      <div
-        className="relative w-full overflow-hidden"
-        style={{
-          minHeight: 380,
-          backgroundImage: `url(${b.imagemUrl})`,
-          backgroundSize: "cover",
-          backgroundPosition: "center",
-        }}
-      >
-        {/* Área clicável que redireciona ao link configurado no admin */}
+      <div className="relative w-full overflow-hidden">
+        {/* Imagem com altura responsiva via clamp: mínimo 200px, cresce com viewport, máximo 480px */}
+        <img
+          src={b.imagemUrl}
+          alt={b.titulo || "Banner"}
+          className="w-full block object-cover object-left-top"
+          style={{ height: "clamp(200px, 31.25vw, 480px)" }}
+          draggable={false}
+        />
+
+        {/* Área clicável */}
         <div
-          className="absolute inset-0 cursor-pointer"
+          className="absolute inset-0 cursor-pointer z-10"
           onClick={() => navigate(b.linkUrl || "/catalogo")}
           title={b.titulo || "Ver oferta"}
         />
@@ -91,13 +92,13 @@ function HeroBanner() {
         {banners.length > 1 && (
           <>
             <button
-              onClick={() => setActive((a) => (a - 1 + banners.length) % banners.length)}
+              onClick={(e) => { e.stopPropagation(); setActive((a) => (a - 1 + banners.length) % banners.length); }}
               className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 bg-black/30 hover:bg-black/50 rounded-full flex items-center justify-center text-white transition-colors z-20"
             >
               <ChevronLeft size={20} />
             </button>
             <button
-              onClick={() => setActive((a) => (a + 1) % banners.length)}
+              onClick={(e) => { e.stopPropagation(); setActive((a) => (a + 1) % banners.length); }}
               className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 bg-black/30 hover:bg-black/50 rounded-full flex items-center justify-center text-white transition-colors z-20"
             >
               <ChevronRight size={20} />
@@ -111,7 +112,7 @@ function HeroBanner() {
             {banners.map((_, i) => (
               <button
                 key={i}
-                onClick={() => setActive(i)}
+                onClick={(e) => { e.stopPropagation(); setActive(i); }}
                 className={`w-2 h-2 rounded-full transition-all ${i === active ? "bg-white scale-125" : "bg-white/50"}`}
               />
             ))}
@@ -123,34 +124,34 @@ function HeroBanner() {
 
   /* ── Layout fallback: gradiente + texto (sem imagem) ─────────────────── */
   return (
-    <div className={`relative bg-gradient-to-r ${b.corFundo} overflow-hidden`} style={{ minHeight: 320 }}>
-      <div className="max-w-[1280px] mx-auto px-4 py-10 flex items-center justify-between gap-8">
+    <div className={`relative bg-gradient-to-r ${b.corFundo} overflow-hidden`}>
+      <div className="max-w-[1280px] mx-auto px-4 py-8 sm:py-10 flex flex-col sm:flex-row items-center justify-between gap-6 sm:gap-8" style={{ minHeight: "clamp(220px, 25vw, 380px)" }}>
         {/* Text */}
-        <div className="text-white z-10 flex-1">
+        <div className="text-white z-10 flex-1 w-full">
           {b.tag && (
-            <span className="inline-block bg-white/20 text-white text-xs font-semibold px-3 py-1 rounded-full mb-4">
+            <span className="inline-block bg-white/20 text-white text-xs font-semibold px-3 py-1 rounded-full mb-3">
               {b.tag}
             </span>
           )}
-          <h1 className="text-4xl md:text-5xl font-black leading-tight mb-3 whitespace-pre-line">
+          <h1 className="text-2xl sm:text-4xl md:text-5xl font-black leading-tight mb-3 whitespace-pre-line">
             {b.titulo}
           </h1>
           {b.destaque && (
-            <div className="inline-flex items-center bg-[#FFD700] text-[#1a1a1a] font-black text-xl px-5 py-2 rounded-full mb-2">
+            <div className="inline-flex items-center bg-[#FFD700] text-[#1a1a1a] font-black text-base sm:text-xl px-4 sm:px-5 py-2 rounded-full mb-2">
               {b.destaque}
             </div>
           )}
           {b.subtitulo && <p className="text-white/80 text-sm mt-2">{b.subtitulo}</p>}
-          <div className="flex gap-3 mt-6">
+          <div className="flex flex-wrap gap-3 mt-5 sm:mt-6">
             <button
               onClick={() => navigate(b.linkUrl || "/catalogo")}
-              className="bg-white text-[#C0181A] font-bold px-6 py-3 rounded-lg hover:bg-gray-100 transition-colors text-sm"
+              className="bg-white text-[#C0181A] font-bold px-5 sm:px-6 py-2.5 sm:py-3 rounded-lg hover:bg-gray-100 transition-colors text-sm"
             >
               Ver ofertas
             </button>
             <button
               onClick={() => navigate("/cadastro")}
-              className="bg-transparent border-2 border-white text-white font-bold px-6 py-3 rounded-lg hover:bg-white/10 transition-colors text-sm"
+              className="bg-transparent border-2 border-white text-white font-bold px-5 sm:px-6 py-2.5 sm:py-3 rounded-lg hover:bg-white/10 transition-colors text-sm"
             >
               Criar conta B2B
             </button>
@@ -163,13 +164,13 @@ function HeroBanner() {
         <>
           <button
             onClick={() => setActive((a) => (a - 1 + banners.length) % banners.length)}
-            className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 bg-black/30 hover:bg-black/50 rounded-full flex items-center justify-center text-white transition-colors"
+            className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 bg-black/30 hover:bg-black/50 rounded-full flex items-center justify-center text-white transition-colors z-20"
           >
             <ChevronLeft size={20} />
           </button>
           <button
             onClick={() => setActive((a) => (a + 1) % banners.length)}
-            className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 bg-black/30 hover:bg-black/50 rounded-full flex items-center justify-center text-white transition-colors"
+            className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 bg-black/30 hover:bg-black/50 rounded-full flex items-center justify-center text-white transition-colors z-20"
           >
             <ChevronRight size={20} />
           </button>
@@ -178,7 +179,7 @@ function HeroBanner() {
 
       {/* Dots */}
       {banners.length > 1 && (
-        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
+        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 z-20">
           {banners.map((_, i) => (
             <button
               key={i}
