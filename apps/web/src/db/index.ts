@@ -1,20 +1,18 @@
-import { Pool, neonConfig } from "@neondatabase/serverless";
-import { drizzle } from "drizzle-orm/neon-serverless";
-import ws from "ws";
+import postgres from "postgres";
+import { drizzle } from "drizzle-orm/postgres-js";
 import * as schema from "./schema";
 
 if (!process.env.DATABASE_URL) {
   throw new Error("DATABASE_URL is not set. Copy .env.example to .env.local and fill it in.");
 }
 
-// WebSocket-based pool (as opposed to the neon-http driver used in src/lib/auth/session-core.ts)
-// because this client needs real, multi-statement transactions — e.g. registration writes a
-// user + company + address + KYC documents atomically. neon-http can't do that: each query is
-// an independent HTTP call, so a later statement can't depend on an earlier one's result.
-neonConfig.webSocketConstructor = ws;
+// Postgres: Supabase (CLAUDE.md: Neon or Supabase). Use the pooled connection string from the
+// Supabase dashboard (Project Settings -> Database -> Connection string -> "Transaction pooler",
+// port 6543) — Vercel functions are short-lived, so pooling through Supavisor avoids exhausting
+// Supabase's direct Postgres connection limit. Transaction-mode pooling doesn't support prepared
+// statements, hence `prepare: false` (also correct, if unnecessary, against a direct connection).
+const client = postgres(process.env.DATABASE_URL, { prepare: false });
 
-const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-
-export const db = drizzle(pool, { schema });
+export const db = drizzle(client, { schema });
 
 export { schema };

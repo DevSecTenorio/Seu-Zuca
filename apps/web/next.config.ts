@@ -10,8 +10,8 @@ const nextConfig: NextConfig = {
   },
   images: {
     remotePatterns: [
-      // Real uploads (product images, banners) go to Vercel Blob's public CDN.
-      { protocol: "https", hostname: "*.public.blob.vercel-storage.com" },
+      // Real uploads (product images, banners) go to Supabase Storage's public bucket URLs.
+      { protocol: "https", hostname: "*.supabase.co", pathname: "/storage/v1/object/public/**" },
       // Seed/demo imagery only — picsum.photos placeholders until suppliers/admin upload real
       // photos through the storage flow (see src/lib/storage.ts).
       { protocol: "https", hostname: "picsum.photos" },

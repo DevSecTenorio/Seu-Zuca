@@ -1,7 +1,5 @@
-import { neon } from "@neondatabase/serverless";
-import { drizzle } from "drizzle-orm/neon-http";
 import { and, eq, gt } from "drizzle-orm";
-import * as schema from "@/db/schema";
+import { db, schema } from "@/db";
 import { hashToken } from "./crypto";
 
 export const SESSION_COOKIE = "session_token";
@@ -13,26 +11,13 @@ export type RoleStatus = {
   status: (typeof schema.userStatusEnum.enumValues)[number];
 };
 
-let edgeDb: ReturnType<typeof drizzle<typeof schema>> | null = null;
-
-function getEdgeDb() {
-  if (!edgeDb) {
-    if (!process.env.DATABASE_URL) {
-      throw new Error("DATABASE_URL is not set. Copy .env.example to .env.local and fill it in.");
-    }
-    edgeDb = drizzle(neon(process.env.DATABASE_URL), { schema });
-  }
-  return edgeDb;
-}
-
 /**
- * Minimal, Edge-runtime-safe session lookup used by middleware. Deliberately uses the
- * stateless neon-http driver (a single fetch, no WebSocket handshake) instead of the pooled
- * client in src/db/index.ts — middleware runs on every request and only needs a fast
- * role/status read, never a transaction.
+ * Minimal session lookup used by middleware (src/proxy.ts). Next.js 16's Proxy convention always
+ * runs on the Node.js runtime (never Edge), so this can safely share the same pooled postgres-js
+ * TCP client as the rest of the app — no separate edge-safe driver needed, unlike the old
+ * Neon setup which used a stateless HTTP driver here specifically to work under Edge.
  */
 export async function getRoleStatusForToken(token: string): Promise<RoleStatus | null> {
-  const db = getEdgeDb();
   const tokenHash = await hashToken(token);
   const rows = await db
     .select({

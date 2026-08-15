@@ -2,6 +2,10 @@ import { NextResponse, type NextRequest } from "next/server";
 import { getRoleStatusForToken, SESSION_COOKIE } from "@/lib/auth/session-core";
 import { ROLE_HOME, type Role } from "@/lib/auth/roles";
 
+// Next.js 16's Proxy convention (the successor to middleware.ts) always runs on the Node.js
+// runtime, so the role/status lookup below can safely share the same pooled postgres-js TCP
+// client as the rest of the app — see session-core.ts.
+
 const GUEST_ONLY_ROUTES = new Set(["/login", "/cadastro", "/cadastro/comprador", "/cadastro/fornecedor"]);
 
 const ADMIN_PREFIX = "/admin";

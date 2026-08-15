@@ -10,16 +10,20 @@ não foi tocado.
 
 - **Next.js 16** (App Router, TypeScript estrito, Turbopack)
 - **Tailwind CSS v4** + **shadcn/ui** (estilo "new-york") + ícones Lucide
-- **Postgres serverless: [Neon](https://neon.tech)** — escolhido em vez de Supabase porque o
-  projeto já usa Vercel Blob para upload de arquivos (não precisamos do storage do Supabase), e o
-  driver `@neondatabase/serverless` tem dois modos que encaixam bem no modelo serverless da
-  Vercel: HTTP sem estado (usado no `proxy.ts`, roda em qualquer runtime, sem overhead de conexão)
-  e um Pool sobre WebSocket (usado no restante do app, com suporte a transações reais).
+- **Postgres serverless: [Supabase](https://supabase.com)** — banco e storage no mesmo projeto,
+  uma única credencial para provisionar. Driver `postgres` (postgres.js) via
+  `drizzle-orm/postgres-js`, conectando na "Transaction pooler" do Supabase (Supavisor/PgBouncer)
+  para não esgotar o limite de conexões diretas com as functions efêmeras da Vercel
+  (`prepare: false` porque o pooler em modo transação não suporta prepared statements). O
+  `proxy.ts` (convenção do Next 16 para middleware) sempre roda em runtime Node.js — nunca Edge —
+  então reusa esse mesmo client TCP sem precisar de um driver HTTP separado (que a Neon tinha e a
+  Supabase não).
 - **ORM: Drizzle**, schema completo em `src/db/schema/`, migrations versionadas em
   `src/db/migrations/`
 - **Autenticação própria**: sessões em banco (tabela `sessions`) + cookie `httpOnly`, senhas com
   bcrypt. Sem OAuth social (produto B2B, login por e-mail corporativo).
-- **Upload de arquivos (KYC)**: Vercel Blob em produção; sem `BLOB_READ_WRITE_TOKEN`, cai para
+- **Upload de arquivos (KYC, produtos, banners)**: Supabase Storage (bucket público,
+  `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY`) em produção; sem essas variáveis, cai para
   `public/uploads` em dev (nunca em produção — filesystem da Vercel não é persistente).
 - **E-mail transacional**: Resend se `RESEND_API_KEY` estiver definida; caso contrário, loga no
   console (redefinição de senha, etc.).
@@ -30,7 +34,10 @@ não foi tocado.
 ```bash
 cd apps/web
 cp .env.example .env.local
-# preencha DATABASE_URL com a connection string do Neon (aba "Connection string" do dashboard)
+# preencha DATABASE_URL com a connection string do Supabase (Project Settings > Database >
+# Connection string > "Transaction pooler"), e SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY (Project
+# Settings > API) para o upload de arquivos. Crie um bucket público chamado "seu-zuca-uploads"
+# em Storage (ou outro nome, ajustando SUPABASE_STORAGE_BUCKET).
 ```
 
 Da raiz do monorepo (o workspace pnpm cobre `apps/*`):
