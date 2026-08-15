@@ -14,6 +14,7 @@ import { StarRating } from "@/components/star-rating";
 import { getCurrentUser } from "@/lib/auth/session";
 import { formatCentsToBRL, formatDate } from "@/lib/format";
 import { getApprovedReviewsForProduct, getProductBySlug } from "@/server/queries/storefront";
+import { isProductWishlisted } from "@/server/actions/wishlist-actions";
 import { ProductGallery } from "./product-gallery";
 import { BuyBox } from "./buy-box";
 
@@ -41,6 +42,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
   const { reviews, average, count } = await getApprovedReviewsForProduct(product.id);
   const minQuantity = product.category.minQuantityRule?.minQuantity ?? 1;
   const multiple = product.category.minQuantityRule?.multiple ?? 1;
+  const isWishlisted = user?.role === "comprador" ? await isProductWishlisted(user.id, product.id) : false;
 
   return (
     <div className="mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:px-6 lg:px-8">
@@ -101,7 +103,14 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
             </span>
           </div>
 
-          <BuyBox user={user} minQuantity={minQuantity} multiple={multiple} inStock={product.stock > 0} />
+          <BuyBox
+            user={user}
+            productId={product.id}
+            minQuantity={minQuantity}
+            multiple={multiple}
+            inStock={product.stock > 0}
+            isWishlisted={isWishlisted}
+          />
 
           <div className="flex flex-wrap gap-x-6 gap-y-2 border-t pt-4">
             {TRUST_ROW.map(({ icon: Icon, label }) => (

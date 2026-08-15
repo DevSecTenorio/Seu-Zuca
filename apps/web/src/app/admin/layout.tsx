@@ -14,7 +14,7 @@ const NAV_ITEMS: AdminNavItem[] = [
   { label: "Unidades", href: "/admin/unidades" },
   { label: "Produtos", href: "/admin/produtos" },
   { label: "Banners" },
-  { label: "Qtd. Mínimas" },
+  { label: "Qtd. Mínimas", href: "/admin/qtd-minimas" },
   { label: "Avaliações" },
   { label: "Relatórios" },
   { label: "Analytics" },

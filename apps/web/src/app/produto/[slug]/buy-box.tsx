@@ -1,9 +1,17 @@
+"use client";
+
 import Link from "next/link";
+import { useActionState } from "react";
+import { useFormStatus } from "react-dom";
 import { Heart, ShoppingCart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { cn } from "@/lib/utils";
 import type { AuthenticatedUser } from "@/lib/auth/session";
+import { addToCartAction } from "@/server/actions/cart-actions";
+import { toggleWishlistAction } from "@/server/actions/wishlist-actions";
+import { INITIAL_FORM_STATE, type FormState } from "@/server/actions/form-state";
 
 const ROLE_LABELS: Record<string, string> = {
   admin: "Administrador",
@@ -11,17 +19,49 @@ const ROLE_LABELS: Record<string, string> = {
   fornecedor: "Fornecedor",
 };
 
+function AddToCartButton({ disabled }: { disabled: boolean }) {
+  const { pending } = useFormStatus();
+  return (
+    <Button type="submit" className="flex-1" disabled={disabled || pending}>
+      <ShoppingCart className="size-4" />
+      {disabled ? "Indisponível" : pending ? "Adicionando..." : "Adicionar ao carrinho"}
+    </Button>
+  );
+}
+
+function WishlistButton({ isWishlisted }: { isWishlisted: boolean }) {
+  const { pending } = useFormStatus();
+  return (
+    <Button
+      type="submit"
+      variant="outline"
+      size="icon"
+      disabled={pending}
+      aria-pressed={isWishlisted}
+      aria-label={isWishlisted ? "Remover dos favoritos" : "Adicionar aos favoritos"}
+    >
+      <Heart className={cn("size-4", isWishlisted && "fill-destructive text-destructive")} />
+    </Button>
+  );
+}
+
 export function BuyBox({
   user,
+  productId,
   minQuantity,
   multiple,
   inStock,
+  isWishlisted,
 }: {
   user: AuthenticatedUser | null;
+  productId: string;
   minQuantity: number;
   multiple: number;
   inStock: boolean;
+  isWishlisted: boolean;
 }) {
+  const [state, formAction] = useActionState<FormState, FormData>(addToCartAction, INITIAL_FORM_STATE);
+
   if (!user) {
     return (
       <div className="space-y-2 rounded-lg border bg-muted/30 p-4">
@@ -52,11 +92,13 @@ export function BuyBox({
         <Label htmlFor="quantity">Quantidade</Label>
         <Input
           id="quantity"
+          name="quantity"
           type="number"
           min={minQuantity}
           step={multiple}
           defaultValue={minQuantity}
           disabled={!inStock}
+          form="add-to-cart-form"
           className="max-w-32"
         />
         {(minQuantity > 1 || multiple > 1) && (
@@ -66,17 +108,23 @@ export function BuyBox({
         )}
       </div>
       <div className="flex gap-2">
-        <Button className="flex-1" disabled title="Carrinho disponível na próxima etapa do projeto">
-          <ShoppingCart className="size-4" />
-          {inStock ? "Adicionar ao carrinho" : "Indisponível"}
-        </Button>
-        <Button variant="outline" size="icon" disabled title="Favoritos disponíveis na próxima etapa do projeto">
-          <Heart className="size-4" />
-        </Button>
+        <form id="add-to-cart-form" action={formAction} className="flex flex-1">
+          <input type="hidden" name="productId" value={productId} />
+          <AddToCartButton disabled={!inStock} />
+        </form>
+        <form action={toggleWishlistAction.bind(null, productId)}>
+          <WishlistButton isWishlisted={isWishlisted} />
+        </form>
       </div>
-      <p className="text-xs text-muted-foreground">
-        O carrinho de compras é liberado na próxima etapa do projeto (checkout e pagamentos).
-      </p>
+      {state.status === "error" && state.message && <p className="text-sm text-destructive">{state.message}</p>}
+      {state.status === "success" && state.message && (
+        <p className="text-sm text-success-foreground">
+          {state.message}{" "}
+          <Link href="/carrinho" className="underline">
+            Ver carrinho
+          </Link>
+        </p>
+      )}
     </div>
   );
 }

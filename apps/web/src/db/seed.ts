@@ -1,8 +1,9 @@
 import "./load-env";
 
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import { db, schema } from "./index";
+import type { OrderStatus } from "../lib/order-status";
 
 // Not reusing src/lib/auth/password.ts / src/lib/slug.ts here: both import the "server-only"
 // guard package, which throws unconditionally outside Next.js's bundler — this script runs
@@ -581,7 +582,7 @@ async function seedTestAccounts() {
     supplierIds.push(userId);
   }
 
-  await upsertCompanyAccount({
+  const buyer = await upsertCompanyAccount({
     email: "comprador@seuzuca.com.br",
     role: "comprador",
     razaoSocial: "Construtora Horizonte Ltda.",
@@ -592,7 +593,7 @@ async function seedTestAccounts() {
   });
 
   console.log(`✓ ${2 + SUPPLIERS.length + 1} contas de teste (admin, suporte, ${SUPPLIERS.length} fornecedores, comprador)`);
-  return supplierIds;
+  return { supplierIds, buyerId: buyer.userId, buyerCompanyId: buyer.companyId };
 }
 
 async function seedProducts(supplierIds: string[]) {
@@ -642,6 +643,115 @@ async function seedProducts(supplierIds: string[]) {
   console.log(`✓ ${createdCount} produtos novos (${PRODUCTS.length} no catálogo de seed)`);
 }
 
+/**
+ * Two sample orders for the seed buyer account (one delivered, one still in separation) so
+ * /pedidos, the supplier "Pedidos" tab, and (later) the review flow have something real to show
+ * right after `db:seed` — without this, those screens are only exercisable by clicking through a
+ * full checkout first.
+ */
+async function seedSampleOrders(buyerId: string, buyerCompanyId: string, supplierIds: string[]) {
+  const existing = await db.query.orders.findFirst({ where: eq(schema.orders.buyerId, buyerId) });
+  if (existing) {
+    console.log("✓ pedidos de exemplo já existem, seed ignorado");
+    return;
+  }
+
+  const address = await db.query.addresses.findFirst({ where: eq(schema.addresses.companyId, buyerCompanyId) });
+  if (!address) return;
+
+  const commissionPercent = await db.query.settings.findFirst({ where: eq(schema.settings.key, "commission_percent") });
+  const commission = typeof commissionPercent?.value === "number" ? commissionPercent.value : 5;
+
+  async function createSampleOrder(input: {
+    supplierId: string;
+    skus: string[];
+    quantities: number[];
+    statuses: OrderStatus[];
+    trackingCode?: string;
+  }) {
+    const products = await db.query.products.findMany({ where: inArray(schema.products.sku, input.skus) });
+    if (products.length !== input.skus.length) return;
+
+    const items = input.skus.map((sku, i) => {
+      const product = products.find((p) => p.sku === sku)!;
+      return { product, quantity: input.quantities[i] };
+    });
+    const subtotalCents = items.reduce((sum, i) => sum + i.product.priceCents * i.quantity, 0);
+    const shippingCents = subtotalCents >= 50000 ? 0 : 2990;
+    const totalCents = subtotalCents + shippingCents;
+    const commissionCents = Math.round(subtotalCents * (commission / 100));
+
+    const [checkoutGroup] = await db
+      .insert(schema.checkoutGroups)
+      .values({ buyerId, deliveryAddressId: address!.id, totalCents })
+      .returning({ id: schema.checkoutGroups.id });
+
+    const finalStatus = input.statuses[input.statuses.length - 1];
+    const [order] = await db
+      .insert(schema.orders)
+      .values({
+        checkoutGroupId: checkoutGroup.id,
+        buyerId,
+        supplierId: input.supplierId,
+        status: finalStatus,
+        subtotalCents,
+        shippingCents,
+        totalCents,
+        commissionPercent: commission.toFixed(2),
+        commissionCents,
+        trackingCode: input.trackingCode ?? null,
+      })
+      .returning({ id: schema.orders.id });
+
+    await db.insert(schema.orderItems).values(
+      items.map((i) => ({
+        orderId: order.id,
+        productId: i.product.id,
+        productNameSnapshot: i.product.name,
+        unitPriceCents: i.product.priceCents,
+        quantity: i.quantity,
+        totalCents: i.product.priceCents * i.quantity,
+      })),
+    );
+
+    const eventNotes: Record<string, string> = {
+      aguardando_pagamento: "Pedido criado no checkout.",
+      pago: "Pagamento confirmado via webhook do Mercado Pago.",
+      em_separacao: "Pedido em separação.",
+      enviado: `Enviado. Código de rastreio: ${input.trackingCode ?? ""}`,
+      entregue: "Entrega confirmada pelo comprador.",
+    };
+    await db.insert(schema.orderStatusEvents).values(
+      input.statuses.map((status) => ({ orderId: order.id, status, note: eventNotes[status] })),
+    );
+
+    await db.insert(schema.payments).values({
+      checkoutGroupId: checkoutGroup.id,
+      method: "pix",
+      status: finalStatus === "aguardando_pagamento" ? "aguardando_pagamento" : "pago",
+    });
+
+    return order.id;
+  }
+
+  await createSampleOrder({
+    supplierId: supplierIds[0],
+    skus: ["ARG-AC3-20", "CIM-CPII-50"],
+    quantities: [50, 30],
+    statuses: ["aguardando_pagamento", "pago", "em_separacao", "enviado", "entregue"],
+    trackingCode: "BR123456789SZ",
+  });
+
+  await createSampleOrder({
+    supplierId: supplierIds[1],
+    skus: ["POR-ACT-6060"],
+    quantities: [40],
+    statuses: ["aguardando_pagamento", "pago", "em_separacao"],
+  });
+
+  console.log("✓ 2 pedidos de exemplo (1 entregue, 1 em separação)");
+}
+
 async function seedBanners() {
   const existingCount = await db.select({ id: schema.banners.id }).from(schema.banners);
   if (existingCount.length > 0) {
@@ -668,9 +778,10 @@ async function main() {
   await seedCategories();
   await seedMinQuantityRules();
   await seedSettings();
-  const supplierIds = await seedTestAccounts();
+  const { supplierIds, buyerId, buyerCompanyId } = await seedTestAccounts();
   await seedProducts(supplierIds);
   await seedBanners();
+  await seedSampleOrders(buyerId, buyerCompanyId, supplierIds);
   console.log("\nSeed concluído. Senha de todas as contas de teste: " + TEST_PASSWORD);
   process.exit(0);
 }

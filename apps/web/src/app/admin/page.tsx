@@ -13,7 +13,6 @@ const UPCOMING_SECTIONS = [
   "Criar Fornecedor",
   "Usuários Internos",
   "Banners",
-  "Qtd. Mínimas",
   "Avaliações",
   "Relatórios completos",
   "Analytics",

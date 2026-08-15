@@ -8,9 +8,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { LogoutButton } from "@/components/logout-button";
 import { requireApprovedUser } from "@/lib/auth/require-user";
-import { formatCentsToBRL } from "@/lib/format";
+import { formatCentsToBRL, formatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { ORDER_STATUS_LABELS, canTransition, type OrderStatus } from "@/lib/order-status";
 import { deactivateOwnProductAction, reactivateOwnProductAction } from "@/server/actions/product-actions";
+import { supplierAdvanceOrderAction } from "@/server/actions/order-actions";
+import { ShipOrderForm } from "./ship-order-form";
 
 export const metadata: Metadata = {
   title: "Painel do Fornecedor — Seu Zuca",
@@ -30,9 +33,20 @@ const STATUS_BADGE_VARIANT: Record<string, "default" | "secondary" | "destructiv
   inativo: "secondary",
 };
 
+const ORDER_STATUS_BADGE_VARIANT: Record<OrderStatus, "default" | "secondary" | "destructive" | "outline"> = {
+  aguardando_pagamento: "outline",
+  pago: "default",
+  em_separacao: "default",
+  enviado: "default",
+  entregue: "secondary",
+  cancelado: "destructive",
+  em_disputa: "destructive",
+  devolvido: "secondary",
+};
+
 const TABS = [
   { key: "produtos", label: "Produtos", implemented: true },
-  { key: "pedidos", label: "Pedidos", implemented: false },
+  { key: "pedidos", label: "Pedidos", implemented: true },
   { key: "analytics", label: "Analytics", implemented: false },
   { key: "relatorios", label: "Relatórios", implemented: false },
 ];
@@ -51,6 +65,15 @@ export default async function SupplierDashboardPage({
     orderBy: (p, { desc }) => [desc(p.createdAt)],
     with: { category: true, unit: true },
   });
+
+  const orders =
+    activeTab.key === "pedidos"
+      ? await db.query.orders.findMany({
+          where: eq(schema.orders.supplierId, user.id),
+          orderBy: (o, { desc }) => [desc(o.createdAt)],
+          with: { buyer: { with: { company: true } }, items: true },
+        })
+      : [];
 
   return (
     <div className="mx-auto w-full max-w-6xl flex-1 px-4 py-10 sm:px-6 lg:px-8">
@@ -164,6 +187,77 @@ export default async function SupplierDashboardPage({
                             </form>
                           )}
                         </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {activeTab.key === "pedidos" && (
+        <Card className="mt-6">
+          <CardHeader>
+            <CardTitle>{orders.length} pedidos</CardTitle>
+            <CardDescription>Atualize o status conforme separa, envia e entrega cada pedido.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {orders.length === 0 ? (
+              <p className="py-8 text-center text-sm text-muted-foreground">Nenhum pedido recebido ainda.</p>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Comprador</TableHead>
+                    <TableHead>Itens</TableHead>
+                    <TableHead>Total</TableHead>
+                    <TableHead>Data</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Ações</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {orders.map((order) => (
+                    <TableRow key={order.id}>
+                      <TableCell className="font-medium text-foreground">
+                        {order.buyer.company?.nomeFantasia ?? order.buyer.email}
+                      </TableCell>
+                      <TableCell>{order.items.length}</TableCell>
+                      <TableCell>{formatCentsToBRL(order.totalCents)}</TableCell>
+                      <TableCell className="whitespace-nowrap text-muted-foreground">{formatDate(order.createdAt)}</TableCell>
+                      <TableCell>
+                        <Badge variant={ORDER_STATUS_BADGE_VARIANT[order.status]}>
+                          {ORDER_STATUS_LABELS[order.status]}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {canTransition(order.status, "em_separacao", "fornecedor") && (
+                          <form
+                            action={async () => {
+                              "use server";
+                              await supplierAdvanceOrderAction(order.id, "em_separacao");
+                            }}
+                          >
+                            <Button type="submit" size="sm">
+                              Iniciar separação
+                            </Button>
+                          </form>
+                        )}
+                        {canTransition(order.status, "enviado", "fornecedor") && <ShipOrderForm orderId={order.id} />}
+                        {canTransition(order.status, "entregue", "fornecedor") && (
+                          <form
+                            action={async () => {
+                              "use server";
+                              await supplierAdvanceOrderAction(order.id, "entregue");
+                            }}
+                          >
+                            <Button type="submit" size="sm">
+                              Marcar como entregue
+                            </Button>
+                          </form>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))}

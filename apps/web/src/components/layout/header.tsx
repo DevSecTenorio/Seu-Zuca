@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { LayoutGrid, Search, User } from "lucide-react";
+import { Heart, LayoutGrid, Search, ShoppingCart, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -14,6 +14,7 @@ import { getCurrentUser } from "@/lib/auth/session";
 import { logoutAction } from "@/server/actions/auth-actions";
 import { ROLE_HOME } from "@/lib/auth/roles";
 import { listTopLevelActiveCategories } from "@/server/actions/category-actions";
+import { getCartForBuyer } from "@/server/queries/cart";
 
 const ROLE_LABELS: Record<string, string> = {
   admin: "Administrador",
@@ -24,6 +25,7 @@ const ROLE_LABELS: Record<string, string> = {
 
 export async function Header() {
   const [user, categories] = await Promise.all([getCurrentUser(), listTopLevelActiveCategories()]);
+  const cartItemCount = user?.role === "comprador" ? (await getCartForBuyer(user.id)).length : 0;
 
   return (
     <header className="sticky top-0 z-40 border-b bg-background">
@@ -84,6 +86,25 @@ export async function Header() {
         </form>
 
         <div className="ml-auto flex shrink-0 items-center gap-2">
+          {user?.role === "comprador" && (
+            <>
+              <Button asChild variant="ghost" size="icon" aria-label="Favoritos">
+                <Link href="/favoritos">
+                  <Heart className="size-4" />
+                </Link>
+              </Button>
+              <Button asChild variant="ghost" size="icon" className="relative" aria-label="Carrinho">
+                <Link href="/carrinho">
+                  <ShoppingCart className="size-4" />
+                  {cartItemCount > 0 && (
+                    <span className="absolute top-0.5 right-0.5 flex size-4 items-center justify-center rounded-full bg-primary text-[10px] text-primary-foreground">
+                      {cartItemCount}
+                    </span>
+                  )}
+                </Link>
+              </Button>
+            </>
+          )}
           {user ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
