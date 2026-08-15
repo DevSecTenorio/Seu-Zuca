@@ -13,6 +13,8 @@ import { formatCentsToBRL, formatDate } from "@/lib/format";
 import { ORDER_STATUS_LABELS, canTransition, type OrderStatus } from "@/lib/order-status";
 import { buyerCancelOrderAction, buyerConfirmDeliveryAction } from "@/server/actions/order-actions";
 import { DisputeDialog } from "./dispute-dialog";
+import { ReviewDialog } from "./review-dialog";
+import { CheckCircle2 } from "lucide-react";
 
 export const metadata: Metadata = { title: "Detalhe do pedido — Seu Zuca" };
 
@@ -33,6 +35,9 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
 
   const payment = await db.query.payments.findFirst({ where: eq(schema.payments.checkoutGroupId, order.checkoutGroupId) });
   const address = order.checkoutGroup.deliveryAddress;
+
+  const reviews = order.status === "entregue" ? await db.query.reviews.findMany({ where: eq(schema.reviews.orderId, order.id) }) : [];
+  const reviewedProductIds = new Set(reviews.map((r) => r.productId));
 
   const canCancel = canTransition(order.status, "cancelado", "comprador");
   const canDispute = canTransition(order.status, "em_disputa", "comprador");
@@ -60,11 +65,21 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
             </CardHeader>
             <CardContent className="divide-y">
               {order.items.map((item) => (
-                <div key={item.id} className="flex justify-between py-2 text-sm">
+                <div key={item.id} className="flex items-center justify-between gap-3 py-2 text-sm">
                   <span>
                     {item.quantity}x {item.productNameSnapshot}
                   </span>
-                  <span className="font-medium text-foreground">{formatCentsToBRL(item.totalCents)}</span>
+                  <div className="flex items-center gap-3">
+                    <span className="font-medium text-foreground">{formatCentsToBRL(item.totalCents)}</span>
+                    {order.status === "entregue" &&
+                      (reviewedProductIds.has(item.productId) ? (
+                        <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                          <CheckCircle2 className="size-3.5" /> Avaliado
+                        </span>
+                      ) : (
+                        <ReviewDialog orderId={order.id} productId={item.productId} productName={item.productNameSnapshot} />
+                      ))}
+                  </div>
                 </div>
               ))}
               <div className="flex justify-between py-2 text-sm text-muted-foreground">

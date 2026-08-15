@@ -1,5 +1,5 @@
 import { relations } from "drizzle-orm";
-import { index, integer, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { index, integer, pgTable, text, timestamp, unique, uuid } from "drizzle-orm/pg-core";
 import { reviewModerationStatusEnum } from "./enums";
 import { users } from "./users";
 import { products } from "./catalog";
@@ -28,6 +28,9 @@ export const reviews = pgTable(
   (table) => [
     index("reviews_product_idx").on(table.productId),
     index("reviews_moderation_status_idx").on(table.moderationStatus),
+    // A buyer reviews a given product once per order that delivered it (SPEC.md §7: "apenas
+    // compradores com pedido entregue do produto podem avaliar").
+    unique("reviews_order_product_unique").on(table.orderId, table.productId),
   ],
 );
 

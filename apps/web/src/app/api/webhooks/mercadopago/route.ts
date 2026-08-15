@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { eq } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { fetchPayment, verifyWebhookSignature } from "@/lib/mercadopago";
-import { logAudit } from "@/lib/audit";
+import { applyOrderStatusTransition } from "@/server/actions/order-actions";
 
 /**
  * Mercado Pago's asynchronous payment confirmation (SPEC.md §5). Always responds 200 unless the
@@ -60,20 +60,9 @@ export async function POST(request: NextRequest) {
     const orders = await db.query.orders.findMany({ where: eq(schema.orders.checkoutGroupId, checkoutGroupId) });
     for (const order of orders) {
       if (order.status !== "aguardando_pagamento") continue;
-      await db.update(schema.orders).set({ status: "pago", updatedAt: new Date() }).where(eq(schema.orders.id, order.id));
-      await db.insert(schema.orderStatusEvents).values({
-        orderId: order.id,
-        status: "pago",
-        note: "Pagamento confirmado via webhook do Mercado Pago.",
-        createdBy: null,
-      });
-      await logAudit({
-        actorId: null,
-        action: "order.payment_confirmed",
-        entityType: "order",
-        entityId: order.id,
-        after: { status: "pago", mpPaymentId: mpPayment.id },
-      });
+      // Shared with the buyer/supplier-triggered transitions in order-actions.ts — also sends
+      // the "confirmação de pedido" e-mail (SPEC.md's transactional-e-mail requirement).
+      await applyOrderStatusTransition(order.id, "pago", "Pagamento confirmado via webhook do Mercado Pago.", null);
     }
   }
 

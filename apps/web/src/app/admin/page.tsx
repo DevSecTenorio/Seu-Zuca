@@ -1,71 +1,50 @@
 import type { Metadata } from "next";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { requireUser } from "@/lib/auth/require-user";
 import { db, schema } from "@/db";
-import { eq, count } from "drizzle-orm";
+import { and, eq, ne, count } from "drizzle-orm";
+import { formatCentsToBRL } from "@/lib/format";
 
 export const metadata: Metadata = {
   title: "Painel do Administrador — Seu Zuca",
 };
 
-const UPCOMING_SECTIONS = ["Banners", "Avaliações", "Relatórios completos"];
-
 export default async function AdminOverviewPage() {
   await requireUser(["admin"]);
 
-  const [[buyers], [suppliers], [pendingUsers], [activeProducts], [pendingProducts]] = await Promise.all([
-    db.select({ value: count() }).from(schema.users).where(eq(schema.users.role, "comprador")),
-    db.select({ value: count() }).from(schema.users).where(eq(schema.users.role, "fornecedor")),
-    db.select({ value: count() }).from(schema.users).where(eq(schema.users.status, "pendente")),
+  const [[buyers], [suppliers], [totalOrders], [pendingOrders], revenueOrders] = await Promise.all([
+    db.select({ value: count() }).from(schema.users).where(and(eq(schema.users.role, "comprador"), eq(schema.users.status, "aprovado"))),
+    db.select({ value: count() }).from(schema.users).where(and(eq(schema.users.role, "fornecedor"), eq(schema.users.status, "aprovado"))),
+    db.select({ value: count() }).from(schema.orders),
+    db.select({ value: count() }).from(schema.orders).where(eq(schema.orders.status, "aguardando_pagamento")),
     db
-      .select({ value: count() })
-      .from(schema.products)
-      .where(eq(schema.products.moderationStatus, "ativo")),
-    db
-      .select({ value: count() })
-      .from(schema.products)
-      .where(eq(schema.products.moderationStatus, "aguardando_aprovacao")),
+      .select({ totalCents: schema.orders.totalCents, commissionCents: schema.orders.commissionCents })
+      .from(schema.orders)
+      .where(ne(schema.orders.status, "cancelado")),
   ]);
 
+  const gmvCents = revenueOrders.reduce((sum, o) => sum + o.totalCents, 0);
+  const commissionCents = revenueOrders.reduce((sum, o) => sum + o.commissionCents, 0);
+
   const cards = [
-    { label: "Compradores cadastrados", value: buyers.value },
-    { label: "Fornecedores cadastrados", value: suppliers.value },
-    { label: "Cadastros pendentes", value: pendingUsers.value },
-    { label: "Produtos ativos", value: activeProducts.value },
-    { label: "Produtos aguardando moderação", value: pendingProducts.value },
+    { label: "Compradores aprovados", value: buyers.value },
+    { label: "Fornecedores ativos", value: suppliers.value },
+    { label: "Total de pedidos", value: totalOrders.value },
+    { label: "GMV total", value: formatCentsToBRL(gmvCents) },
+    { label: "Pedidos pendentes", value: pendingOrders.value },
+    { label: "Comissões geradas", value: formatCentsToBRL(commissionCents) },
   ];
 
   return (
-    <div className="space-y-8">
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {cards.map((card) => (
-          <Card key={card.label}>
-            <CardHeader className="pb-2">
-              <CardDescription>{card.label}</CardDescription>
-              <CardTitle className="text-3xl">{card.value}</CardTitle>
-            </CardHeader>
-          </Card>
-        ))}
-      </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Área em construção</CardTitle>
-          <CardDescription>
-            As demais seções administrativas (usuários, aprovação de cadastros, relatórios completos,
-            analytics) chegam nas próximas etapas do roadmap.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <ul className="grid grid-cols-2 gap-2 text-sm text-muted-foreground sm:grid-cols-3">
-            {UPCOMING_SECTIONS.map((section) => (
-              <li key={section} className="rounded-md border px-3 py-2">
-                {section}
-              </li>
-            ))}
-          </ul>
-        </CardContent>
-      </Card>
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      {cards.map((card) => (
+        <Card key={card.label}>
+          <CardHeader className="pb-2">
+            <CardDescription>{card.label}</CardDescription>
+            <CardTitle className="text-3xl">{card.value}</CardTitle>
+          </CardHeader>
+        </Card>
+      ))}
     </div>
   );
 }

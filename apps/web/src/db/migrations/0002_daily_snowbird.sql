@@ -1,0 +1,1 @@
+ALTER TABLE "reviews" ADD CONSTRAINT "reviews_order_product_unique" UNIQUE("order_id","product_id");

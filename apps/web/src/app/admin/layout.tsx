@@ -13,10 +13,10 @@ const NAV_ITEMS: AdminNavItem[] = [
   { label: "Categorias", href: "/admin/categorias" },
   { label: "Unidades", href: "/admin/unidades" },
   { label: "Produtos", href: "/admin/produtos" },
-  { label: "Banners" },
+  { label: "Banners", href: "/admin/banners" },
   { label: "Qtd. Mínimas", href: "/admin/qtd-minimas" },
-  { label: "Avaliações" },
-  { label: "Relatórios" },
+  { label: "Avaliações", href: "/admin/avaliacoes" },
+  { label: "Relatórios", href: "/admin/relatorios" },
   { label: "Analytics", href: "/admin/analytics" },
 ];
 
