@@ -1,18 +1,22 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { eq } from "drizzle-orm";
+import { and, eq, gte, ne } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { LogoutButton } from "@/components/logout-button";
+import { MetricCard } from "@/components/metric-card";
+import { FinancialChart } from "@/components/financial-chart";
+import { PeriodSelect } from "@/components/period-select";
 import { requireApprovedUser } from "@/lib/auth/require-user";
 import { formatCentsToBRL, formatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { ORDER_STATUS_LABELS, canTransition, type OrderStatus } from "@/lib/order-status";
 import { deactivateOwnProductAction, reactivateOwnProductAction } from "@/server/actions/product-actions";
 import { supplierAdvanceOrderAction } from "@/server/actions/order-actions";
+import { getFinancialAnalytics, PERIOD_LABELS, type AnalyticsPeriod } from "@/server/queries/analytics";
 import { ShipOrderForm } from "./ship-order-form";
 
 export const metadata: Metadata = {
@@ -47,18 +51,21 @@ const ORDER_STATUS_BADGE_VARIANT: Record<OrderStatus, "default" | "secondary" | 
 const TABS = [
   { key: "produtos", label: "Produtos", implemented: true },
   { key: "pedidos", label: "Pedidos", implemented: true },
-  { key: "analytics", label: "Analytics", implemented: false },
-  { key: "relatorios", label: "Relatórios", implemented: false },
+  { key: "analytics", label: "Analytics", implemented: true },
+  { key: "relatorios", label: "Relatórios", implemented: true },
 ];
+
+const VALID_PERIODS: AnalyticsPeriod[] = ["7d", "30d", "3m", "6m"];
 
 export default async function SupplierDashboardPage({
   searchParams,
 }: {
-  searchParams: Promise<{ tab?: string }>;
+  searchParams: Promise<{ tab?: string; periodo?: string }>;
 }) {
   const user = await requireApprovedUser(["fornecedor"]);
-  const { tab } = await searchParams;
+  const { tab, periodo } = await searchParams;
   const activeTab = TABS.find((t) => t.key === tab) ?? TABS[0];
+  const period = VALID_PERIODS.includes(periodo as AnalyticsPeriod) ? (periodo as AnalyticsPeriod) : "30d";
 
   const products = await db.query.products.findMany({
     where: eq(schema.products.supplierId, user.id),
@@ -75,6 +82,22 @@ export default async function SupplierDashboardPage({
         })
       : [];
 
+  const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+  const [allOrders, ordersThisMonth, analytics] = await Promise.all([
+    db
+      .select({ totalCents: schema.orders.totalCents, commissionCents: schema.orders.commissionCents })
+      .from(schema.orders)
+      .where(and(eq(schema.orders.supplierId, user.id), ne(schema.orders.status, "cancelado"))),
+    db
+      .select({ id: schema.orders.id })
+      .from(schema.orders)
+      .where(and(eq(schema.orders.supplierId, user.id), gte(schema.orders.createdAt, startOfMonth), ne(schema.orders.status, "cancelado"))),
+    activeTab.key === "analytics" ? getFinancialAnalytics(period, user.id) : null,
+  ]);
+  const grossRevenueCents = allOrders.reduce((sum, o) => sum + o.totalCents, 0);
+  const commissionPaidCents = allOrders.reduce((sum, o) => sum + o.commissionCents, 0);
+  const netRevenueCents = grossRevenueCents - commissionPaidCents;
+
   return (
     <div className="mx-auto w-full max-w-6xl flex-1 px-4 py-10 sm:px-6 lg:px-8">
       <div className="flex items-start justify-between gap-4">
@@ -85,6 +108,13 @@ export default async function SupplierDashboardPage({
           <p className="mt-1 text-muted-foreground">Logado como {user.email}</p>
         </div>
         <LogoutButton />
+      </div>
+
+      <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
+        <MetricCard label="Pedidos (total)" value={allOrders.length} />
+        <MetricCard label="Pedidos este mês" value={ordersThisMonth.length} />
+        <MetricCard label="Faturamento bruto" value={formatCentsToBRL(grossRevenueCents)} />
+        <MetricCard label="Faturamento líquido" value={formatCentsToBRL(netRevenueCents)} hint="Já descontada a comissão" />
       </div>
 
       <div className="mt-8 flex gap-1 border-b">
@@ -264,6 +294,46 @@ export default async function SupplierDashboardPage({
                 </TableBody>
               </Table>
             )}
+          </CardContent>
+        </Card>
+      )}
+
+      {activeTab.key === "analytics" && analytics && (
+        <div className="mt-6 space-y-6">
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-muted-foreground">Período: {PERIOD_LABELS[period]}</p>
+            <PeriodSelect current={period} />
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <MetricCard label="Pedidos no período" value={analytics.totalOrders} />
+            <MetricCard label="Faturamento no período" value={formatCentsToBRL(analytics.gmvCents)} />
+            <MetricCard label="Comissão no período" value={formatCentsToBRL(analytics.commissionCents)} />
+            <MetricCard
+              label="Ticket médio"
+              value={analytics.avgTicketCents !== null ? formatCentsToBRL(analytics.avgTicketCents) : null}
+            />
+          </div>
+          <Card>
+            <CardHeader>
+              <CardTitle>Vendas por período</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <FinancialChart series={analytics.series} />
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {activeTab.key === "relatorios" && (
+        <Card className="mt-6">
+          <CardHeader>
+            <CardTitle>Relatórios</CardTitle>
+            <CardDescription>Exportação de todos os seus pedidos em CSV, com itens e valores.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button asChild>
+              <a href="/api/fornecedor/relatorio">Baixar CSV de pedidos</a>
+            </Button>
           </CardContent>
         </Card>
       )}

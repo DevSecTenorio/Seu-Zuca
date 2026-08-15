@@ -7,9 +7,9 @@ import { AdminNav, type AdminNavItem } from "./admin-nav";
 // reflects the full information architecture even mid-rollout.
 const NAV_ITEMS: AdminNavItem[] = [
   { label: "Visão Geral", href: "/admin" },
-  { label: "Usuários" },
-  { label: "Criar Fornecedor" },
-  { label: "Usuários Internos" },
+  { label: "Usuários", href: "/admin/usuarios" },
+  { label: "Criar Fornecedor", href: "/admin/criar-fornecedor" },
+  { label: "Usuários Internos", href: "/admin/usuarios-internos" },
   { label: "Categorias", href: "/admin/categorias" },
   { label: "Unidades", href: "/admin/unidades" },
   { label: "Produtos", href: "/admin/produtos" },
@@ -17,7 +17,7 @@ const NAV_ITEMS: AdminNavItem[] = [
   { label: "Qtd. Mínimas", href: "/admin/qtd-minimas" },
   { label: "Avaliações" },
   { label: "Relatórios" },
-  { label: "Analytics" },
+  { label: "Analytics", href: "/admin/analytics" },
 ];
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {

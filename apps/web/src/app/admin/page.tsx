@@ -8,15 +8,7 @@ export const metadata: Metadata = {
   title: "Painel do Administrador — Seu Zuca",
 };
 
-const UPCOMING_SECTIONS = [
-  "Usuários",
-  "Criar Fornecedor",
-  "Usuários Internos",
-  "Banners",
-  "Avaliações",
-  "Relatórios completos",
-  "Analytics",
-];
+const UPCOMING_SECTIONS = ["Banners", "Avaliações", "Relatórios completos"];
 
 export default async function AdminOverviewPage() {
   await requireUser(["admin"]);

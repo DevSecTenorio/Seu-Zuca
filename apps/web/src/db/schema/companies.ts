@@ -1,6 +1,8 @@
 import { relations } from "drizzle-orm";
 import { pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 import { users } from "./users";
+import { addresses } from "./addresses";
+import { kycDocuments } from "./kyc";
 
 export const companies = pgTable("companies", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -21,11 +23,13 @@ export const companies = pgTable("companies", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
-export const companiesRelations = relations(companies, ({ one }) => ({
+export const companiesRelations = relations(companies, ({ one, many }) => ({
   user: one(users, {
     fields: [companies.userId],
     references: [users.id],
   }),
+  addresses: many(addresses),
+  kycDocuments: many(kycDocuments),
 }));
 
 export type Company = typeof companies.$inferSelect;
