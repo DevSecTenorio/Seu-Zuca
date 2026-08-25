@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
 import { Heart, ShoppingCart } from "lucide-react";
@@ -61,6 +62,7 @@ export function BuyBox({
   isWishlisted: boolean;
 }) {
   const [state, formAction] = useActionState<FormState, FormData>(addToCartAction, INITIAL_FORM_STATE);
+  const pathname = usePathname();
 
   if (!user) {
     return (
@@ -68,7 +70,7 @@ export function BuyBox({
         <p className="text-sm text-muted-foreground">Entre com sua conta B2B para comprar este produto.</p>
         <div className="flex flex-col gap-2 sm:flex-row">
           <Button asChild className="flex-1">
-            <Link href="/login">Entrar para comprar</Link>
+            <Link href={`/login?redirect=${encodeURIComponent(pathname)}`}>Entrar para comprar</Link>
           </Button>
           <Button asChild variant="outline" className="flex-1">
             <Link href="/cadastro">Criar conta B2B</Link>

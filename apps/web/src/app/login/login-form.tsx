@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { loginAction } from "@/server/actions/auth-actions";
 import { INITIAL_FORM_STATE } from "@/server/actions/form-state";
+import { safeRedirectPath } from "@/lib/safe-redirect";
 
 function SubmitButton() {
   const { pending } = useFormStatus();
@@ -23,10 +24,13 @@ function SubmitButton() {
 
 export function LoginForm() {
   const [state, formAction] = useActionState(loginAction, INITIAL_FORM_STATE);
-  const resetSuccess = useSearchParams().get("senha-redefinida") === "1";
+  const searchParams = useSearchParams();
+  const resetSuccess = searchParams.get("senha-redefinida") === "1";
+  const redirectTo = safeRedirectPath(searchParams.get("redirect"));
 
   return (
     <form action={formAction} className="space-y-4" noValidate>
+      {redirectTo && <input type="hidden" name="redirect" value={redirectTo} />}
       {resetSuccess && (
         <Alert className="border-success/40 text-success-foreground bg-success/10">
           <CheckCircle2 className="size-4" />

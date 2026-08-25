@@ -78,7 +78,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
               {product.supplier.company?.nomeFantasia ?? "Fornecedor"}
             </Link>
             <h1 className="mt-1 text-2xl font-semibold text-foreground">{product.name}</h1>
-            <p className="mt-1 text-xs text-muted-foreground">SKU {product.sku}</p>
+            <p className="mt-1 font-mono text-xs text-muted-foreground">SKU {product.sku}</p>
             {count > 0 && average !== null && (
               <div className="mt-2 flex items-center gap-2">
                 <StarRating value={average} />
@@ -90,8 +90,20 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
           </div>
 
           <div>
-            <p className="text-3xl font-semibold text-foreground">{formatCentsToBRL(product.priceCents)}</p>
-            <p className="text-sm text-muted-foreground">por {product.unit.abbreviation}</p>
+            {typeof product.priceCents === "number" ? (
+              <>
+                <p className="font-mono text-3xl font-semibold text-foreground">
+                  {formatCentsToBRL(product.priceCents)}
+                </p>
+                <p className="text-sm text-muted-foreground">por {product.unit.abbreviation}</p>
+              </>
+            ) : (
+              <p className="text-lg font-medium text-foreground">
+                <Link href="/login" className="text-primary hover:underline">
+                  Faça login para ver o preço
+                </Link>
+              </p>
+            )}
           </div>
 
           <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">

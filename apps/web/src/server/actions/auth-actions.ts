@@ -7,6 +7,7 @@ import { hashPassword, verifyPassword } from "@/lib/auth/password";
 import { createSession, destroySession } from "@/lib/auth/session";
 import { generateToken, hashToken } from "@/lib/auth/crypto";
 import { ROLE_HOME } from "@/lib/auth/roles";
+import { safeRedirectPath } from "@/lib/safe-redirect";
 import { sendEmail } from "@/lib/email";
 import {
   loginSchema,
@@ -49,7 +50,10 @@ export async function loginAction(_prevState: FormState, formData: FormData): Pr
   await createSession(user.id);
   await db.update(schema.users).set({ lastLoginAt: new Date() }).where(eq(schema.users.id, user.id));
 
-  redirect(user.status === "pendente" ? "/aguardando-aprovacao" : ROLE_HOME[user.role]);
+  if (user.status === "pendente") redirect("/aguardando-aprovacao");
+
+  const redirectTo = safeRedirectPath(formData.get("redirect"));
+  redirect(redirectTo ?? ROLE_HOME[user.role]);
 }
 
 export async function logoutAction() {

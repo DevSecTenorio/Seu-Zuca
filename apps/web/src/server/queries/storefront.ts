@@ -1,6 +1,8 @@
 import "server-only";
 import { and, asc, desc, eq, ilike, inArray } from "drizzle-orm";
 import { db, schema } from "@/db";
+import { getCurrentUser } from "@/lib/auth/session";
+import { canViewPrices, withPriceVisibility } from "@/lib/price-visibility";
 
 /**
  * Public storefront surfaces must only ever show products that are both individually approved
@@ -26,17 +28,22 @@ export async function getActiveBanners() {
 export async function getFeaturedProducts(limit = 8) {
   const supplierIds = await getApprovedSupplierIds();
   if (supplierIds.length === 0) return [];
-  return db.query.products.findMany({
-    where: and(eq(schema.products.moderationStatus, "ativo"), inArray(schema.products.supplierId, supplierIds)),
-    orderBy: (p, { desc: d }) => [d(p.createdAt)],
-    limit,
-    with: {
-      images: { orderBy: (i, { asc: a }) => [a(i.order)] },
-      unit: true,
-      category: true,
-      supplier: { with: { company: true } },
-    },
-  });
+  const [products, user] = await Promise.all([
+    db.query.products.findMany({
+      where: and(eq(schema.products.moderationStatus, "ativo"), inArray(schema.products.supplierId, supplierIds)),
+      orderBy: (p, { desc: d }) => [d(p.createdAt)],
+      limit,
+      with: {
+        images: { orderBy: (i, { asc: a }) => [a(i.order)] },
+        unit: true,
+        category: true,
+        supplier: { with: { company: true } },
+      },
+    }),
+    getCurrentUser(),
+  ]);
+  const canView = canViewPrices(user);
+  return products.map((p) => withPriceVisibility(p, canView));
 }
 
 export type CatalogSort = "recentes" | "preco-asc" | "preco-desc" | "mais-vendidos";
@@ -87,7 +94,7 @@ export async function getCatalogProducts(filters: CatalogFilters) {
     }
   })();
 
-  const [products, totalRows] = await Promise.all([
+  const [products, totalRows, user] = await Promise.all([
     db.query.products.findMany({
       where,
       orderBy,
@@ -101,30 +108,42 @@ export async function getCatalogProducts(filters: CatalogFilters) {
       },
     }),
     db.select({ id: schema.products.id }).from(schema.products).where(where),
+    getCurrentUser(),
   ]);
 
+  const canView = canViewPrices(user);
   const total = totalRows.length;
-  return { products, total, page, limit, totalPages: Math.max(1, Math.ceil(total / limit)) };
+  return {
+    products: products.map((p) => withPriceVisibility(p, canView)),
+    total,
+    page,
+    limit,
+    totalPages: Math.max(1, Math.ceil(total / limit)),
+  };
 }
 
 export async function getProductBySlug(slug: string) {
   const supplierIds = await getApprovedSupplierIds();
   if (supplierIds.length === 0) return null;
 
-  const product = await db.query.products.findFirst({
-    where: and(
-      eq(schema.products.slug, slug),
-      eq(schema.products.moderationStatus, "ativo"),
-      inArray(schema.products.supplierId, supplierIds),
-    ),
-    with: {
-      images: { orderBy: (i, { asc: a }) => [a(i.order)] },
-      unit: true,
-      category: { with: { minQuantityRule: true } },
-      supplier: { with: { company: true } },
-    },
-  });
-  return product ?? null;
+  const [product, user] = await Promise.all([
+    db.query.products.findFirst({
+      where: and(
+        eq(schema.products.slug, slug),
+        eq(schema.products.moderationStatus, "ativo"),
+        inArray(schema.products.supplierId, supplierIds),
+      ),
+      with: {
+        images: { orderBy: (i, { asc: a }) => [a(i.order)] },
+        unit: true,
+        category: { with: { minQuantityRule: true } },
+        supplier: { with: { company: true } },
+      },
+    }),
+    getCurrentUser(),
+  ]);
+  if (!product) return null;
+  return withPriceVisibility(product, canViewPrices(user));
 }
 
 export async function getApprovedReviewsForProduct(productId: string) {
@@ -144,17 +163,21 @@ export async function getSupplierBySlug(slug: string) {
   });
   if (!company || company.user.role !== "fornecedor" || company.user.status !== "aprovado") return null;
 
-  const products = await db.query.products.findMany({
-    where: and(eq(schema.products.supplierId, company.user.id), eq(schema.products.moderationStatus, "ativo")),
-    orderBy: (p, { desc: d }) => [d(p.createdAt)],
-    with: {
-      images: { orderBy: (i, { asc: a }) => [a(i.order)] },
-      unit: true,
-      category: true,
-    },
-  });
+  const [products, user] = await Promise.all([
+    db.query.products.findMany({
+      where: and(eq(schema.products.supplierId, company.user.id), eq(schema.products.moderationStatus, "ativo")),
+      orderBy: (p, { desc: d }) => [d(p.createdAt)],
+      with: {
+        images: { orderBy: (i, { asc: a }) => [a(i.order)] },
+        unit: true,
+        category: true,
+      },
+    }),
+    getCurrentUser(),
+  ]);
+  const canView = canViewPrices(user);
 
-  return { company, products };
+  return { company, products: products.map((p) => withPriceVisibility(p, canView)) };
 }
 
 /** Product cards/detail switch copy at this stock level ("Últimas X unidades" vs "Em estoque"). */
