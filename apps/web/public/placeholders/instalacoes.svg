@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="800" viewBox="0 0 800 800">
+  <rect width="800" height="800" fill="#efefec" />
+  <circle cx="400" cy="360" r="220" fill="#e8791f" />
+  <g transform="translate(230, 190) scale(14.166666666666666)" stroke="#f6f1e7" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M6.3 20.3a2.4 2.4 0 0 0 3.4 0L12 18l-6-6-2.3 2.3a2.4 2.4 0 0 0 0 3.4Z"></path><path d="m2 22 3-3"></path><path d="M7.5 13.5 10 11"></path><path d="M10.5 16.5 13 14"></path><path d="m18 3-4 4h6l-4 4"></path>
+  </g>
+  <text x="400" y="710" text-anchor="middle" font-family="Arial, sans-serif" font-size="34" font-weight="600" fill="#2a2721">Instalações</text>
+  <text x="400" y="752" text-anchor="middle" font-family="Arial, sans-serif" font-size="22" fill="#2a2721" opacity="0.55">Foto ilustrativa</text>
+</svg>

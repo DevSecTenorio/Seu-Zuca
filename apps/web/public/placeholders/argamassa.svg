@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="800" viewBox="0 0 800 800">
+  <rect width="800" height="800" fill="#efefec" />
+  <circle cx="400" cy="360" r="220" fill="#c6371e" />
+  <g transform="translate(230, 190) scale(14.166666666666666)" stroke="#f6f1e7" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83z"></path><path d="M2 12a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 12"></path><path d="M2 17a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 17"></path>
+  </g>
+  <text x="400" y="710" text-anchor="middle" font-family="Arial, sans-serif" font-size="34" font-weight="600" fill="#2a2721">Argamassa</text>
+  <text x="400" y="752" text-anchor="middle" font-family="Arial, sans-serif" font-size="22" fill="#2a2721" opacity="0.55">Foto ilustrativa</text>
+</svg>
