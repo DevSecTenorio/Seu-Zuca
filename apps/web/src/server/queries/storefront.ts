@@ -1,5 +1,5 @@
 import "server-only";
-import { and, asc, desc, eq, ilike, inArray } from "drizzle-orm";
+import { and, asc, desc, eq, ilike, inArray, or } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { getCurrentUser } from "@/lib/auth/session";
 import { canViewPrices, withPriceVisibility } from "@/lib/price-visibility";
@@ -50,7 +50,7 @@ export type CatalogSort = "recentes" | "preco-asc" | "preco-desc" | "mais-vendid
 
 export type CatalogFilters = {
   categorySlug?: string;
-  q?: string;
+  busca?: string;
   sort?: CatalogSort;
   page?: number;
   limit?: number;
@@ -73,8 +73,19 @@ export async function getCatalogProducts(filters: CatalogFilters) {
     if (!category) return { products: [], total: 0, page, limit, totalPages: 0 };
     conditions.push(eq(schema.products.categoryId, category.id));
   }
-  if (filters.q) {
-    conditions.push(ilike(schema.products.name, `%${filters.q}%`));
+  if (filters.busca) {
+    const term = `%${filters.busca}%`;
+    const matchingCategoryIds = db
+      .select({ id: schema.categories.id })
+      .from(schema.categories)
+      .where(ilike(schema.categories.name, term));
+    conditions.push(
+      or(
+        ilike(schema.products.name, term),
+        ilike(schema.products.description, term),
+        inArray(schema.products.categoryId, matchingCategoryIds),
+      )!,
+    );
   }
 
   const where = and(...conditions);

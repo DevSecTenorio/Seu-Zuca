@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { Heart, LayoutGrid, Search, ShoppingCart, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -29,19 +30,23 @@ export async function Header() {
 
   return (
     <header className="sticky top-0 z-40 border-b bg-background">
-      <div className="mx-auto flex max-w-7xl items-center gap-4 px-4 py-3 sm:px-6 lg:px-8">
-        <Link href="/" className="flex shrink-0 items-center gap-2">
-          <span className="flex size-9 items-center justify-center rounded-md bg-primary text-lg font-bold text-primary-foreground">
-            SZ
-          </span>
-          <span className="hidden text-lg font-semibold text-foreground sm:inline">Seu Zuca</span>
+      <div className="mx-auto flex max-w-7xl items-center gap-2 px-4 py-3 sm:gap-4 sm:px-6 lg:px-8">
+        <Link href="/" className="flex shrink-0 items-center">
+          <Image
+            src="/logo-seuzuca.png"
+            alt="Seu Zuca"
+            width={165}
+            height={89}
+            priority
+            className="h-10 w-auto sm:h-14 md:h-20"
+          />
         </Link>
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="outline" className="hidden shrink-0 md:inline-flex">
+            <Button variant="outline" className="shrink-0" aria-label="Todas as categorias">
               <LayoutGrid className="size-4" />
-              Todas as categorias
+              <span className="hidden sm:inline">Todas as categorias</span>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" className="w-56">
@@ -72,12 +77,24 @@ export async function Header() {
           </DropdownMenuContent>
         </DropdownMenu>
 
+        <Button asChild variant="ghost" size="icon" className="shrink-0 sm:hidden" aria-label="Buscar produtos">
+          <Link href="/catalogo">
+            <Search className="size-4" />
+          </Link>
+        </Button>
+
         <form action="/catalogo" method="get" className="hidden flex-1 items-center sm:flex">
           <div className="relative w-full max-w-xl">
-            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+            <button
+              type="submit"
+              aria-label="Buscar"
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground transition-colors hover:text-foreground"
+            >
+              <Search className="size-4" />
+            </button>
             <Input
               type="search"
-              name="q"
+              name="busca"
               placeholder="Buscar produtos, categorias..."
               className="pl-9"
               aria-label="Buscar produtos"
@@ -85,7 +102,7 @@ export async function Header() {
           </div>
         </form>
 
-        <div className="ml-auto flex shrink-0 items-center gap-2">
+        <div className="ml-auto flex shrink-0 items-center gap-1 sm:gap-2">
           {user?.role === "comprador" && (
             <>
               <Button asChild variant="ghost" size="icon" aria-label="Favoritos">
@@ -134,11 +151,14 @@ export async function Header() {
             </DropdownMenu>
           ) : (
             <>
-              <Button asChild variant="ghost">
+              <Button asChild variant="ghost" size="sm" className="sm:h-9 sm:px-4 sm:py-2">
                 <Link href="/login">Entrar</Link>
               </Button>
-              <Button asChild>
-                <Link href="/cadastro">Criar conta B2B</Link>
+              <Button asChild size="sm" className="sm:h-9 sm:px-4 sm:py-2">
+                <Link href="/cadastro">
+                  <span className="sm:hidden">Cadastrar</span>
+                  <span className="hidden sm:inline">Criar conta B2B</span>
+                </Link>
               </Button>
             </>
           )}

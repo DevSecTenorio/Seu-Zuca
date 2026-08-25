@@ -1,19 +1,19 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Search, SearchX } from "lucide-react";
-import { Input } from "@/components/ui/input";
+import { SearchX } from "lucide-react";
 import { ProductCard } from "@/components/product-card";
 import { Pagination } from "@/components/pagination";
 import { cn } from "@/lib/utils";
 import { listTopLevelActiveCategories } from "@/server/actions/category-actions";
 import { getCatalogProducts, type CatalogSort } from "@/server/queries/storefront";
 import { CatalogSortSelect } from "./catalog-sort-select";
+import { CatalogSearch } from "./catalog-search";
 
 export const metadata: Metadata = { title: "Catálogo — Seu Zuca" };
 
 const VALID_SORTS: CatalogSort[] = ["recentes", "preco-asc", "preco-desc", "mais-vendidos"];
 
-type SearchParams = { categoria?: string; q?: string; ordenar?: string; page?: string };
+type SearchParams = { categoria?: string; busca?: string; ordenar?: string; page?: string };
 
 export default async function CatalogPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const params = await searchParams;
@@ -22,14 +22,14 @@ export default async function CatalogPage({ searchParams }: { searchParams: Prom
 
   const [categories, result] = await Promise.all([
     listTopLevelActiveCategories(),
-    getCatalogProducts({ categorySlug: params.categoria, q: params.q, sort, page }),
+    getCatalogProducts({ categorySlug: params.categoria, busca: params.busca, sort, page }),
   ]);
 
   function buildHref(overrides: Partial<SearchParams>) {
     const next = { ...params, ...overrides };
     const usp = new URLSearchParams();
     if (next.categoria) usp.set("categoria", next.categoria);
-    if (next.q) usp.set("q", next.q);
+    if (next.busca) usp.set("busca", next.busca);
     if (next.ordenar) usp.set("ordenar", next.ordenar);
     if (next.page && next.page !== "1") usp.set("page", next.page);
     const qs = usp.toString();
@@ -38,7 +38,7 @@ export default async function CatalogPage({ searchParams }: { searchParams: Prom
 
   return (
     <div className="mx-auto w-full max-w-7xl flex-1 px-4 py-8 sm:px-6 lg:px-8">
-      <h1 className="text-2xl font-semibold text-foreground">Catálogo</h1>
+      <h1 className="font-display text-3xl uppercase tracking-wide text-foreground">Catálogo</h1>
 
       <div className="mt-4 flex flex-wrap gap-2 border-b pb-4">
         <Link
@@ -67,20 +67,7 @@ export default async function CatalogPage({ searchParams }: { searchParams: Prom
       </div>
 
       <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <form action="/catalogo" method="get" className="flex items-center gap-2">
-          {params.categoria && <input type="hidden" name="categoria" value={params.categoria} />}
-          <div className="relative w-full max-w-xs">
-            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              type="search"
-              name="q"
-              defaultValue={params.q}
-              placeholder="Buscar produtos..."
-              className="pl-9"
-              aria-label="Buscar produtos"
-            />
-          </div>
-        </form>
+        <CatalogSearch initialValue={params.busca} />
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <span className="hidden sm:inline">{result.total} produtos</span>
           <CatalogSortSelect current={sort} />
@@ -92,8 +79,8 @@ export default async function CatalogPage({ searchParams }: { searchParams: Prom
           <SearchX className="size-10 text-muted-foreground/50" />
           <p className="text-lg font-medium text-foreground">Nenhum produto encontrado</p>
           <p className="max-w-sm text-sm text-muted-foreground">
-            {params.q
-              ? `Não encontramos produtos para "${params.q}". Tente outra busca ou remova os filtros.`
+            {params.busca
+              ? `Não encontramos produtos para "${params.busca}". Tente outra busca ou remova os filtros.`
               : "Não há produtos disponíveis para esse filtro no momento."}
           </p>
           <Link href="/catalogo" className="text-sm font-medium text-primary hover:underline">
