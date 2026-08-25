@@ -1,0 +1,29 @@
+# Local development Postgres — temporary, until apps/web is pointed at Supabase for real.
+# Nothing in the app depends on Docker or on this specific setup: apps/web talks to Postgres
+# purely via DATABASE_URL (a generic connection string, no Supabase-only features like RLS or
+# Supabase Auth), so swapping this for the Supabase connection string later is a one-line change
+# in apps/web/.env.local — no code changes.
+#
+# Host port is 5433, not the default 5432: this machine already has a native Postgres 17 Windows
+# service listening on 5432 (used by other local projects) — 5433 avoids fighting it for the port.
+services:
+  postgres:
+    image: postgres:16
+    container_name: seu-zuca-postgres-dev
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: seuzuca
+      POSTGRES_PASSWORD: seuzuca_dev_password
+      POSTGRES_DB: seuzuca
+    ports:
+      - "5433:5432"
+    volumes:
+      - seu_zuca_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U seuzuca -d seuzuca"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  seu_zuca_postgres_data:
