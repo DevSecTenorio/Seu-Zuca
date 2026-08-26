@@ -121,6 +121,18 @@ export function OrderSummary({
           <span>Total</span>
           <span>{formatCentsToBRL(grandTotalCents)}</span>
         </div>
+        {/* SPEC.md §10, LOG-04: shows the delivery count so the buyer sees the consolidation
+            impact of a multi-supplier cart. The other LOG-04 bullet — suggesting a supplier swap
+            when it would reduce that count — is deferred: the catalog has no notion of "the same
+            product from a different supplier" to swap to, and inventing an equivalence heuristic
+            (category, name, etc.) was explicitly left out per product decision rather than
+            guessed at here. */}
+        {groups.length > 1 && (
+          <p className="text-xs text-muted-foreground">
+            Este pedido gera {groups.length} entregas separadas, uma por fornecedor — o frete de cada uma é calculado e
+            cobrado individualmente.
+          </p>
+        )}
       </CardContent>
     </Card>
   );
