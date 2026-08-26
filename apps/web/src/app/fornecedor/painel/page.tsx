@@ -17,7 +17,9 @@ import { ORDER_STATUS_LABELS, canTransition, type OrderStatus } from "@/lib/orde
 import { deactivateOwnProductAction, reactivateOwnProductAction } from "@/server/actions/product-actions";
 import { supplierAdvanceOrderAction } from "@/server/actions/order-actions";
 import { getFinancialAnalytics, PERIOD_LABELS, type AnalyticsPeriod } from "@/server/queries/analytics";
+import { getSupplierCoverageAreas } from "@/server/queries/logistics";
 import { ShipOrderForm } from "./ship-order-form";
+import { LogisticsTab } from "./logistics-tab";
 
 export const metadata: Metadata = {
   title: "Painel do Fornecedor — Seu Zuca",
@@ -53,6 +55,7 @@ const TABS = [
   { key: "pedidos", label: "Pedidos", implemented: true },
   { key: "analytics", label: "Analytics", implemented: true },
   { key: "relatorios", label: "Relatórios", implemented: true },
+  { key: "logistica", label: "Logística", implemented: true },
 ];
 
 const VALID_PERIODS: AnalyticsPeriod[] = ["7d", "30d", "3m", "6m"];
@@ -81,6 +84,11 @@ export default async function SupplierDashboardPage({
           with: { buyer: { with: { company: true } }, items: true },
         })
       : [];
+
+  const [coverageAreas, allCategories] =
+    activeTab.key === "logistica"
+      ? await Promise.all([getSupplierCoverageAreas(user.id), db.query.categories.findMany({ orderBy: (c, { asc }) => [asc(c.name)] })])
+      : [[], []];
 
   const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
   const [allOrders, ordersThisMonth, analytics] = await Promise.all([
@@ -336,6 +344,14 @@ export default async function SupplierDashboardPage({
             </Button>
           </CardContent>
         </Card>
+      )}
+
+      {activeTab.key === "logistica" && (
+        <LogisticsTab
+          areas={coverageAreas}
+          products={products.map((p) => ({ id: p.id, name: p.name }))}
+          categories={allCategories.map((c) => ({ id: c.id, name: c.name }))}
+        />
       )}
     </div>
   );

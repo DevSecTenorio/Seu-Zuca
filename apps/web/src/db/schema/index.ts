@@ -13,3 +13,4 @@ export * from "./wishlist";
 export * from "./audit";
 export * from "./settings";
 export * from "./auth";
+export * from "./logistics";

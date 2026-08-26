@@ -1,8 +1,9 @@
 import "server-only";
-import { and, asc, desc, eq, ilike, inArray, or } from "drizzle-orm";
+import { and, asc, desc, eq, ilike, inArray, notInArray, or } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { getCurrentUser } from "@/lib/auth/session";
 import { canViewPrices, withPriceVisibility } from "@/lib/price-visibility";
+import { getBlockedProductIdsForAddress, getBuyerCoverageAddress, isProductCoveredForAddress } from "./logistics";
 
 /**
  * Public storefront surfaces must only ever show products that are both individually approved
@@ -28,20 +29,25 @@ export async function getActiveBanners() {
 export async function getFeaturedProducts(limit = 8) {
   const supplierIds = await getApprovedSupplierIds();
   if (supplierIds.length === 0) return [];
-  const [products, user] = await Promise.all([
-    db.query.products.findMany({
-      where: and(eq(schema.products.moderationStatus, "ativo"), inArray(schema.products.supplierId, supplierIds)),
-      orderBy: (p, { desc: d }) => [d(p.createdAt)],
-      limit,
-      with: {
-        images: { orderBy: (i, { asc: a }) => [a(i.order)] },
-        unit: true,
-        category: true,
-        supplier: { with: { company: true } },
-      },
-    }),
-    getCurrentUser(),
-  ]);
+
+  const user = await getCurrentUser();
+  const buyerAddress = await getBuyerCoverageAddress(user);
+  const blockedProductIds = await getBlockedProductIdsForAddress(buyerAddress);
+
+  const conditions = [eq(schema.products.moderationStatus, "ativo"), inArray(schema.products.supplierId, supplierIds)];
+  if (blockedProductIds.size > 0) conditions.push(notInArray(schema.products.id, [...blockedProductIds]));
+
+  const products = await db.query.products.findMany({
+    where: and(...conditions),
+    orderBy: (p, { desc: d }) => [d(p.createdAt)],
+    limit,
+    with: {
+      images: { orderBy: (i, { asc: a }) => [a(i.order)] },
+      unit: true,
+      category: true,
+      supplier: { with: { company: true } },
+    },
+  });
   const canView = canViewPrices(user);
   return products.map((p) => withPriceVisibility(p, canView));
 }
@@ -63,10 +69,15 @@ export async function getCatalogProducts(filters: CatalogFilters) {
   const supplierIds = await getApprovedSupplierIds();
   if (supplierIds.length === 0) return { products: [], total: 0, page, limit, totalPages: 0 };
 
+  const user = await getCurrentUser();
+  const buyerAddress = await getBuyerCoverageAddress(user);
+  const blockedProductIds = await getBlockedProductIdsForAddress(buyerAddress);
+
   const conditions = [
     eq(schema.products.moderationStatus, "ativo"),
     inArray(schema.products.supplierId, supplierIds),
   ];
+  if (blockedProductIds.size > 0) conditions.push(notInArray(schema.products.id, [...blockedProductIds]));
 
   if (filters.categorySlug) {
     const category = await db.query.categories.findFirst({ where: eq(schema.categories.slug, filters.categorySlug) });
@@ -105,7 +116,7 @@ export async function getCatalogProducts(filters: CatalogFilters) {
     }
   })();
 
-  const [products, totalRows, user] = await Promise.all([
+  const [products, totalRows] = await Promise.all([
     db.query.products.findMany({
       where,
       orderBy,
@@ -119,7 +130,6 @@ export async function getCatalogProducts(filters: CatalogFilters) {
       },
     }),
     db.select({ id: schema.products.id }).from(schema.products).where(where),
-    getCurrentUser(),
   ]);
 
   const canView = canViewPrices(user);
@@ -154,6 +164,14 @@ export async function getProductBySlug(slug: string) {
     getCurrentUser(),
   ]);
   if (!product) return null;
+
+  const buyerAddress = await getBuyerCoverageAddress(user);
+  const covered = await isProductCoveredForAddress(
+    { supplierId: product.supplierId, categoryId: product.categoryId, id: product.id },
+    buyerAddress,
+  );
+  if (!covered) return null;
+
   return withPriceVisibility(product, canViewPrices(user));
 }
 

@@ -17,6 +17,7 @@ import {
 } from "@/lib/mercadopago";
 import { logAudit } from "@/lib/audit";
 import { getBuyableProduct, ruleFor } from "@/server/queries/cart";
+import { isProductCoveredForAddress } from "@/server/queries/logistics";
 import type { FormState } from "./form-state";
 
 const PAYMENT_METHODS = ["pix", "boleto", "cartao"] as const;
@@ -75,6 +76,13 @@ export async function createCheckoutAction(_prevState: FormState, formData: Form
     }
     if (item.quantity > product.stock) {
       return { status: "error", message: `"${product.name}": apenas ${product.stock} unidades em estoque.` };
+    }
+    const covered = await isProductCoveredForAddress(
+      { supplierId: product.supplierId, categoryId: product.categoryId, id: product.id },
+      { cep: address.cep, cidade: address.cidade, estado: address.estado },
+    );
+    if (!covered) {
+      return { status: "error", message: `"${product.name}" não é entregue no endereço selecionado.` };
     }
   }
 

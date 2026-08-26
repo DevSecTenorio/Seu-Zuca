@@ -61,3 +61,20 @@ export const reviewModerationStatusEnum = pgEnum("review_moderation_status", [
   "aprovado",
   "rejeitado",
 ]);
+
+export const deliveryCoverageScopeEnum = pgEnum("delivery_coverage_scope", [
+  "fornecedor",
+  "produto",
+  "categoria",
+]);
+
+export const deliveryCoverageKindEnum = pgEnum("delivery_coverage_kind", [
+  "cep",
+  "municipio",
+  "raio",
+]);
+
+export const deliveryCoverageModeEnum = pgEnum("delivery_coverage_mode", [
+  "cobertura",
+  "exclusao",
+]);
