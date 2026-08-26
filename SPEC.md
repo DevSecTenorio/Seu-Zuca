@@ -80,7 +80,7 @@ apenas escondê-lo no cliente.
 - Jornada: carrinho → checkout → pagamento → confirmação → acompanhamento em `/pedidos`.
 - Carrinho: exclusivo do comprador (persistido em banco, por usuário). Demais papéis autenticados veem mensagem "Administradores não possuem carrinho de compras" (adaptar por papel). Validação de estoque, quantidade mínima e múltiplo por categoria ao adicionar e ao finalizar.
 - Um carrinho pode conter itens de múltiplos fornecedores; ao finalizar, o pedido é dividido em um pedido por fornecedor (padrão marketplace), todos vinculados a um mesmo grupo de checkout.
-- Checkout: confirmação de endereço de entrega (endereço da empresa como padrão, com possibilidade de outro endereço), resumo dos itens, frete (MVP: valor informado por fornecedor por pedido ou tabela simples — decidir e documentar), total.
+- Checkout: confirmação de endereço de entrega (endereço da empresa como padrão, com possibilidade de outro endereço), resumo dos itens, frete calculado pelo Motor de Frete e modalidade de entrega/retirada (ver §10 — Módulo LOG), total.
 - Pagamento via **Mercado Pago**: PIX, boleto e cartão. Confirmação assíncrona via webhook. Estados de pagamento: `aguardando_pagamento`, `pago`, `falhou`, `expirado`, `estornado`.
 - Status do pedido: `aguardando_pagamento` → `pago` → `em_separacao` → `enviado` → `entregue`; ramificações: `cancelado`, `em_disputa`, `devolvido`. Fornecedor atualiza status operacionais (separação, envio com código de rastreio, entrega); comprador e admin podem abrir disputa/cancelamento conforme regras.
 - Comissão: percentual da plataforma calculado sobre cada pedido no momento da criação (percentual configurável globalmente pelo admin; armazenar o percentual aplicado no pedido para histórico). Painéis exibem GMV (valor total dos pedidos) e receita de comissões.
@@ -89,7 +89,7 @@ apenas escondê-lo no cliente.
 ## 6. Painel do Fornecedor (`/fornecedor/painel`)
 
 - Indicadores: número de pedidos, pedidos por mês, faturamento (líquido de comissão e bruto).
-- Abas: **Pedidos** (lista com atualização de status e rastreio), **Analytics** (gráficos de vendas por período), **Relatórios** (exportação dos próprios dados), **Produtos**.
+- Abas: **Pedidos** (lista com atualização de status e rastreio), **Analytics** (gráficos de vendas por período), **Relatórios** (exportação dos próprios dados), **Produtos**, **Logística** (cobertura de entrega e frete — ver §10, LOG-01 e LOG-02).
 - Lista de produtos do fornecedor: categoria, preço, estoque, status (`ativo`, `aguardando_aprovacao`, `rejeitado`, `inativo`).
 - Formulário de produto: nome, categoria (obrigatoriamente da árvore oficial), SKU, preço, unidade de venda (da lista oficial de unidades), estoque, prazo de entrega, descrição rica, imagens (upload). Ao criar ou editar campos sensíveis, o produto volta para a fila de moderação.
 
@@ -112,7 +112,65 @@ apenas escondê-lo no cliente.
 
 Versão somente leitura do painel admin com abas: **Visão Geral** (contagens de compradores/fornecedores cadastrados e aprovados, total de pedidos e pendentes), **Fornecedores**, **Compradores** e **Relatórios**. A própria tela deixa claro que o papel Suporte consulta dados para atendimento sem alterar configurações.
 
-## 9. Modelo de Dados (entidades centrais)
+## 9. Decisões de Negócio Registradas
+
+Log de decisões de negócio que não são óbvias a partir do código e que substituem/complementam o texto das seções acima. Ordem cronológica; a decisão mais recente sobre um tema é a que vale.
+
+| Data | Decisão | Onde se aplica |
+|---|---|---|
+| 2026-08-25 | A **base de cálculo da comissão** da plataforma sobre um pedido — apenas o valor da mercadoria, ou mercadoria + frete — é **configurável pelo admin em Settings**, não fixa no código. Vale para todos os pedidos criados após a mudança de configuração; pedidos já criados mantêm a base vigente no momento em que a comissão foi congelada (mesmo princípio do percentual, §5). Expor no mesmo mecanismo de configuração usado hoje pelo percentual de comissão (`lib/settings.ts` / tabela `setting`). | §5 (Comissão), §10 (LOG-02) |
+
+## 10. Logística e Frete — Módulo LOG, Onda 1
+
+Primeira onda do módulo de logística e frete. Numeração `LOG-01` a `LOG-10` é do backlog completo do módulo; **apenas LOG-01 a LOG-05 fazem parte desta onda** e devem ser implementados nesta ordem (cada um com build e testes antes do próximo). LOG-06 a LOG-10 ficam registrados como backlog no final desta seção — dependem de um módulo de Obras/Centro de Custo e de um mecanismo de repasse ao fornecedor que ainda não existem no produto, e não devem ser implementados nesta onda.
+
+Fora de escopo do módulo inteiro (todas as ondas): qualquer forma de "carrinho comparativo" ou cotação — o texto de marketing da home que menciona cotação (§4, Home) continua sendo apenas texto, sem funcionalidade por trás.
+
+### LOG-01 — Cobertura de entrega por fornecedor e produto
+
+- Novo CRUD na aba **Logística** do painel do fornecedor (`/fornecedor/painel`) para declarar a área de entrega, por uma das formas: lista/faixa de CEP, município (código IBGE), ou raio em km a partir de uma origem.
+- Exceção possível no nível de produto ou categoria (um produto pode ter cobertura diferente da cobertura padrão do fornecedor).
+- Áreas de exclusão explícitas (CEP/município/raio que o fornecedor recusa mesmo dentro de uma cobertura mais ampla).
+- Efeito no catálogo e checkout: quando o comprador tem um endereço de entrega definido, produtos cujo fornecedor não cobre aquele endereço **simplesmente não aparecem** — sem aviso, sem produto desabilitado visível.
+- Importação de malha de CEPs via planilha (upload), com uma **tela de simulação** mostrando o que mudaria (quantos CEPs entram/saem de cobertura) antes de confirmar a aplicação.
+- Mudança de cobertura não é retroativa: pedidos já confirmados não são afetados mesmo que a cobertura do fornecedor mude depois.
+
+### LOG-02 — Motor de cálculo de frete
+
+- Novo CRUD na aba **Logística** do painel do fornecedor para parâmetros de frete: valor fixo, R$/km, R$/kg, R$/km×kg, e piso mínimo.
+- Faixas de distância e de peso com valores distintos por faixa (tabela, não fórmula única).
+- Peso cubado: usa o maior entre peso real e peso volumétrico (fator de cubagem configurável pelo fornecedor).
+- Adicionais configuráveis por fornecedor, aplicáveis por pedido: descarga, munck, ajudante, andar (sem elevador), fim de semana, difícil acesso, pedágio.
+- Frete grátis condicional por valor mínimo do pedido e/ou peso máximo, configurável por fornecedor.
+- No checkout, a composição do frete é exibida de forma auditável: o comprador vê de onde vem cada valor (base por distância/peso, cada adicional aplicado, desconto de frete grátis se houver) — nunca só o total.
+- Base de cálculo da comissão sobre o frete: ver decisão em §9.
+
+### LOG-03 — Cálculo de distância e geocodificação
+
+- Converte o CEP do endereço (origem do fornecedor e destino do comprador) em coordenadas, e calcula a **distância real de rota** (não linha reta) entre os dois pontos, para uso pelo Motor de Frete (LOG-02) e pela Cobertura por raio (LOG-01).
+- Cache por par origem-destino, para não recalcular a mesma rota repetidamente.
+- Fallback: se o serviço de rotas falhar, usar distância geodésica (linha reta) com um fator de correção configurável, em vez de falhar o cálculo de frete inteiro.
+- CEP genérico de cidade do interior (sem numeração detalhada) resolve para o centroide do município.
+- O comprador pode ajustar manualmente o ponto exato no mapa a partir do endereço geocodificado; essa coordenada ajustada passa a valer para os pedidos futuros feitos com aquele endereço (fica salva junto ao endereço, não é perguntada de novo a cada pedido).
+- Escolha de provedor de geocoding/rotas: decidida durante a implementação deste item (ver anotação de implementação abaixo — requer avaliação de cobertura/custo para uso comercial no Brasil e, dependendo do provedor, uma chave de API do usuário).
+
+### LOG-04 — Consolidação de frete no carrinho multi-fornecedor
+
+- Quando o carrinho tem itens de fornecedores diferentes, o frete é calculado **por fornecedor** (um cálculo de frete por fornecedor, nunca ratear o valor de um frete entre os itens de fornecedores diferentes).
+- Checkout mostra: custo total (soma de produtos + soma de todos os fretes) e o número de entregas separadas que o pedido vai gerar.
+- Sugestão de consolidação: se trocar o fornecedor de um item do carrinho reduzir o número de entregas/fretes separados, o checkout mostra essa sugestão ao comprador (não troca automaticamente).
+
+### LOG-05 — Modalidade de entrega e retirada
+
+- No checkout, o comprador escolhe entre: entrega pelo fornecedor, retirada em centro de distribuição, ou transportadora contratada.
+- Tela de retirada mostra: endereço do centro de distribuição, horário de funcionamento, prazo de disponibilização (quando o pedido fica pronto para retirar) e documento exigido na retirada.
+- Retirada gera um código/senha de retirada de **uso único**, apresentado ao comprador e conferido no momento da retirada.
+
+### Backlog do módulo (fora desta onda — não implementar agora)
+
+`LOG-06` a `LOG-10`: itens do módulo de Logística e Frete que dependem de um módulo de Obras/Centro de Custo (ainda não existe no produto) e de um mecanismo de repasse ao fornecedor (ainda não existe no produto). Ficam registrados aqui como backlog até que esses dois pré-requisitos existam; escopo detalhado de cada um a definir quando essa fase for priorizada.
+
+## 11. Modelo de Dados (entidades centrais)
 
 - **user**: e-mail, hash de senha, papel, status (`pendente`, `aprovado`, `rejeitado`, `suspenso`), último acesso.
 - **company**: razão social, nome fantasia, CNPJ (único), telefone, ramo de atividade; vinculada ao user comprador/fornecedor.
@@ -130,4 +188,12 @@ Versão somente leitura do painel admin com abas: **Visão Geral** (contagens de
 - **banner**: título, destaque, subtítulo, imagem, link, ordem, ativo.
 - **wishlist_item**: comprador + produto.
 - **audit_log**: quem, quando, ação, entidade, dados antes/depois (para ações administrativas e mudanças de status).
-- **setting**: chave/valor para configurações globais (ex.: percentual de comissão).
+- **setting**: chave/valor para configurações globais (ex.: percentual de comissão, base de cálculo da comissão — mercadoria ou mercadoria + frete).
+- **delivery_coverage_area**: fornecedor (e opcionalmente produto/categoria como exceção), tipo (faixa de CEP, município IBGE, raio em km), valores do tipo escolhido, se é área de cobertura ou de exclusão.
+- **freight_rule**: fornecedor, tipo de cobrança (fixo, R$/km, R$/kg, R$/km×kg), piso mínimo, fator de cubagem.
+- **freight_range**: regra de frete, faixa de distância e/ou peso, valor da faixa.
+- **freight_surcharge**: fornecedor, tipo de adicional (descarga, munck, ajudante, andar, fim de semana, difícil acesso, pedágio), valor.
+- **pickup_location**: fornecedor, endereço, horário de funcionamento, prazo de disponibilização, documento exigido.
+- **pickup_code**: pedido, código de uso único, usado/não usado, data de uso.
+- **address**: (extensão) latitude/longitude geocodificadas e flag de ajuste manual pelo comprador no mapa (ver LOG-03).
+- **route_distance_cache**: par origem-destino (coordenadas ou CEPs), distância de rota calculada, data de cálculo, se veio do provedor de rotas ou do fallback geodésico.
