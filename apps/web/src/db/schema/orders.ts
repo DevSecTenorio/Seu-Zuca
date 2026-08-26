@@ -9,7 +9,7 @@ import {
   timestamp,
   uuid,
 } from "drizzle-orm/pg-core";
-import { orderStatusEnum } from "./enums";
+import { deliveryModalityEnum, orderStatusEnum } from "./enums";
 import { users } from "./users";
 import { addresses } from "./addresses";
 import { products } from "./catalog";
@@ -46,6 +46,14 @@ export const orders = pgTable(
     // surcharge + free-shipping discount, as shown to the buyer. Null for orders created before
     // LOG-02 (flat-rate shipping, nothing to break down).
     shippingBreakdown: jsonb("shipping_breakdown"),
+    // SPEC.md §10, LOG-05: how the buyer gets the goods. "retirada"/"transportadora" orders never
+    // charge shippingCents (the buyer isn't paying the supplier to deliver). pickupLocationSnapshot
+    // freezes the chosen pickup point's details at checkout time — same "frozen at creation"
+    // reasoning as productNameSnapshot/shippingBreakdown, since a supplier editing or deleting a
+    // pickup_locations row later must never change what an existing order already promised the
+    // buyer. Null unless deliveryModality="retirada".
+    deliveryModality: deliveryModalityEnum("delivery_modality").notNull().default("entrega"),
+    pickupLocationSnapshot: jsonb("pickup_location_snapshot"),
     totalCents: integer("total_cents").notNull(),
     commissionPercent: numeric("commission_percent", { precision: 5, scale: 2 }).notNull(),
     commissionCents: integer("commission_cents").notNull(),

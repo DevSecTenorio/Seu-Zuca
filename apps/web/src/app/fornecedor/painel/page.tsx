@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { and, eq, gte, ne } from "drizzle-orm";
+import { and, eq, gte, inArray, ne } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -14,11 +14,13 @@ import { requireApprovedUser } from "@/lib/auth/require-user";
 import { formatCentsToBRL, formatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { ORDER_STATUS_LABELS, canTransition, type OrderStatus } from "@/lib/order-status";
+import { ConfirmSubmitButton } from "@/components/confirm-submit-button";
 import { deactivateOwnProductAction, reactivateOwnProductAction } from "@/server/actions/product-actions";
-import { supplierAdvanceOrderAction } from "@/server/actions/order-actions";
+import { supplierAdvanceOrderAction, supplierConfirmPickupAction } from "@/server/actions/order-actions";
 import { getFinancialAnalytics, PERIOD_LABELS, type AnalyticsPeriod } from "@/server/queries/analytics";
 import { getSupplierCoverageAreas } from "@/server/queries/logistics";
 import { getSupplierFreightConfig } from "@/server/queries/freight";
+import { getSupplierPickupLocations } from "@/server/queries/pickup";
 import { ShipOrderForm } from "./ship-order-form";
 import { LogisticsTab } from "./logistics-tab";
 
@@ -86,14 +88,32 @@ export default async function SupplierDashboardPage({
         })
       : [];
 
-  const [coverageAreas, allCategories, freightRule] =
+  // pickup_codes has no drizzle relations() config against orders (would need a circular import
+  // between db/schema/{orders,pickup}.ts for a relation this is the only caller of) — fetched
+  // separately instead and merged by orderId.
+  const pickupCodesByOrderId = new Map<string, { code: string; used: boolean }>();
+  if (orders.some((o) => o.deliveryModality === "retirada")) {
+    const codes = await db
+      .select({ orderId: schema.pickupCodes.orderId, code: schema.pickupCodes.code, used: schema.pickupCodes.used })
+      .from(schema.pickupCodes)
+      .where(
+        inArray(
+          schema.pickupCodes.orderId,
+          orders.filter((o) => o.deliveryModality === "retirada").map((o) => o.id),
+        ),
+      );
+    for (const c of codes) pickupCodesByOrderId.set(c.orderId, c);
+  }
+
+  const [coverageAreas, allCategories, freightRule, pickupLocations] =
     activeTab.key === "logistica"
       ? await Promise.all([
           getSupplierCoverageAreas(user.id),
           db.query.categories.findMany({ orderBy: (c, { asc }) => [asc(c.name)] }),
           getSupplierFreightConfig(user.id),
+          getSupplierPickupLocations(user.id),
         ])
-      : [[], [], undefined];
+      : [[], [], undefined, []];
 
   const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
   const [allOrders, ordersThisMonth, analytics] = await Promise.all([
@@ -288,7 +308,30 @@ export default async function SupplierDashboardPage({
                             </Button>
                           </form>
                         )}
-                        {canTransition(order.status, "enviado", "fornecedor") && <ShipOrderForm orderId={order.id} />}
+                        {order.deliveryModality === "retirada" && order.status === "em_separacao" ? (
+                          <div className="flex flex-col items-end gap-1">
+                            {pickupCodesByOrderId.get(order.id) && (
+                              <span className="font-mono text-xs text-muted-foreground">
+                                Código: {pickupCodesByOrderId.get(order.id)!.code}
+                              </span>
+                            )}
+                            <form
+                              action={async () => {
+                                "use server";
+                                await supplierConfirmPickupAction(order.id);
+                              }}
+                            >
+                              <ConfirmSubmitButton
+                                size="sm"
+                                confirmMessage="Confirmar que o comprador retirou o pedido e o código foi conferido?"
+                              >
+                                Confirmar retirada
+                              </ConfirmSubmitButton>
+                            </form>
+                          </div>
+                        ) : (
+                          canTransition(order.status, "enviado", "fornecedor") && <ShipOrderForm orderId={order.id} />
+                        )}
                         {canTransition(order.status, "entregue", "fornecedor") && (
                           <form
                             action={async () => {
@@ -369,6 +412,7 @@ export default async function SupplierDashboardPage({
                 }
               : null
           }
+          pickupLocations={pickupLocations}
         />
       )}
     </div>

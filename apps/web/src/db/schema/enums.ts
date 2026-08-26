@@ -100,3 +100,9 @@ export const routeDistanceSourceEnum = pgEnum("route_distance_source", [
   "rota",
   "geodesica",
 ]);
+
+export const deliveryModalityEnum = pgEnum("delivery_modality", [
+  "entrega",
+  "retirada",
+  "transportadora",
+]);

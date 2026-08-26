@@ -4,6 +4,7 @@ import { requireApprovedUser } from "@/lib/auth/require-user";
 import { getCartForBuyer } from "@/server/queries/cart";
 import { listCompanyAddresses } from "@/server/actions/address-actions";
 import { getSupplierFreightConfig, resolveSupplierDistanceKm, shipmentWeightAndVolume } from "@/server/queries/freight";
+import { getActiveSupplierPickupLocations } from "@/server/queries/pickup";
 import { CheckoutClient } from "./checkout-client";
 import type { CheckoutSupplierGroup } from "./order-summary";
 
@@ -31,7 +32,10 @@ export default async function CheckoutPage() {
   const groups: CheckoutSupplierGroup[] = await Promise.all(
     Array.from(bySupplier.entries()).map(async ([supplierId, supplierItems]) => {
       const subtotalCents = supplierItems.reduce((sum, i) => sum + i.product.priceCents * i.quantity, 0);
-      const rule = await getSupplierFreightConfig(supplierId);
+      const [rule, pickupLocations] = await Promise.all([
+        getSupplierFreightConfig(supplierId),
+        getActiveSupplierPickupLocations(supplierId),
+      ]);
       const freight = rule
         ? {
             rule: {
@@ -78,6 +82,19 @@ export default async function CheckoutPage() {
         items: supplierItems.map((i) => ({ id: i.id, name: i.product.name, quantity: i.quantity, priceCents: i.product.priceCents })),
         subtotalCents,
         freight,
+        pickupLocations: pickupLocations.map((l) => ({
+          id: l.id,
+          label: l.label,
+          logradouro: l.logradouro,
+          numero: l.numero,
+          complemento: l.complemento,
+          bairro: l.bairro,
+          cidade: l.cidade,
+          estado: l.estado,
+          horarioFuncionamento: l.horarioFuncionamento,
+          prazoDisponibilizacaoDias: l.prazoDisponibilizacaoDias,
+          documentoExigido: l.documentoExigido,
+        })),
       };
     }),
   );

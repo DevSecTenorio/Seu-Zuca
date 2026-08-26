@@ -5,9 +5,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { deleteCoverageAreaAction, toggleCoverageAreaActiveAction } from "@/server/actions/logistics-actions";
+import { deletePickupLocationAction, togglePickupLocationActiveAction } from "@/server/actions/pickup-location-actions";
 import { CoverageFormDialog, type CoverageAreaData } from "./coverage-form-dialog";
 import { CepImportDialog } from "./cep-import-dialog";
 import { FreightForm, type FreightRuleData } from "./freight-form";
+import { PickupLocationFormDialog, type PickupLocationData } from "./pickup-location-form-dialog";
 
 type Option = { id: string; name: string };
 
@@ -36,15 +38,77 @@ export function LogisticsTab({
   products,
   categories,
   freightConfig,
+  pickupLocations,
 }: {
   areas: CoverageAreaWithRelations[];
   products: Option[];
   categories: Option[];
   freightConfig: FreightRuleData | null;
+  pickupLocations: PickupLocationData[];
 }) {
   return (
     <div className="mt-6 space-y-6">
       <FreightForm config={freightConfig} />
+
+      <Card>
+        <CardHeader className="flex-row items-center justify-between space-y-0">
+          <div>
+            <CardTitle>Locais de retirada</CardTitle>
+            <CardDescription>
+              Sem nenhum local ativo, &ldquo;Retirada&rdquo; não aparece como opção de entrega no checkout dos seus compradores.
+            </CardDescription>
+          </div>
+          <PickupLocationFormDialog mode="create" />
+        </CardHeader>
+        <CardContent>
+          {pickupLocations.length === 0 ? (
+            <p className="py-8 text-center text-sm text-muted-foreground">Nenhum local de retirada cadastrado.</p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Local</TableHead>
+                  <TableHead>Endereço</TableHead>
+                  <TableHead>Prazo</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Ações</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {pickupLocations.map((location) => (
+                  <TableRow key={location.id}>
+                    <TableCell className="font-medium text-foreground">{location.label}</TableCell>
+                    <TableCell>
+                      {location.logradouro}, {location.numero} — {location.cidade}/{location.estado}
+                    </TableCell>
+                    <TableCell>
+                      {location.prazoDisponibilizacaoDias} dia{location.prazoDisponibilizacaoDias === 1 ? "" : "s"}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={location.active ? "default" : "secondary"}>{location.active ? "Ativo" : "Inativo"}</Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        <PickupLocationFormDialog mode="edit" location={location} />
+                        <form action={togglePickupLocationActiveAction.bind(null, location.id, !location.active)}>
+                          <Button type="submit" variant="ghost" size="sm">
+                            {location.active ? "Desativar" : "Ativar"}
+                          </Button>
+                        </form>
+                        <form action={deletePickupLocationAction.bind(null, location.id)}>
+                          <Button type="submit" variant="ghost" size="sm" className="text-destructive hover:text-destructive">
+                            Excluir
+                          </Button>
+                        </form>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader className="flex-row items-center justify-between space-y-0">

@@ -16,6 +16,7 @@ import {
   isMercadoPagoConfigured,
 } from "@/lib/mercadopago";
 import { logAudit } from "@/lib/audit";
+import { generatePickupCode } from "@/lib/pickup-code";
 import { getBuyableProduct, ruleFor } from "@/server/queries/cart";
 import { isProductCoveredForAddress } from "@/server/queries/logistics";
 import { quoteSupplierFreight, resolveSupplierDistanceKm } from "@/server/queries/freight";
@@ -27,12 +28,26 @@ function parseSelectedSurcharges(formData: FormData, supplierId: string): Freigh
   return requested.filter((s): s is FreightSurchargeType => (FREIGHT_SURCHARGE_TYPES as readonly string[]).includes(s));
 }
 
+const DELIVERY_MODALITIES = ["entrega", "retirada", "transportadora"] as const;
+type DeliveryModality = (typeof DELIVERY_MODALITIES)[number];
+
+function parseModality(formData: FormData, supplierId: string): DeliveryModality {
+  const raw = String(formData.get(`modality_${supplierId}`) ?? "");
+  return (DELIVERY_MODALITIES as readonly string[]).includes(raw) ? (raw as DeliveryModality) : "entrega";
+}
+
 const PAYMENT_METHODS = ["pix", "boleto", "cartao"] as const;
 type PaymentMethod = (typeof PAYMENT_METHODS)[number];
 
 class InsufficientStockError extends Error {
   constructor(public productName: string) {
     super(`Insufficient stock for ${productName}`);
+  }
+}
+
+class InvalidPickupLocationError extends Error {
+  constructor() {
+    super("Invalid or inactive pickup location");
   }
 }
 
@@ -112,29 +127,67 @@ export async function createCheckoutAction(_prevState: FormState, formData: Form
     const supplierGroups = await Promise.all(
       Array.from(bySupplier.entries()).map(async ([supplierId, items]) => {
         const subtotalCents = items.reduce((sum, i) => sum + i.product.priceCents * i.quantity, 0);
-        const selectedSurcharges = parseSelectedSurcharges(formData, supplierId);
-        const distanceKm = await resolveSupplierDistanceKm(supplierId, destination);
-        const freight = await quoteSupplierFreight(
-          supplierId,
-          items.map((i) => ({
-            weightGrams: i.product.weightGrams,
-            lengthCm: i.product.lengthCm,
-            widthCm: i.product.widthCm,
-            heightCm: i.product.heightCm,
-            quantity: i.quantity,
-          })),
-          subtotalCents,
-          selectedSurcharges,
-          distanceKm,
-        );
-        const shippingCents = freight.totalCents;
+        const modality = parseModality(formData, supplierId);
+
+        let shippingCents = 0;
+        let shippingBreakdown: { label: string; valueCents: number }[];
+        let pickupLocationSnapshot: Record<string, unknown> | null = null;
+
+        if (modality === "retirada") {
+          // SPEC.md §10, LOG-05: the buyer collects in person — never charged for freight. The
+          // chosen location's details are frozen onto the order (same reasoning as
+          // productNameSnapshot) so a supplier editing/deleting the pickup_locations row later
+          // never changes what an already-placed order promised the buyer.
+          const pickupLocationId = String(formData.get(`pickupLocationId_${supplierId}`) ?? "");
+          const location = await db.query.pickupLocations.findFirst({ where: eq(schema.pickupLocations.id, pickupLocationId) });
+          if (!location || location.supplierId !== supplierId || !location.active) {
+            throw new InvalidPickupLocationError();
+          }
+          pickupLocationSnapshot = {
+            label: location.label,
+            cep: location.cep,
+            logradouro: location.logradouro,
+            numero: location.numero,
+            complemento: location.complemento,
+            bairro: location.bairro,
+            cidade: location.cidade,
+            estado: location.estado,
+            horarioFuncionamento: location.horarioFuncionamento,
+            prazoDisponibilizacaoDias: location.prazoDisponibilizacaoDias,
+            documentoExigido: location.documentoExigido,
+          };
+          shippingBreakdown = [{ label: "Retirada — sem frete", valueCents: 0 }];
+        } else if (modality === "transportadora") {
+          shippingBreakdown = [{ label: "Transportadora contratada — sem frete cobrado na plataforma", valueCents: 0 }];
+        } else {
+          const selectedSurcharges = parseSelectedSurcharges(formData, supplierId);
+          const distanceKm = await resolveSupplierDistanceKm(supplierId, destination);
+          const freight = await quoteSupplierFreight(
+            supplierId,
+            items.map((i) => ({
+              weightGrams: i.product.weightGrams,
+              lengthCm: i.product.lengthCm,
+              widthCm: i.product.widthCm,
+              heightCm: i.product.heightCm,
+              quantity: i.quantity,
+            })),
+            subtotalCents,
+            selectedSurcharges,
+            distanceKm,
+          );
+          shippingCents = freight.totalCents;
+          shippingBreakdown = freight.lines;
+        }
+
         const commissionCents = calculateCommissionCents(commissionBaseCents(subtotalCents, shippingCents, commissionBase), commissionPercent);
         return {
           supplierId,
           items,
           subtotalCents,
           shippingCents,
-          shippingBreakdown: freight.lines,
+          shippingBreakdown,
+          deliveryModality: modality,
+          pickupLocationSnapshot,
           totalCents: subtotalCents + shippingCents,
           commissionCents,
         };
@@ -161,12 +214,18 @@ export async function createCheckoutAction(_prevState: FormState, formData: Form
             subtotalCents: group.subtotalCents,
             shippingCents: group.shippingCents,
             shippingBreakdown: group.shippingBreakdown,
+            deliveryModality: group.deliveryModality,
+            pickupLocationSnapshot: group.pickupLocationSnapshot,
             totalCents: group.totalCents,
             commissionPercent: commissionPercent.toFixed(2),
             commissionCents: group.commissionCents,
           })
           .returning({ id: schema.orders.id });
         orderIds.push(order.id);
+
+        if (group.deliveryModality === "retirada") {
+          await tx.insert(schema.pickupCodes).values({ orderId: order.id, code: generatePickupCode() });
+        }
 
         await tx.insert(schema.orderItems).values(
           group.items.map((item) => ({
@@ -217,6 +276,9 @@ export async function createCheckoutAction(_prevState: FormState, formData: Form
         status: "error",
         message: `"${error.productName}" acabou de ficar sem estoque suficiente. Ajuste a quantidade no carrinho e tente novamente.`,
       };
+    }
+    if (error instanceof InvalidPickupLocationError) {
+      return { status: "error", message: "Selecione um local de retirada válido para o fornecedor escolhido." };
     }
     return {
       status: "error",

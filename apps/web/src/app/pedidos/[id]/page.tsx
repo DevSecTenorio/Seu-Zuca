@@ -36,6 +36,23 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
   const payment = await db.query.payments.findFirst({ where: eq(schema.payments.checkoutGroupId, order.checkoutGroupId) });
   const address = order.checkoutGroup.deliveryAddress;
 
+  // pickup_codes has no drizzle relations() config against orders (see the same note in
+  // src/app/fornecedor/painel/page.tsx) — fetched separately.
+  const pickupCode =
+    order.deliveryModality === "retirada" ? await db.query.pickupCodes.findFirst({ where: eq(schema.pickupCodes.orderId, order.id) }) : null;
+  const pickupLocation = order.pickupLocationSnapshot as {
+    label: string;
+    logradouro: string;
+    numero: string;
+    complemento: string | null;
+    bairro: string;
+    cidade: string;
+    estado: string;
+    horarioFuncionamento: string;
+    prazoDisponibilizacaoDias: number;
+    documentoExigido: string;
+  } | null;
+
   const reviews = order.status === "entregue" ? await db.query.reviews.findMany({ where: eq(schema.reviews.orderId, order.id) }) : [];
   const reviewedProductIds = new Set(reviews.map((r) => r.productId));
 
@@ -119,16 +136,50 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
         <div className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Entrega</CardTitle>
+              <CardTitle className="text-base">
+                {order.deliveryModality === "retirada" ? "Retirada" : order.deliveryModality === "transportadora" ? "Transportadora" : "Entrega"}
+              </CardTitle>
             </CardHeader>
             <CardContent className="space-y-2 text-sm text-muted-foreground">
-              <p>
-                {address.logradouro}, {address.numero}
-                {address.complemento ? ` — ${address.complemento}` : ""}
-              </p>
-              <p>
-                {address.bairro}, {address.cidade}/{address.estado}
-              </p>
+              {order.deliveryModality === "retirada" && pickupLocation ? (
+                <>
+                  <p className="font-medium text-foreground">{pickupLocation.label}</p>
+                  <p>
+                    {pickupLocation.logradouro}, {pickupLocation.numero}
+                    {pickupLocation.complemento ? ` — ${pickupLocation.complemento}` : ""}
+                  </p>
+                  <p>
+                    {pickupLocation.bairro}, {pickupLocation.cidade}/{pickupLocation.estado}
+                  </p>
+                  <p>Horário: {pickupLocation.horarioFuncionamento}</p>
+                  <p>
+                    Pronto para retirada em até {pickupLocation.prazoDisponibilizacaoDias} dia
+                    {pickupLocation.prazoDisponibilizacaoDias === 1 ? "" : "s"} após o pagamento.
+                  </p>
+                  <p>Documento exigido: {pickupLocation.documentoExigido}</p>
+                  {pickupCode && (
+                    <div className="mt-3 rounded-md border border-primary/30 bg-primary/5 p-3">
+                      <p className="text-xs text-muted-foreground">Código de retirada</p>
+                      <p className="font-mono text-xl font-semibold tracking-wider text-foreground">{pickupCode.code}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {pickupCode.used ? "Já utilizado." : "Apresente este código no local no momento da retirada."}
+                      </p>
+                    </div>
+                  )}
+                </>
+              ) : order.deliveryModality === "transportadora" ? (
+                <p>Você contratou uma transportadora própria para retirar este pedido no fornecedor — sem frete cobrado pela plataforma.</p>
+              ) : (
+                <>
+                  <p>
+                    {address.logradouro}, {address.numero}
+                    {address.complemento ? ` — ${address.complemento}` : ""}
+                  </p>
+                  <p>
+                    {address.bairro}, {address.cidade}/{address.estado}
+                  </p>
+                </>
+              )}
               {order.trackingCode && (
                 <p className="pt-2 text-foreground">
                   <strong>Rastreio:</strong> {order.trackingCode}

@@ -100,3 +100,31 @@ export async function supplierShipOrderAction(orderId: string, _prevState: FormS
   await applyOrderStatusTransition(orderId, "enviado", `Enviado. Código de rastreio: ${trackingCode}`, supplier.id);
   return { status: "success", message: "Pedido marcado como enviado." };
 }
+
+/**
+ * SPEC.md §10, LOG-05: the fornecedor checks the buyer's pickup code in person and confirms —
+ * this is the "retirada" equivalent of supplierShipOrderAction, jumping straight from
+ * em_separacao to entregue since nothing is "shipped" when the buyer collects the order
+ * themselves. That direct jump only exists for this action, not in the general transition graph
+ * (src/lib/order-status.ts) — canTransition deliberately isn't used here.
+ */
+export async function supplierConfirmPickupAction(orderId: string): Promise<FormState> {
+  const supplier = await requireApprovedUser(["fornecedor"]);
+  const order = await db.query.orders.findFirst({ where: eq(schema.orders.id, orderId) });
+  if (!order || order.supplierId !== supplier.id) return { status: "error", message: "Pedido não encontrado." };
+  if (order.deliveryModality !== "retirada") {
+    return { status: "error", message: "Este pedido não é uma retirada." };
+  }
+  if (order.status !== "em_separacao") {
+    return { status: "error", message: "O pedido precisa estar em separação antes de confirmar a retirada." };
+  }
+
+  const pickupCode = await db.query.pickupCodes.findFirst({ where: eq(schema.pickupCodes.orderId, orderId) });
+  if (!pickupCode || pickupCode.used) {
+    return { status: "error", message: "Código de retirada inválido ou já utilizado." };
+  }
+
+  await db.update(schema.pickupCodes).set({ used: true, usedAt: new Date() }).where(eq(schema.pickupCodes.id, pickupCode.id));
+  await applyOrderStatusTransition(orderId, "entregue", "Retirada confirmada pelo fornecedor.", supplier.id);
+  return { status: "success", message: "Retirada confirmada." };
+}
