@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getCurrentUser } from "@/lib/auth/session";
 import { getCartForBuyer } from "@/server/queries/cart";
-import { quoteSupplierFreight } from "@/server/queries/freight";
+import { quoteSupplierFreight, resolveSupplierDistanceKm } from "@/server/queries/freight";
+import { getBuyerCoverageAddress } from "@/server/queries/logistics";
 import { formatCentsToBRL } from "@/lib/format";
 import { CartItemRow } from "./cart-item-row";
 
@@ -72,13 +73,22 @@ export default async function CartPage() {
     bySupplier.set(key, list);
   }
 
+  // Estimate only — no address picked yet at this stage, so this uses the buyer's default
+  // delivery address (if any) for distance-based freight, and the buyer picks surcharges and can
+  // switch addresses at checkout (SPEC.md §10).
+  const buyerAddress = await getBuyerCoverageAddress(user);
+  const destination =
+    buyerAddress && buyerAddress.latitude !== null && buyerAddress.longitude !== null
+      ? { lat: buyerAddress.latitude, lng: buyerAddress.longitude }
+      : null;
+
   const groups = await Promise.all(
     Array.from(bySupplier.values()).map(async (supplierItems) => {
       const subtotalCents = supplierItems.reduce((sum, i) => sum + i.product.priceCents * i.quantity, 0);
-      // No surcharges yet at this stage — the buyer picks those at checkout, once the freight
-      // engine's auditable breakdown is shown alongside the delivery address (SPEC.md §10).
+      const supplierId = supplierItems[0].product.supplierId;
+      const distanceKm = await resolveSupplierDistanceKm(supplierId, destination);
       const freight = await quoteSupplierFreight(
-        supplierItems[0].product.supplierId,
+        supplierId,
         supplierItems.map((i) => ({
           weightGrams: i.product.weightGrams,
           lengthCm: i.product.lengthCm,
@@ -88,6 +98,7 @@ export default async function CartPage() {
         })),
         subtotalCents,
         [],
+        distanceKm,
       );
       return { supplierItems, subtotalCents, shippingCents: freight.totalCents };
     }),

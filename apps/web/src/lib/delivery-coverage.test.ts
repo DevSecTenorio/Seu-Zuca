@@ -130,8 +130,21 @@ describe("isProductCoveredByAddress", () => {
     expect(isProductCoveredByAddress(rules, PRODUCT, RIO)).toBe(false);
   });
 
-  it("a raio rule never restricts yet — real distance needs geocoding (LOG-03)", () => {
+  it("a raio rule never restricts when its supplier's distance is unknown (address not geocoded, LOG-03)", () => {
     const rules = [rule({ kind: "raio", radiusKm: 50 })];
     expect(isProductCoveredByAddress(rules, PRODUCT, SP_CAPITAL)).toBe(true);
+    expect(isProductCoveredByAddress(rules, PRODUCT, SP_CAPITAL, new Map())).toBe(true);
+  });
+
+  it("a raio rule covers when the resolved distance is within range and excludes when it isn't", () => {
+    const rules = [rule({ kind: "raio", radiusKm: 50 })];
+    expect(isProductCoveredByAddress(rules, PRODUCT, SP_CAPITAL, new Map([[SUPPLIER, 30]]))).toBe(true);
+    expect(isProductCoveredByAddress(rules, PRODUCT, SP_CAPITAL, new Map([[SUPPLIER, 50]]))).toBe(true);
+    expect(isProductCoveredByAddress(rules, PRODUCT, SP_CAPITAL, new Map([[SUPPLIER, 51]]))).toBe(false);
+  });
+
+  it("a raio distance for a different supplier doesn't affect this one", () => {
+    const rules = [rule({ kind: "raio", radiusKm: 50 })];
+    expect(isProductCoveredByAddress(rules, PRODUCT, SP_CAPITAL, new Map([[OTHER_SUPPLIER, 10]]))).toBe(true);
   });
 });

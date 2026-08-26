@@ -38,7 +38,17 @@ function normalizeCep(cep: string): number {
   return parseInt(digits, 10);
 }
 
-function ruleMatchesAddress(rule: CoverageRule, address: CoverageAddress): boolean {
+/** A "raio" rule needs a real route distance between the supplier's origin and the buyer's
+ * address (SPEC.md §10, LOG-03) — the caller only populates distanceKmBySupplier when both ends
+ * are geocoded. Without one, the rule can't be evaluated at all: it's dropped from consideration
+ * entirely (see isProductCoveredByAddress), rather than counted as "doesn't match" — the same
+ * fallback philosophy as before LOG-03 existed, just conditioned on whether a distance actually
+ * resolved instead of unconditionally. */
+function isRuleEvaluable(rule: CoverageRule, distanceKmBySupplier: Map<string, number>): boolean {
+  return rule.kind !== "raio" || distanceKmBySupplier.has(rule.supplierId);
+}
+
+function ruleMatchesAddress(rule: CoverageRule, address: CoverageAddress, distanceKmBySupplier: Map<string, number>): boolean {
   if (rule.kind === "cep") {
     const cepNum = normalizeCep(address.cep);
     return rule.ceps.some((r) => cepNum >= normalizeCep(r.cepStart) && cepNum <= normalizeCep(r.cepEnd));
@@ -48,10 +58,9 @@ function ruleMatchesAddress(rule: CoverageRule, address: CoverageAddress): boole
     const estado = address.estado.trim().toUpperCase();
     return rule.municipios.some((m) => m.cidade.trim().toLowerCase() === cidade && m.estado.trim().toUpperCase() === estado);
   }
-  // kind === "raio": isProductCoveredByAddress filters these out before calling this function
-  // (see there for why) — unreachable today, kept so this stays correct once LOG-03 adds real
-  // distance matching and stops filtering "raio" rules out.
-  return false;
+  // kind === "raio", and isRuleEvaluable already guaranteed a distance exists.
+  const distanceKm = distanceKmBySupplier.get(rule.supplierId)!;
+  return rule.radiusKm !== null && distanceKm <= rule.radiusKm;
 }
 
 /**
@@ -70,21 +79,18 @@ function ruleMatchesAddress(rule: CoverageRule, address: CoverageAddress): boole
  * 4. Supplier-wide "exclusao" rules always apply on top, even when a product/category scope
  *    matched — an explicit exclusion wins "mesmo dentro de uma cobertura mais ampla" (§10).
  *
- * A "raio" rule that can't be evaluated yet (see ruleMatchesAddress) never excludes anyone by
- * itself — it just doesn't contribute until LOG-03 lands, rather than silently hiding a
- * supplier's whole catalog because geocoding isn't wired up yet.
+ * A "raio" rule with no known distance for its supplier (missing/ungeocoded address on either
+ * end, or LOG-03's routing unconfigured) never excludes anyone by itself — see ruleMatchesAddress.
  */
 export function isProductCoveredByAddress(
   rules: CoverageRule[],
   product: CoverageProduct,
   address: CoverageAddress | null,
+  distanceKmBySupplier: Map<string, number> = new Map(),
 ): boolean {
   if (!address) return true;
 
-  // "raio" rules can't be evaluated without geocoded coordinates yet (LOG-03) — drop them
-  // entirely rather than have an unmatchable "cobertura" rule wrongly restrict everyone, or an
-  // unmatchable "exclusao" rule silently fail to exclude anyone once it's actually wired up.
-  const supplierRules = rules.filter((r) => r.supplierId === product.supplierId && r.kind !== "raio");
+  const supplierRules = rules.filter((r) => r.supplierId === product.supplierId && isRuleEvaluable(r, distanceKmBySupplier));
   if (supplierRules.length === 0) return true;
 
   const productRules = supplierRules.filter((r) => r.scope === "produto" && r.productId === product.productId);
@@ -97,9 +103,10 @@ export function isProductCoveredByAddress(
   const excludeRules = scoped.filter((r) => r.mode === "exclusao");
   const alwaysExcludeRules = supplierWideRules.filter((r) => r.mode === "exclusao");
 
-  const isIncluded = includeRules.length === 0 || includeRules.some((r) => ruleMatchesAddress(r, address));
+  const isIncluded = includeRules.length === 0 || includeRules.some((r) => ruleMatchesAddress(r, address, distanceKmBySupplier));
   const isExcluded =
-    excludeRules.some((r) => ruleMatchesAddress(r, address)) || alwaysExcludeRules.some((r) => ruleMatchesAddress(r, address));
+    excludeRules.some((r) => ruleMatchesAddress(r, address, distanceKmBySupplier)) ||
+    alwaysExcludeRules.some((r) => ruleMatchesAddress(r, address, distanceKmBySupplier));
 
   return isIncluded && !isExcluded;
 }

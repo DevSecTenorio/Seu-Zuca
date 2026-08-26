@@ -95,3 +95,8 @@ export const freightSurchargeTypeEnum = pgEnum("freight_surcharge_type", [
   "dificil_acesso",
   "pedagio",
 ]);
+
+export const routeDistanceSourceEnum = pgEnum("route_distance_source", [
+  "rota",
+  "geodesica",
+]);

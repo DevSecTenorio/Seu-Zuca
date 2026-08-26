@@ -6,6 +6,7 @@ import {
   deliveryCoverageScopeEnum,
   freightChargeTypeEnum,
   freightSurchargeTypeEnum,
+  routeDistanceSourceEnum,
 } from "./enums";
 import { users } from "./users";
 import { products, categories } from "./catalog";
@@ -201,3 +202,31 @@ export const freightSurchargesRelations = relations(freightSurcharges, ({ one })
 export type FreightRule = typeof freightRules.$inferSelect;
 export type FreightRange = typeof freightRanges.$inferSelect;
 export type FreightSurcharge = typeof freightSurcharges.$inferSelect;
+
+/**
+ * Caches a computed distance between two geocoded points (SPEC.md §10, LOG-03), keyed by the
+ * coordinate pair itself (rounded to 5 decimal places, ~1m) rather than by address id — content-
+ * addressed so a manually-adjusted pin naturally invalidates the old cache entry just by being a
+ * different key, with nothing to explicitly clear. `source` records whether this came from the
+ * routing provider or the geodesic (straight-line × correction factor) fallback, so a later
+ * background job could re-resolve "geodesica" entries once the provider is back up, if that's
+ * ever worth doing.
+ */
+export const routeDistanceCache = pgTable(
+  "route_distance_cache",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    originLat: numeric("origin_lat", { precision: 10, scale: 7, mode: "number" }).notNull(),
+    originLng: numeric("origin_lng", { precision: 10, scale: 7, mode: "number" }).notNull(),
+    destinationLat: numeric("destination_lat", { precision: 10, scale: 7, mode: "number" }).notNull(),
+    destinationLng: numeric("destination_lng", { precision: 10, scale: 7, mode: "number" }).notNull(),
+    distanceKm: numeric("distance_km", { precision: 10, scale: 2, mode: "number" }).notNull(),
+    source: routeDistanceSourceEnum("source").notNull(),
+    calculatedAt: timestamp("calculated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    unique().on(table.originLat, table.originLng, table.destinationLat, table.destinationLng),
+  ],
+);
+
+export type RouteDistanceCache = typeof routeDistanceCache.$inferSelect;

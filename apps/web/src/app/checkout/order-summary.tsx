@@ -23,10 +23,21 @@ export type CheckoutSupplierGroup = {
     availableSurcharges: { type: FreightSurchargeType; valueCents: number }[];
     realWeightKg: number;
     volumeM3: number;
+    /** Precomputed server-side for every address on file (SPEC.md §10, LOG-03) — null for an
+     * address where either end isn't geocoded yet, same as if LOG-03 hadn't shipped. */
+    distanceKmByAddressId: Record<string, number | null>;
   } | null;
 };
 
-export function OrderSummary({ groups, formId }: { groups: CheckoutSupplierGroup[]; formId: string }) {
+export function OrderSummary({
+  groups,
+  formId,
+  selectedAddressId,
+}: {
+  groups: CheckoutSupplierGroup[];
+  formId: string;
+  selectedAddressId: string | undefined;
+}) {
   const [selected, setSelected] = useState<Record<string, FreightSurchargeType[]>>({});
 
   function toggleSurcharge(supplierId: string, type: FreightSurchargeType, checked: boolean) {
@@ -46,13 +57,14 @@ export function OrderSummary({ groups, formId }: { groups: CheckoutSupplierGroup
     }
 
     const selectedSurcharges = group.freight.availableSurcharges.filter((s) => selectedTypes.includes(s.type));
+    const distanceKm = selectedAddressId ? (group.freight.distanceKmByAddressId[selectedAddressId] ?? null) : null;
     const breakdown = calculateFreightCents({
       rule: group.freight.rule,
       ranges: group.freight.ranges,
       selectedSurcharges,
       realWeightKg: group.freight.realWeightKg,
       volumeM3: group.freight.volumeM3,
-      distanceKm: null,
+      distanceKm,
       subtotalCents: group.subtotalCents,
     });
     return { group, shippingCents: breakdown.totalCents, lines: breakdown.lines, selectedTypes };

@@ -1,13 +1,14 @@
 "use client";
 
-import { useActionState } from "react";
-import { useFormStatus } from "react-dom";
+import { useActionState, useSyncExternalStore } from "react";
+import { createPortal, useFormStatus } from "react-dom";
 import { AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { AddressMap } from "@/components/address-map";
 import { createCheckoutAction } from "@/server/actions/checkout-actions";
 import { createDeliveryAddressAction } from "@/server/actions/address-actions";
 import { INITIAL_FORM_STATE, type FormState } from "@/server/actions/form-state";
@@ -33,52 +34,83 @@ function SubmitButton({ label }: { label: string }) {
   );
 }
 
+const ADD_ADDRESS_FORM_ID = "add-address-form";
+
+function noopSubscribe() {
+  return () => {};
+}
+
+/** True only once hydrated on the client — portaling to `document.body` needs a real DOM, which
+ * doesn't exist during SSR. `useSyncExternalStore` (rather than a `useEffect` + `setState`) avoids
+ * an extra render pass just to flip this flag. */
+function useMounted(): boolean {
+  return useSyncExternalStore(
+    noopSubscribe,
+    () => true,
+    () => false,
+  );
+}
+
 function AddAddressForm() {
   const [state, formAction] = useActionState<FormState, FormData>(createDeliveryAddressAction, INITIAL_FORM_STATE);
+  // Nested <form> elements are invalid HTML and React can't reliably intercept a submit from one
+  // nested inside another (this form sits inside CheckoutForm's own <form id="checkout-form">) —
+  // so the actual <form> is portaled out to <body>, and every field below references it by id via
+  // the standard HTML `form` attribute instead of DOM nesting.
+  const mounted = useMounted();
+
   return (
     <details className="mt-4 rounded-md border p-3">
       <summary className="cursor-pointer text-sm font-medium text-primary">Adicionar novo endereço</summary>
-      <form action={formAction} className="mt-4 space-y-3" noValidate>
+      {mounted && createPortal(<form id={ADD_ADDRESS_FORM_ID} action={formAction} />, document.body)}
+      <div className="mt-4 space-y-3">
         {state.status === "error" && state.message && <p className="text-sm text-destructive">{state.message}</p>}
         {state.status === "success" && state.message && <p className="text-sm text-success-foreground">{state.message}</p>}
+        {state.status === "success" && state.newAddressId && state.newAddressCoordinates && (
+          <AddressMap
+            addressId={state.newAddressId}
+            initialLat={state.newAddressCoordinates.lat}
+            initialLng={state.newAddressCoordinates.lng}
+          />
+        )}
         <div className="space-y-1.5">
           <Label htmlFor="addr-label">Identificação (opcional)</Label>
-          <Input id="addr-label" name="label" placeholder="Ex.: Depósito, Obra Zona Sul..." />
+          <Input id="addr-label" name="label" form={ADD_ADDRESS_FORM_ID} placeholder="Ex.: Depósito, Obra Zona Sul..." />
         </div>
         <div className="grid gap-3 sm:grid-cols-3">
           <div className="space-y-1.5 sm:col-span-1">
             <Label htmlFor="addr-cep">CEP</Label>
-            <Input id="addr-cep" name="cep" required />
+            <Input id="addr-cep" name="cep" form={ADD_ADDRESS_FORM_ID} required />
             {state.fieldErrors?.cep && <p className="text-xs text-destructive">{state.fieldErrors.cep[0]}</p>}
           </div>
           <div className="space-y-1.5 sm:col-span-2">
             <Label htmlFor="addr-logradouro">Logradouro</Label>
-            <Input id="addr-logradouro" name="logradouro" required />
+            <Input id="addr-logradouro" name="logradouro" form={ADD_ADDRESS_FORM_ID} required />
             {state.fieldErrors?.logradouro && <p className="text-xs text-destructive">{state.fieldErrors.logradouro[0]}</p>}
           </div>
         </div>
         <div className="grid gap-3 sm:grid-cols-3">
           <div className="space-y-1.5">
             <Label htmlFor="addr-numero">Número</Label>
-            <Input id="addr-numero" name="numero" required />
+            <Input id="addr-numero" name="numero" form={ADD_ADDRESS_FORM_ID} required />
           </div>
           <div className="space-y-1.5 sm:col-span-2">
             <Label htmlFor="addr-complemento">Complemento</Label>
-            <Input id="addr-complemento" name="complemento" />
+            <Input id="addr-complemento" name="complemento" form={ADD_ADDRESS_FORM_ID} />
           </div>
         </div>
         <div className="grid gap-3 sm:grid-cols-3">
           <div className="space-y-1.5">
             <Label htmlFor="addr-bairro">Bairro</Label>
-            <Input id="addr-bairro" name="bairro" required />
+            <Input id="addr-bairro" name="bairro" form={ADD_ADDRESS_FORM_ID} required />
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="addr-cidade">Cidade</Label>
-            <Input id="addr-cidade" name="cidade" required />
+            <Input id="addr-cidade" name="cidade" form={ADD_ADDRESS_FORM_ID} required />
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="addr-estado">Estado</Label>
-            <Select name="estado">
+            <Select name="estado" form={ADD_ADDRESS_FORM_ID}>
               <SelectTrigger id="addr-estado" className="w-full">
                 <SelectValue placeholder="UF" />
               </SelectTrigger>
@@ -92,10 +124,10 @@ function AddAddressForm() {
             </Select>
           </div>
         </div>
-        <Button type="submit" variant="outline">
+        <Button type="submit" form={ADD_ADDRESS_FORM_ID} variant="outline">
           Salvar endereço
         </Button>
-      </form>
+      </div>
     </details>
   );
 }
@@ -106,7 +138,13 @@ const PAYMENT_METHODS = [
   { value: "cartao", label: "Cartão de crédito", description: "Via checkout seguro do Mercado Pago" },
 ] as const;
 
-export function CheckoutForm({ addresses }: { addresses: Address[] }) {
+export function CheckoutForm({
+  addresses,
+  onAddressChange,
+}: {
+  addresses: Address[];
+  onAddressChange?: (addressId: string) => void;
+}) {
   const [state, formAction] = useActionState<FormState, FormData>(createCheckoutAction, INITIAL_FORM_STATE);
   const defaultAddress = addresses.find((a) => a.isDefault) ?? addresses[0];
 
@@ -132,6 +170,7 @@ export function CheckoutForm({ addresses }: { addresses: Address[] }) {
                 name="addressId"
                 value={address.id}
                 defaultChecked={address.id === defaultAddress?.id}
+                onChange={() => onAddressChange?.(address.id)}
                 className="mt-1"
                 required
               />

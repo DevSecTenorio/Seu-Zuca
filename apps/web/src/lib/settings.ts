@@ -30,3 +30,22 @@ export async function setCommissionBase(value: CommissionBase): Promise<void> {
     .values({ key: "commission_base", value })
     .onConflictDoUpdate({ target: schema.settings.key, set: { value, updatedAt: new Date() } });
 }
+
+export const DEFAULT_GEODESIC_CORRECTION_FACTOR = 1.3;
+
+/** SPEC.md §10, LOG-03: multiplies the straight-line distance when the routing provider is
+ * unavailable, to approximate a real route distance. 1.3 is a reasonable default for Brazilian
+ * road networks (real routes run ~20-40% longer than a straight line); admin-configurable since
+ * the right factor varies by region. */
+export async function getGeodesicCorrectionFactor(): Promise<number> {
+  const row = await db.query.settings.findFirst({ where: eq(schema.settings.key, "geodesic_correction_factor") });
+  const value = row?.value;
+  return typeof value === "number" ? value : DEFAULT_GEODESIC_CORRECTION_FACTOR;
+}
+
+export async function setGeodesicCorrectionFactor(value: number): Promise<void> {
+  await db
+    .insert(schema.settings)
+    .values({ key: "geodesic_correction_factor", value })
+    .onConflictDoUpdate({ target: schema.settings.key, set: { value, updatedAt: new Date() } });
+}

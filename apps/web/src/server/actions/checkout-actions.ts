@@ -18,7 +18,7 @@ import {
 import { logAudit } from "@/lib/audit";
 import { getBuyableProduct, ruleFor } from "@/server/queries/cart";
 import { isProductCoveredForAddress } from "@/server/queries/logistics";
-import { quoteSupplierFreight } from "@/server/queries/freight";
+import { quoteSupplierFreight, resolveSupplierDistanceKm } from "@/server/queries/freight";
 import type { FormState } from "./form-state";
 
 function parseSelectedSurcharges(formData: FormData, supplierId: string): FreightSurchargeType[] {
@@ -86,7 +86,7 @@ export async function createCheckoutAction(_prevState: FormState, formData: Form
     }
     const covered = await isProductCoveredForAddress(
       { supplierId: product.supplierId, categoryId: product.categoryId, id: product.id },
-      { cep: address.cep, cidade: address.cidade, estado: address.estado },
+      { cep: address.cep, cidade: address.cidade, estado: address.estado, latitude: address.latitude, longitude: address.longitude },
     );
     if (!covered) {
       return { status: "error", message: `"${product.name}" não é entregue no endereço selecionado.` };
@@ -107,10 +107,13 @@ export async function createCheckoutAction(_prevState: FormState, formData: Form
   const orderIds: string[] = [];
 
   try {
+    const destination = address.latitude !== null && address.longitude !== null ? { lat: address.latitude, lng: address.longitude } : null;
+
     const supplierGroups = await Promise.all(
       Array.from(bySupplier.entries()).map(async ([supplierId, items]) => {
         const subtotalCents = items.reduce((sum, i) => sum + i.product.priceCents * i.quantity, 0);
         const selectedSurcharges = parseSelectedSurcharges(formData, supplierId);
+        const distanceKm = await resolveSupplierDistanceKm(supplierId, destination);
         const freight = await quoteSupplierFreight(
           supplierId,
           items.map((i) => ({
@@ -122,6 +125,7 @@ export async function createCheckoutAction(_prevState: FormState, formData: Form
           })),
           subtotalCents,
           selectedSurcharges,
+          distanceKm,
         );
         const shippingCents = freight.totalCents;
         const commissionCents = calculateCommissionCents(commissionBaseCents(subtotalCents, shippingCents, commissionBase), commissionPercent);

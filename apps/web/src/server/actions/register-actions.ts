@@ -7,6 +7,7 @@ import type { Role } from "@/lib/auth/roles";
 import { hashPassword } from "@/lib/auth/password";
 import { createSession } from "@/lib/auth/session";
 import { onlyDigits } from "@/lib/cnpj";
+import { geocodeAddress } from "@/lib/openrouteservice";
 import { uploadFile } from "@/lib/storage";
 import { generateUniqueSlug } from "@/lib/slug";
 import { companyStepSchema } from "@/lib/validation/register";
@@ -93,6 +94,17 @@ async function registerCompanyAccount(role: Role, formData: FormData): Promise<F
 
   const passwordHash = await hashPassword(data.password);
 
+  // Geocoding is external I/O — resolved before the transaction, same reasoning as the uploads
+  // above. Never blocks signup: null coordinates just mean raio coverage/route-distance freight
+  // can't be computed for this address yet (SPEC.md §10, LOG-03's documented fallback).
+  const coordinates = await geocodeAddress({
+    cep: onlyDigits(data.cep),
+    logradouro: data.logradouro,
+    numero: data.numero,
+    cidade: data.cidade,
+    estado: data.estado,
+  });
+
   // Only suppliers get a public storefront (/fornecedor/[slug]) — generated once at signup so
   // the URL stays stable even if the trade name changes later.
   const companySlug =
@@ -135,6 +147,8 @@ async function registerCompanyAccount(role: Role, formData: FormData): Promise<F
         cidade: data.cidade,
         estado: data.estado,
         isDefault: true,
+        latitude: coordinates?.lat ?? null,
+        longitude: coordinates?.lng ?? null,
       });
 
       await tx.insert(schema.kycDocuments).values(

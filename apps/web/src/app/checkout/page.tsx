@@ -3,9 +3,9 @@ import { redirect } from "next/navigation";
 import { requireApprovedUser } from "@/lib/auth/require-user";
 import { getCartForBuyer } from "@/server/queries/cart";
 import { listCompanyAddresses } from "@/server/actions/address-actions";
-import { getSupplierFreightConfig, shipmentWeightAndVolume } from "@/server/queries/freight";
-import { CheckoutForm } from "./checkout-form";
-import { OrderSummary, type CheckoutSupplierGroup } from "./order-summary";
+import { getSupplierFreightConfig, resolveSupplierDistanceKm, shipmentWeightAndVolume } from "@/server/queries/freight";
+import { CheckoutClient } from "./checkout-client";
+import type { CheckoutSupplierGroup } from "./order-summary";
 
 export const metadata: Metadata = { title: "Checkout — Seu Zuca" };
 
@@ -58,6 +58,17 @@ export default async function CheckoutPage() {
                 quantity: i.quantity,
               })),
             ),
+            // One distance per address on file (SPEC.md §10, LOG-03) — few enough addresses that
+            // precomputing all of them server-side beats a round-trip every time the buyer
+            // switches which one they're shipping to.
+            distanceKmByAddressId: Object.fromEntries(
+              await Promise.all(
+                addresses.map(async (a) => [
+                  a.id,
+                  await resolveSupplierDistanceKm(supplierId, a.latitude !== null && a.longitude !== null ? { lat: a.latitude, lng: a.longitude } : null),
+                ] as const),
+              ),
+            ),
           }
         : null;
 
@@ -74,11 +85,7 @@ export default async function CheckoutPage() {
   return (
     <div className="mx-auto w-full max-w-4xl flex-1 px-4 py-8 sm:px-6 lg:px-8">
       <h1 className="text-2xl font-semibold text-foreground">Checkout</h1>
-
-      <div className="mt-8 grid gap-8 lg:grid-cols-[1fr_320px]">
-        <CheckoutForm addresses={addresses} />
-        <OrderSummary groups={groups} formId="checkout-form" />
-      </div>
+      <CheckoutClient addresses={addresses} groups={groups} />
     </div>
   );
 }

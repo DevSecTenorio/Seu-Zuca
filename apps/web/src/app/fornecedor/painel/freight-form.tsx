@@ -139,8 +139,8 @@ export function FreightForm({ config }: { config: FreightRuleData | null }) {
         <CardTitle>Motor de frete</CardTitle>
         <CardDescription>
           Faixas por distância e peso, peso cubado (maior entre real e volumétrico) e adicionais que o comprador escolhe no
-          checkout. Frete por distância ainda depende de geocodificação (em desenvolvimento): enquanto isso, o piso mínimo
-          garante que o frete nunca fique zerado indevidamente.
+          checkout. Frete por distância usa a distância real de rota entre o endereço da sua empresa e o do comprador; se algum
+          dos dois ainda não tiver sido geocodificado, o piso mínimo garante que o frete nunca fique zerado indevidamente.
         </CardDescription>
       </CardHeader>
       <CardContent>

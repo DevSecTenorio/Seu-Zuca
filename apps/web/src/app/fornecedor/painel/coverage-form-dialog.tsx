@@ -227,8 +227,8 @@ export function CoverageFormDialog({
               />
               {state.fieldErrors?.radiusKm && <p className="text-sm text-destructive">{state.fieldErrors.radiusKm[0]}</p>}
               <p className="text-xs text-muted-foreground">
-                A distância real por rota ainda depende de geocodificação (em desenvolvimento) — por enquanto, regras de raio
-                não restringem ninguém.
+                A distância é calculada a partir do endereço da sua empresa e do endereço do comprador. Se algum dos dois ainda
+                não tiver sido geocodificado, esta regra não restringe ninguém em vez de bloquear por engano.
               </p>
             </div>
           )}
