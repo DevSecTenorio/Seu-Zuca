@@ -31,6 +31,21 @@ function placeholderImage(seed: string, width: number, height: number): string {
 
 const TEST_PASSWORD = "Teste@123";
 
+/** Rough per-unit-sold weight/dimensions by category, for realistic freight quotes in dev/demo
+ * data (SPEC.md §10, LOG-02) — not per-product precision, just plausible enough that the cubic-
+ * weight and per-kg freight math has real numbers to chew on instead of the schema's flat default. */
+const CATEGORY_SHIPPING_DEFAULTS: Record<string, { weightGrams: number; lengthCm: number; widthCm: number; heightCm: number }> = {
+  argamassa: { weightGrams: 25000, lengthCm: 60, widthCm: 40, heightCm: 10 },
+  estrutura: { weightGrams: 12000, lengthCm: 300, widthCm: 15, heightCm: 15 },
+  acabamento: { weightGrams: 3000, lengthCm: 45, widthCm: 45, heightCm: 5 },
+  instalacoes: { weightGrams: 1500, lengthCm: 30, widthCm: 30, heightCm: 30 },
+  ferramentas: { weightGrams: 2500, lengthCm: 40, widthCm: 20, heightCm: 15 },
+  hidraulica: { weightGrams: 800, lengthCm: 100, widthCm: 10, heightCm: 10 },
+  eletrica: { weightGrams: 5000, lengthCm: 30, widthCm: 30, heightCm: 20 },
+  madeira: { weightGrams: 8000, lengthCm: 220, widthCm: 20, heightCm: 3 },
+  alvenaria: { weightGrams: 2500, lengthCm: 20, widthCm: 10, heightCm: 10 },
+};
+
 const UNITS: { name: string; abbreviation: string }[] = [
   { name: "Unidade", abbreviation: "un" },
   { name: "Caixa", abbreviation: "cx" },
@@ -614,6 +629,8 @@ async function seedProducts(supplierIds: string[]) {
     const supplierId = supplierIds[product.supplierIndex];
     if (!categoryId || !unitId || !supplierId) continue;
 
+    const shippingDefaults = CATEGORY_SHIPPING_DEFAULTS[product.categorySlug];
+
     const [row] = await db
       .insert(schema.products)
       .values({
@@ -627,6 +644,7 @@ async function seedProducts(supplierIds: string[]) {
         priceCents: product.priceCents,
         stock: product.stock,
         leadTimeDays: product.leadTimeDays,
+        ...shippingDefaults,
         moderationStatus: "ativo",
       })
       .returning({ id: schema.products.id });

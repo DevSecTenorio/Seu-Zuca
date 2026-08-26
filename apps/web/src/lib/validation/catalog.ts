@@ -31,6 +31,12 @@ export const productSchema = z.object({
     .refine((v) => !Number.isNaN(parseBRL(v)) && parseBRL(v) > 0, "Informe um preço válido"),
   stock: z.coerce.number().int().min(0, "Estoque não pode ser negativo"),
   leadTimeDays: z.coerce.number().int().min(1, "Informe ao menos 1 dia"),
+  // Per unit sold — used by the freight engine's real-weight and cubic-weight calculation
+  // (SPEC.md §10, LOG-02).
+  weightGrams: z.coerce.number().int().min(1, "Informe o peso por unidade"),
+  lengthCm: z.coerce.number().int().min(1, "Informe o comprimento"),
+  widthCm: z.coerce.number().int().min(1, "Informe a largura"),
+  heightCm: z.coerce.number().int().min(1, "Informe a altura"),
 });
 export type ProductInput = z.infer<typeof productSchema>;
 

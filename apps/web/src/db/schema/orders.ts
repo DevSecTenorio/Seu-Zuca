@@ -2,6 +2,7 @@ import { relations } from "drizzle-orm";
 import {
   index,
   integer,
+  jsonb,
   numeric,
   pgTable,
   text,
@@ -41,6 +42,10 @@ export const orders = pgTable(
     status: orderStatusEnum("status").notNull().default("aguardando_pagamento"),
     subtotalCents: integer("subtotal_cents").notNull(),
     shippingCents: integer("shipping_cents").notNull().default(0),
+    // Auditable freight composition frozen at checkout (SPEC.md §10, LOG-02): base + each applied
+    // surcharge + free-shipping discount, as shown to the buyer. Null for orders created before
+    // LOG-02 (flat-rate shipping, nothing to break down).
+    shippingBreakdown: jsonb("shipping_breakdown"),
     totalCents: integer("total_cents").notNull(),
     commissionPercent: numeric("commission_percent", { precision: 5, scale: 2 }).notNull(),
     commissionCents: integer("commission_cents").notNull(),

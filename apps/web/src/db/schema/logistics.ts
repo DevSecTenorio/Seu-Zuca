@@ -1,6 +1,12 @@
 import { relations } from "drizzle-orm";
-import { boolean, index, integer, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
-import { deliveryCoverageKindEnum, deliveryCoverageModeEnum, deliveryCoverageScopeEnum } from "./enums";
+import { boolean, index, integer, numeric, pgTable, text, timestamp, unique, uuid } from "drizzle-orm/pg-core";
+import {
+  deliveryCoverageKindEnum,
+  deliveryCoverageModeEnum,
+  deliveryCoverageScopeEnum,
+  freightChargeTypeEnum,
+  freightSurchargeTypeEnum,
+} from "./enums";
 import { users } from "./users";
 import { products, categories } from "./catalog";
 
@@ -103,3 +109,95 @@ export const deliveryCoverageMunicipiosRelations = relations(deliveryCoverageMun
 export type DeliveryCoverageArea = typeof deliveryCoverageAreas.$inferSelect;
 export type DeliveryCoverageCep = typeof deliveryCoverageCeps.$inferSelect;
 export type DeliveryCoverageMunicipio = typeof deliveryCoverageMunicipios.$inferSelect;
+
+/**
+ * One freight configuration per supplier (SPEC.md §10, LOG-02). `chargeType` decides how
+ * `freightRanges.valueCents` is interpreted (flat amount, R$/km, R$/kg, or R$/km×kg) — see
+ * src/lib/freight.ts for the actual calculation. `cubicFactorKgPerM3` is the supplier's cubage
+ * factor: chargeable weight is the greater of real weight and volume(m³) × this factor.
+ * `minFreightCents` is a floor applied after ranges/rate are computed. Free-shipping is
+ * independently conditional on a minimum subtotal and/or a maximum chargeable weight — either
+ * condition, when configured, grants free shipping on its own (SPEC.md §10).
+ */
+export const freightRules = pgTable("freight_rules", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  supplierId: uuid("supplier_id")
+    .notNull()
+    .unique()
+    .references(() => users.id, { onDelete: "cascade" }),
+  chargeType: freightChargeTypeEnum("charge_type").notNull().default("fixo"),
+  cubicFactorKgPerM3: integer("cubic_factor_kg_per_m3").notNull().default(300),
+  minFreightCents: integer("min_freight_cents").notNull().default(0),
+  freeShippingMinSubtotalCents: integer("free_shipping_min_subtotal_cents"),
+  freeShippingMaxWeightKg: numeric("free_shipping_max_weight_kg", { precision: 10, scale: 2, mode: "number" }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/**
+ * A distance/weight band for a freight rule. Either axis may be left unbounded (null on both
+ * sides of that axis) — a rule with a single range spanning both axes fully behaves like one flat
+ * rate. Distance bounds only ever match when the order's distance is known; since real distance
+ * requires geocoding (SPEC.md §10, LOG-03, not built yet), every quote today resolves with
+ * distanceKm=null, so only ranges with both distance bounds null are reachable until LOG-03 lands
+ * — see the explicit, tested fallback in src/lib/freight.ts.
+ */
+export const freightRanges = pgTable(
+  "freight_ranges",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    ruleId: uuid("rule_id")
+      .notNull()
+      .references(() => freightRules.id, { onDelete: "cascade" }),
+    distanceFromKm: integer("distance_from_km"),
+    distanceToKm: integer("distance_to_km"),
+    weightFromKg: numeric("weight_from_kg", { precision: 10, scale: 2, mode: "number" }),
+    weightToKg: numeric("weight_to_kg", { precision: 10, scale: 2, mode: "number" }),
+    valueCents: integer("value_cents").notNull(),
+  },
+  (table) => [index("freight_ranges_rule_idx").on(table.ruleId)],
+);
+
+/** A per-order additional charge a supplier may offer (SPEC.md §10, LOG-02) — the buyer opts into
+ * whichever apply to their delivery at checkout (e.g. "sem elevador"), so these are never applied
+ * automatically. One row per type per rule. */
+export const freightSurcharges = pgTable(
+  "freight_surcharges",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    ruleId: uuid("rule_id")
+      .notNull()
+      .references(() => freightRules.id, { onDelete: "cascade" }),
+    type: freightSurchargeTypeEnum("type").notNull(),
+    valueCents: integer("value_cents").notNull(),
+    active: boolean("active").notNull().default(true),
+  },
+  (table) => [index("freight_surcharges_rule_idx").on(table.ruleId), unique().on(table.ruleId, table.type)],
+);
+
+export const freightRulesRelations = relations(freightRules, ({ one, many }) => ({
+  supplier: one(users, {
+    fields: [freightRules.supplierId],
+    references: [users.id],
+  }),
+  ranges: many(freightRanges),
+  surcharges: many(freightSurcharges),
+}));
+
+export const freightRangesRelations = relations(freightRanges, ({ one }) => ({
+  rule: one(freightRules, {
+    fields: [freightRanges.ruleId],
+    references: [freightRules.id],
+  }),
+}));
+
+export const freightSurchargesRelations = relations(freightSurcharges, ({ one }) => ({
+  rule: one(freightRules, {
+    fields: [freightSurcharges.ruleId],
+    references: [freightRules.id],
+  }),
+}));
+
+export type FreightRule = typeof freightRules.$inferSelect;
+export type FreightRange = typeof freightRanges.$inferSelect;
+export type FreightSurcharge = typeof freightSurcharges.$inferSelect;

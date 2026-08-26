@@ -86,10 +86,19 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
                 <span>Subtotal</span>
                 <span>{formatCentsToBRL(order.subtotalCents)}</span>
               </div>
-              <div className="flex justify-between py-2 text-sm text-muted-foreground">
-                <span>Frete</span>
-                <span>{order.shippingCents === 0 ? "Grátis" : formatCentsToBRL(order.shippingCents)}</span>
-              </div>
+              {Array.isArray(order.shippingBreakdown) && order.shippingBreakdown.length > 0 ? (
+                (order.shippingBreakdown as { label: string; valueCents: number }[]).map((line, i) => (
+                  <div key={i} className="flex justify-between py-2 text-sm text-muted-foreground">
+                    <span>{line.label}</span>
+                    <span>{line.valueCents === 0 ? "Grátis" : formatCentsToBRL(line.valueCents)}</span>
+                  </div>
+                ))
+              ) : (
+                <div className="flex justify-between py-2 text-sm text-muted-foreground">
+                  <span>Frete</span>
+                  <span>{order.shippingCents === 0 ? "Grátis" : formatCentsToBRL(order.shippingCents)}</span>
+                </div>
+              )}
               <div className="flex justify-between py-2 font-semibold text-foreground">
                 <span>Total</span>
                 <span>{formatCentsToBRL(order.totalCents)}</span>

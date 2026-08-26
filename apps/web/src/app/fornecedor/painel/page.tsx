@@ -18,6 +18,7 @@ import { deactivateOwnProductAction, reactivateOwnProductAction } from "@/server
 import { supplierAdvanceOrderAction } from "@/server/actions/order-actions";
 import { getFinancialAnalytics, PERIOD_LABELS, type AnalyticsPeriod } from "@/server/queries/analytics";
 import { getSupplierCoverageAreas } from "@/server/queries/logistics";
+import { getSupplierFreightConfig } from "@/server/queries/freight";
 import { ShipOrderForm } from "./ship-order-form";
 import { LogisticsTab } from "./logistics-tab";
 
@@ -85,10 +86,14 @@ export default async function SupplierDashboardPage({
         })
       : [];
 
-  const [coverageAreas, allCategories] =
+  const [coverageAreas, allCategories, freightRule] =
     activeTab.key === "logistica"
-      ? await Promise.all([getSupplierCoverageAreas(user.id), db.query.categories.findMany({ orderBy: (c, { asc }) => [asc(c.name)] })])
-      : [[], []];
+      ? await Promise.all([
+          getSupplierCoverageAreas(user.id),
+          db.query.categories.findMany({ orderBy: (c, { asc }) => [asc(c.name)] }),
+          getSupplierFreightConfig(user.id),
+        ])
+      : [[], [], undefined];
 
   const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
   const [allOrders, ordersThisMonth, analytics] = await Promise.all([
@@ -351,6 +356,19 @@ export default async function SupplierDashboardPage({
           areas={coverageAreas}
           products={products.map((p) => ({ id: p.id, name: p.name }))}
           categories={allCategories.map((c) => ({ id: c.id, name: c.name }))}
+          freightConfig={
+            freightRule
+              ? {
+                  chargeType: freightRule.chargeType,
+                  cubicFactorKgPerM3: freightRule.cubicFactorKgPerM3,
+                  minFreightCents: freightRule.minFreightCents,
+                  freeShippingMinSubtotalCents: freightRule.freeShippingMinSubtotalCents,
+                  freeShippingMaxWeightKg: freightRule.freeShippingMaxWeightKg,
+                  ranges: freightRule.ranges,
+                  surcharges: freightRule.surcharges,
+                }
+              : null
+          }
         />
       )}
     </div>

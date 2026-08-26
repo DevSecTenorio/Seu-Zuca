@@ -21,6 +21,10 @@ function parseProductForm(formData: FormData) {
     priceReais: formData.get("priceReais"),
     stock: formData.get("stock"),
     leadTimeDays: formData.get("leadTimeDays"),
+    weightGrams: formData.get("weightGrams"),
+    lengthCm: formData.get("lengthCm"),
+    widthCm: formData.get("widthCm"),
+    heightCm: formData.get("heightCm"),
   });
 }
 
@@ -66,6 +70,10 @@ export async function createProductAction(_prevState: FormState, formData: FormD
       priceCents: reaisToCents(data.priceReais),
       stock: data.stock,
       leadTimeDays: data.leadTimeDays,
+      weightGrams: data.weightGrams,
+      lengthCm: data.lengthCm,
+      widthCm: data.widthCm,
+      heightCm: data.heightCm,
       moderationStatus: "aguardando_aprovacao",
     })
     .returning();
@@ -130,6 +138,10 @@ export async function updateProductAction(
       priceCents: reaisToCents(data.priceReais),
       stock: data.stock,
       leadTimeDays: data.leadTimeDays,
+      weightGrams: data.weightGrams,
+      lengthCm: data.lengthCm,
+      widthCm: data.widthCm,
+      heightCm: data.heightCm,
       moderationStatus: "aguardando_aprovacao",
       rejectionReason: null,
       updatedAt: new Date(),

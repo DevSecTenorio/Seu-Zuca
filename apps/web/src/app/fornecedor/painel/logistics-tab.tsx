@@ -7,6 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { deleteCoverageAreaAction, toggleCoverageAreaActiveAction } from "@/server/actions/logistics-actions";
 import { CoverageFormDialog, type CoverageAreaData } from "./coverage-form-dialog";
 import { CepImportDialog } from "./cep-import-dialog";
+import { FreightForm, type FreightRuleData } from "./freight-form";
 
 type Option = { id: string; name: string };
 
@@ -34,13 +35,17 @@ export function LogisticsTab({
   areas,
   products,
   categories,
+  freightConfig,
 }: {
   areas: CoverageAreaWithRelations[];
   products: Option[];
   categories: Option[];
+  freightConfig: FreightRuleData | null;
 }) {
   return (
     <div className="mt-6 space-y-6">
+      <FreightForm config={freightConfig} />
+
       <Card>
         <CardHeader className="flex-row items-center justify-between space-y-0">
           <div>

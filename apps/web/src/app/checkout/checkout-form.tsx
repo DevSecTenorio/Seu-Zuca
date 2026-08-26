@@ -111,7 +111,7 @@ export function CheckoutForm({ addresses }: { addresses: Address[] }) {
   const defaultAddress = addresses.find((a) => a.isDefault) ?? addresses[0];
 
   return (
-    <form action={formAction} className="space-y-8" noValidate>
+    <form id="checkout-form" action={formAction} className="space-y-8" noValidate>
       {state.status === "error" && state.message && (
         <Alert variant="destructive">
           <AlertCircle className="size-4" />

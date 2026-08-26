@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getCurrentUser } from "@/lib/auth/session";
 import { getCartForBuyer } from "@/server/queries/cart";
-import { calculateShippingCents } from "@/lib/shipping";
+import { quoteSupplierFreight } from "@/server/queries/freight";
 import { formatCentsToBRL } from "@/lib/format";
 import { CartItemRow } from "./cart-item-row";
 
@@ -72,18 +72,35 @@ export default async function CartPage() {
     bySupplier.set(key, list);
   }
 
-  let grandTotalCents = 0;
+  const groups = await Promise.all(
+    Array.from(bySupplier.values()).map(async (supplierItems) => {
+      const subtotalCents = supplierItems.reduce((sum, i) => sum + i.product.priceCents * i.quantity, 0);
+      // No surcharges yet at this stage — the buyer picks those at checkout, once the freight
+      // engine's auditable breakdown is shown alongside the delivery address (SPEC.md §10).
+      const freight = await quoteSupplierFreight(
+        supplierItems[0].product.supplierId,
+        supplierItems.map((i) => ({
+          weightGrams: i.product.weightGrams,
+          lengthCm: i.product.lengthCm,
+          widthCm: i.product.widthCm,
+          heightCm: i.product.heightCm,
+          quantity: i.quantity,
+        })),
+        subtotalCents,
+        [],
+      );
+      return { supplierItems, subtotalCents, shippingCents: freight.totalCents };
+    }),
+  );
+  const grandTotalCents = groups.reduce((sum, g) => sum + g.subtotalCents + g.shippingCents, 0);
 
   return (
     <div className="mx-auto w-full max-w-4xl flex-1 px-4 py-8 sm:px-6 lg:px-8">
       <h1 className="text-2xl font-semibold text-foreground">Carrinho</h1>
 
       <div className="mt-6 space-y-6">
-        {Array.from(bySupplier.values()).map((supplierItems) => {
+        {groups.map(({ supplierItems, subtotalCents, shippingCents }) => {
           const supplier = supplierItems[0].product.supplier;
-          const subtotalCents = supplierItems.reduce((sum, i) => sum + i.product.priceCents * i.quantity, 0);
-          const shippingCents = calculateShippingCents(subtotalCents);
-          grandTotalCents += subtotalCents + shippingCents;
 
           return (
             <Card key={supplier.id}>

@@ -78,3 +78,20 @@ export const deliveryCoverageModeEnum = pgEnum("delivery_coverage_mode", [
   "cobertura",
   "exclusao",
 ]);
+
+export const freightChargeTypeEnum = pgEnum("freight_charge_type", [
+  "fixo",
+  "por_km",
+  "por_kg",
+  "por_km_kg",
+]);
+
+export const freightSurchargeTypeEnum = pgEnum("freight_surcharge_type", [
+  "descarga",
+  "munck",
+  "ajudante",
+  "andar",
+  "fim_de_semana",
+  "dificil_acesso",
+  "pedagio",
+]);

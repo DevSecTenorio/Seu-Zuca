@@ -1,9 +1,8 @@
 /**
- * MVP shipping model (SPEC.md §5 explicitly leaves this open: "valor informado por fornecedor
- * por pedido ou tabela simples — decidir e documentar"). Per-supplier freight tables aren't in
- * the data model, so this is a simple flat rule per order (i.e. per supplier, since checkout
- * splits into one order per supplier): free above a threshold, flat fee below it. Revisit with a
- * real carrier/rate integration post-MVP (see ROADMAP.md backlog).
+ * Fallback shipping model, used only for a supplier who hasn't configured a freight rule yet
+ * (SPEC.md §10, LOG-02, in src/lib/freight.ts): free above a threshold, flat fee below it. Kept
+ * so a supplier's catalog doesn't go from "has a shipping cost" to "ships free" the moment LOG-02
+ * shipped, before they've had a chance to set up real rates.
  */
 const FREE_SHIPPING_THRESHOLD_CENTS = 50000; // R$ 500,00
 const FLAT_SHIPPING_CENTS = 2990; // R$ 29,90

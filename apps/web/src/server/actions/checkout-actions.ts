@@ -5,10 +5,10 @@ import { and, eq, gte, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { requireApprovedUser } from "@/lib/auth/require-user";
 import { validateQuantity } from "@/lib/quantity-rules";
-import { calculateShippingCents } from "@/lib/shipping";
-import { calculateCommissionCents } from "@/lib/commission";
-import { getCommissionPercent } from "@/lib/settings";
+import { calculateCommissionCents, commissionBaseCents } from "@/lib/commission";
+import { getCommissionBase, getCommissionPercent } from "@/lib/settings";
 import { onlyDigits } from "@/lib/cnpj";
+import { FREIGHT_SURCHARGE_TYPES, type FreightSurchargeType } from "@/lib/freight";
 import {
   createBoletoPayment,
   createCardCheckoutPreference,
@@ -18,7 +18,14 @@ import {
 import { logAudit } from "@/lib/audit";
 import { getBuyableProduct, ruleFor } from "@/server/queries/cart";
 import { isProductCoveredForAddress } from "@/server/queries/logistics";
+import { quoteSupplierFreight } from "@/server/queries/freight";
 import type { FormState } from "./form-state";
+
+function parseSelectedSurcharges(formData: FormData, supplierId: string): FreightSurchargeType[] {
+  const raw = String(formData.get(`surcharges_${supplierId}`) ?? "");
+  const requested = raw.split(",").map((s) => s.trim()).filter(Boolean);
+  return requested.filter((s): s is FreightSurchargeType => (FREIGHT_SURCHARGE_TYPES as readonly string[]).includes(s));
+}
 
 const PAYMENT_METHODS = ["pix", "boleto", "cartao"] as const;
 type PaymentMethod = (typeof PAYMENT_METHODS)[number];
@@ -86,7 +93,7 @@ export async function createCheckoutAction(_prevState: FormState, formData: Form
     }
   }
 
-  const commissionPercent = await getCommissionPercent();
+  const [commissionPercent, commissionBase] = await Promise.all([getCommissionPercent(), getCommissionBase()]);
 
   const bySupplier = new Map<string, typeof cart.items>();
   for (const item of cart.items) {
@@ -100,14 +107,38 @@ export async function createCheckoutAction(_prevState: FormState, formData: Form
   const orderIds: string[] = [];
 
   try {
-    await db.transaction(async (tx) => {
-      const supplierGroups = Array.from(bySupplier.entries()).map(([supplierId, items]) => {
+    const supplierGroups = await Promise.all(
+      Array.from(bySupplier.entries()).map(async ([supplierId, items]) => {
         const subtotalCents = items.reduce((sum, i) => sum + i.product.priceCents * i.quantity, 0);
-        const shippingCents = calculateShippingCents(subtotalCents);
-        const commissionCents = calculateCommissionCents(subtotalCents, commissionPercent);
-        return { supplierId, items, subtotalCents, shippingCents, totalCents: subtotalCents + shippingCents, commissionCents };
-      });
-      grandTotalCents = supplierGroups.reduce((sum, g) => sum + g.totalCents, 0);
+        const selectedSurcharges = parseSelectedSurcharges(formData, supplierId);
+        const freight = await quoteSupplierFreight(
+          supplierId,
+          items.map((i) => ({
+            weightGrams: i.product.weightGrams,
+            lengthCm: i.product.lengthCm,
+            widthCm: i.product.widthCm,
+            heightCm: i.product.heightCm,
+            quantity: i.quantity,
+          })),
+          subtotalCents,
+          selectedSurcharges,
+        );
+        const shippingCents = freight.totalCents;
+        const commissionCents = calculateCommissionCents(commissionBaseCents(subtotalCents, shippingCents, commissionBase), commissionPercent);
+        return {
+          supplierId,
+          items,
+          subtotalCents,
+          shippingCents,
+          shippingBreakdown: freight.lines,
+          totalCents: subtotalCents + shippingCents,
+          commissionCents,
+        };
+      }),
+    );
+    grandTotalCents = supplierGroups.reduce((sum, g) => sum + g.totalCents, 0);
+
+    await db.transaction(async (tx) => {
 
       const [checkoutGroup] = await tx
         .insert(schema.checkoutGroups)
@@ -125,6 +156,7 @@ export async function createCheckoutAction(_prevState: FormState, formData: Form
             status: "aguardando_pagamento",
             subtotalCents: group.subtotalCents,
             shippingCents: group.shippingCents,
+            shippingBreakdown: group.shippingBreakdown,
             totalCents: group.totalCents,
             commissionPercent: commissionPercent.toFixed(2),
             commissionCents: group.commissionCents,

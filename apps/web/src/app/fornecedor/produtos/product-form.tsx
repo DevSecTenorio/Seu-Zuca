@@ -51,6 +51,10 @@ export function ProductForm({
     priceCents: number;
     stock: number;
     leadTimeDays: number;
+    weightGrams: number;
+    lengthCm: number;
+    widthCm: number;
+    heightCm: number;
     rejectionReason: string | null;
     images: ExistingImage[];
   };
@@ -164,6 +168,33 @@ export function ProductForm({
         {state.fieldErrors?.leadTimeDays && (
           <p className="text-sm text-destructive">{state.fieldErrors.leadTimeDays[0]}</p>
         )}
+      </div>
+
+      <div className="space-y-2">
+        <Label>Peso e dimensões (por unidade vendida)</Label>
+        <p className="text-xs text-muted-foreground">Usados para calcular o frete (peso real e peso cubado).</p>
+        <div className="grid gap-4 sm:grid-cols-4">
+          <div className="space-y-2">
+            <Label htmlFor="weightGrams">Peso (g)</Label>
+            <Input id="weightGrams" name="weightGrams" type="number" min={1} defaultValue={product?.weightGrams ?? 1000} required />
+            {state.fieldErrors?.weightGrams && <p className="text-sm text-destructive">{state.fieldErrors.weightGrams[0]}</p>}
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="lengthCm">Comprimento (cm)</Label>
+            <Input id="lengthCm" name="lengthCm" type="number" min={1} defaultValue={product?.lengthCm ?? 10} required />
+            {state.fieldErrors?.lengthCm && <p className="text-sm text-destructive">{state.fieldErrors.lengthCm[0]}</p>}
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="widthCm">Largura (cm)</Label>
+            <Input id="widthCm" name="widthCm" type="number" min={1} defaultValue={product?.widthCm ?? 10} required />
+            {state.fieldErrors?.widthCm && <p className="text-sm text-destructive">{state.fieldErrors.widthCm[0]}</p>}
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="heightCm">Altura (cm)</Label>
+            <Input id="heightCm" name="heightCm" type="number" min={1} defaultValue={product?.heightCm ?? 10} required />
+            {state.fieldErrors?.heightCm && <p className="text-sm text-destructive">{state.fieldErrors.heightCm[0]}</p>}
+          </div>
+        </div>
       </div>
 
       <div className="space-y-2">

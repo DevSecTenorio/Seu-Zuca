@@ -70,6 +70,12 @@ export const products = pgTable(
     priceCents: integer("price_cents").notNull(),
     stock: integer("stock").notNull().default(0),
     leadTimeDays: integer("lead_time_days").notNull().default(1),
+    // Per unit sold (the same unit as `stock`/the cart quantity) — used to compute a shipment's
+    // real weight and cubic (volumetric) weight for the freight engine (SPEC.md §10, LOG-02).
+    weightGrams: integer("weight_grams").notNull().default(1000),
+    lengthCm: integer("length_cm").notNull().default(10),
+    widthCm: integer("width_cm").notNull().default(10),
+    heightCm: integer("height_cm").notNull().default(10),
     moderationStatus: productModerationStatusEnum("moderation_status")
       .notNull()
       .default("aguardando_aprovacao"),
