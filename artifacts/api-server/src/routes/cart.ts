@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { db, cartItemsTable, productsTable, categoriesTable, categoryMinimumRulesTable } from "@workspace/db";
+import { db, cartItemsTable, productsTable, categoriesTable, categoryMinimumRulesTable, unidadesMedidaTable } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
 import { authMiddleware, requireApprovedBuyer, type AuthRequest } from "../middlewares/auth";
 
@@ -15,6 +15,10 @@ async function buildCart(userId: number) {
   const detailedItems = await Promise.all(items.map(async (item) => {
     const [product] = await db.select().from(productsTable).where(eq(productsTable.id, item.productId));
     if (!product) return null;
+
+    const [unit] = product.unidadeMedidaId
+      ? await db.select().from(unidadesMedidaTable).where(eq(unidadesMedidaTable.id, product.unidadeMedidaId))
+      : [];
 
     const [rule] = await db.select().from(categoryMinimumRulesTable).where(eq(categoryMinimumRulesTable.categoryId, product.categoryId));
     const quantidadeMinima = rule?.quantidadeMinima || 1;
@@ -44,7 +48,7 @@ async function buildCart(userId: number) {
         nome: product.nome,
         slug: product.slug,
         preco: product.preco,
-        unidadeMedida: product.unidadeMedida,
+        unidadeMedida: unit?.sigla || "",
         imagemPrincipal: product.imagemPrincipal,
         disponivel: product.disponivel,
         categoryId: product.categoryId,

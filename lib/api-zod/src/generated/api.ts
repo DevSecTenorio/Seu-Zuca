@@ -49,7 +49,7 @@ export const LoginUserResponse = zod.object({
     id: zod.number(),
     email: zod.string(),
     nome: zod.string(),
-    role: zod.enum(["admin", "buyer", "supplier"]),
+    role: zod.enum(["admin", "buyer", "supplier", "support"]),
     status: zod.enum(["pending", "approved", "rejected", "suspended"]),
     cnpj: zod.string().optional(),
     razaoSocial: zod.string().optional(),
@@ -77,7 +77,7 @@ export const GetMeResponse = zod.object({
   id: zod.number(),
   email: zod.string(),
   nome: zod.string(),
-  role: zod.enum(["admin", "buyer", "supplier"]),
+  role: zod.enum(["admin", "buyer", "supplier", "support"]),
   status: zod.enum(["pending", "approved", "rejected", "suspended"]),
   cnpj: zod.string().optional(),
   razaoSocial: zod.string().optional(),
@@ -171,6 +171,7 @@ export const ListCategoriesResponseItem = zod.object({
   descricao: zod.string().optional(),
   parentId: zod.number().optional(),
   unidadeMedida: zod.string().optional(),
+  icone: zod.string().nullish(),
   ativo: zod.boolean(),
   ordem: zod.number().optional(),
   minimumRule: zod
@@ -196,6 +197,7 @@ export const CreateCategoryBody = zod.object({
   descricao: zod.string().optional(),
   parentId: zod.number().nullish(),
   unidadeMedidaId: zod.number().nullish(),
+  icone: zod.string().nullish(),
   ativo: zod.boolean().optional(),
   ordem: zod.number().optional(),
 });
@@ -214,6 +216,7 @@ export const GetCategoryResponse = zod.object({
   descricao: zod.string().optional(),
   parentId: zod.number().optional(),
   unidadeMedida: zod.string().optional(),
+  icone: zod.string().nullish(),
   ativo: zod.boolean(),
   ordem: zod.number().optional(),
   minimumRule: zod
@@ -242,6 +245,7 @@ export const UpdateCategoryBody = zod.object({
   descricao: zod.string().optional(),
   parentId: zod.number().nullish(),
   unidadeMedidaId: zod.number().nullish(),
+  icone: zod.string().nullish(),
   ativo: zod.boolean().optional(),
   ordem: zod.number().optional(),
 });
@@ -253,6 +257,7 @@ export const UpdateCategoryResponse = zod.object({
   descricao: zod.string().optional(),
   parentId: zod.number().optional(),
   unidadeMedida: zod.string().optional(),
+  icone: zod.string().nullish(),
   ativo: zod.boolean(),
   ordem: zod.number().optional(),
   minimumRule: zod
@@ -287,6 +292,7 @@ export const ListProductsQueryParams = zod.object({
   categoryId: zod.coerce.number().optional(),
   supplierId: zod.coerce.number().optional(),
   available: zod.coerce.boolean().optional(),
+  orderBy: zod.enum(["nome", "preco", "estoque", "createdAt"]).optional(),
   page: zod.coerce.number().optional(),
   limit: zod.coerce.number().optional(),
 });
@@ -303,6 +309,10 @@ export const ListProductsResponse = zod.object({
       unidadeMedida: zod.string().optional(),
       estoque: zod.number().optional(),
       disponivel: zod.boolean(),
+      status: zod
+        .enum(["aguardando_aprovacao", "aprovado", "rejeitado"])
+        .optional(),
+      motivoRejeicao: zod.string().nullish(),
       categoryId: zod.number(),
       categoryName: zod.string().optional(),
       supplierId: zod.number(),
@@ -338,6 +348,10 @@ export const GetProductResponse = zod
     unidadeMedida: zod.string().optional(),
     estoque: zod.number().optional(),
     disponivel: zod.boolean(),
+    status: zod
+      .enum(["aguardando_aprovacao", "aprovado", "rejeitado"])
+      .optional(),
+    motivoRejeicao: zod.string().nullish(),
     categoryId: zod.number(),
     categoryName: zod.string().optional(),
     supplierId: zod.number(),
@@ -361,6 +375,7 @@ export const GetProductResponse = zod
           descricao: zod.string().optional(),
           parentId: zod.number().optional(),
           unidadeMedida: zod.string().optional(),
+          icone: zod.string().nullish(),
           ativo: zod.boolean(),
           ordem: zod.number().optional(),
           minimumRule: zod
@@ -381,7 +396,7 @@ export const GetProductResponse = zod
           id: zod.number(),
           email: zod.string(),
           nome: zod.string(),
-          role: zod.enum(["admin", "buyer", "supplier"]),
+          role: zod.enum(["admin", "buyer", "supplier", "support"]),
           status: zod.enum(["pending", "approved", "rejected", "suspended"]),
           cnpj: zod.string().optional(),
           razaoSocial: zod.string().optional(),
@@ -449,6 +464,10 @@ export const ListSupplierProductsResponseItem = zod
     unidadeMedida: zod.string().optional(),
     estoque: zod.number().optional(),
     disponivel: zod.boolean(),
+    status: zod
+      .enum(["aguardando_aprovacao", "aprovado", "rejeitado"])
+      .optional(),
+    motivoRejeicao: zod.string().nullish(),
     categoryId: zod.number(),
     categoryName: zod.string().optional(),
     supplierId: zod.number(),
@@ -472,6 +491,7 @@ export const ListSupplierProductsResponseItem = zod
           descricao: zod.string().optional(),
           parentId: zod.number().optional(),
           unidadeMedida: zod.string().optional(),
+          icone: zod.string().nullish(),
           ativo: zod.boolean(),
           ordem: zod.number().optional(),
           minimumRule: zod
@@ -492,7 +512,7 @@ export const ListSupplierProductsResponseItem = zod
           id: zod.number(),
           email: zod.string(),
           nome: zod.string(),
-          role: zod.enum(["admin", "buyer", "supplier"]),
+          role: zod.enum(["admin", "buyer", "supplier", "support"]),
           status: zod.enum(["pending", "approved", "rejected", "suspended"]),
           cnpj: zod.string().optional(),
           razaoSocial: zod.string().optional(),
@@ -591,6 +611,10 @@ export const UpdateProductResponse = zod
     unidadeMedida: zod.string().optional(),
     estoque: zod.number().optional(),
     disponivel: zod.boolean(),
+    status: zod
+      .enum(["aguardando_aprovacao", "aprovado", "rejeitado"])
+      .optional(),
+    motivoRejeicao: zod.string().nullish(),
     categoryId: zod.number(),
     categoryName: zod.string().optional(),
     supplierId: zod.number(),
@@ -614,6 +638,7 @@ export const UpdateProductResponse = zod
           descricao: zod.string().optional(),
           parentId: zod.number().optional(),
           unidadeMedida: zod.string().optional(),
+          icone: zod.string().nullish(),
           ativo: zod.boolean(),
           ordem: zod.number().optional(),
           minimumRule: zod
@@ -634,7 +659,7 @@ export const UpdateProductResponse = zod
           id: zod.number(),
           email: zod.string(),
           nome: zod.string(),
-          role: zod.enum(["admin", "buyer", "supplier"]),
+          role: zod.enum(["admin", "buyer", "supplier", "support"]),
           status: zod.enum(["pending", "approved", "rejected", "suspended"]),
           cnpj: zod.string().optional(),
           razaoSocial: zod.string().optional(),
@@ -844,6 +869,10 @@ export const GetCartResponse = zod.object({
           unidadeMedida: zod.string().optional(),
           estoque: zod.number().optional(),
           disponivel: zod.boolean(),
+          status: zod
+            .enum(["aguardando_aprovacao", "aprovado", "rejeitado"])
+            .optional(),
+          motivoRejeicao: zod.string().nullish(),
           categoryId: zod.number(),
           categoryName: zod.string().optional(),
           supplierId: zod.number(),
@@ -900,6 +929,10 @@ export const AddToCartResponse = zod.object({
           unidadeMedida: zod.string().optional(),
           estoque: zod.number().optional(),
           disponivel: zod.boolean(),
+          status: zod
+            .enum(["aguardando_aprovacao", "aprovado", "rejeitado"])
+            .optional(),
+          motivoRejeicao: zod.string().nullish(),
           categoryId: zod.number(),
           categoryName: zod.string().optional(),
           supplierId: zod.number(),
@@ -952,6 +985,10 @@ export const UpdateCartItemResponse = zod.object({
           unidadeMedida: zod.string().optional(),
           estoque: zod.number().optional(),
           disponivel: zod.boolean(),
+          status: zod
+            .enum(["aguardando_aprovacao", "aprovado", "rejeitado"])
+            .optional(),
+          motivoRejeicao: zod.string().nullish(),
           categoryId: zod.number(),
           categoryName: zod.string().optional(),
           supplierId: zod.number(),
@@ -1000,6 +1037,10 @@ export const RemoveFromCartResponse = zod.object({
           unidadeMedida: zod.string().optional(),
           estoque: zod.number().optional(),
           disponivel: zod.boolean(),
+          status: zod
+            .enum(["aguardando_aprovacao", "aprovado", "rejeitado"])
+            .optional(),
+          motivoRejeicao: zod.string().nullish(),
           categoryId: zod.number(),
           categoryName: zod.string().optional(),
           supplierId: zod.number(),
@@ -1251,6 +1292,10 @@ export const GetWishlistResponseItem = zod.object({
       unidadeMedida: zod.string().optional(),
       estoque: zod.number().optional(),
       disponivel: zod.boolean(),
+      status: zod
+        .enum(["aguardando_aprovacao", "aprovado", "rejeitado"])
+        .optional(),
+      motivoRejeicao: zod.string().nullish(),
       categoryId: zod.number(),
       categoryName: zod.string().optional(),
       supplierId: zod.number(),
@@ -1397,7 +1442,7 @@ export const AdminListUsersResponse = zod.object({
       id: zod.number(),
       email: zod.string(),
       nome: zod.string(),
-      role: zod.enum(["admin", "buyer", "supplier"]),
+      role: zod.enum(["admin", "buyer", "supplier", "support"]),
       status: zod.enum(["pending", "approved", "rejected", "suspended"]),
       cnpj: zod.string().optional(),
       razaoSocial: zod.string().optional(),
@@ -1425,7 +1470,7 @@ export const AdminApproveUserResponse = zod.object({
   id: zod.number(),
   email: zod.string(),
   nome: zod.string(),
-  role: zod.enum(["admin", "buyer", "supplier"]),
+  role: zod.enum(["admin", "buyer", "supplier", "support"]),
   status: zod.enum(["pending", "approved", "rejected", "suspended"]),
   cnpj: zod.string().optional(),
   razaoSocial: zod.string().optional(),
@@ -1452,7 +1497,7 @@ export const AdminRejectUserResponse = zod.object({
   id: zod.number(),
   email: zod.string(),
   nome: zod.string(),
-  role: zod.enum(["admin", "buyer", "supplier"]),
+  role: zod.enum(["admin", "buyer", "supplier", "support"]),
   status: zod.enum(["pending", "approved", "rejected", "suspended"]),
   cnpj: zod.string().optional(),
   razaoSocial: zod.string().optional(),
@@ -1475,7 +1520,7 @@ export const AdminSuspendUserResponse = zod.object({
   id: zod.number(),
   email: zod.string(),
   nome: zod.string(),
-  role: zod.enum(["admin", "buyer", "supplier"]),
+  role: zod.enum(["admin", "buyer", "supplier", "support"]),
   status: zod.enum(["pending", "approved", "rejected", "suspended"]),
   cnpj: zod.string().optional(),
   razaoSocial: zod.string().optional(),

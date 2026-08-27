@@ -183,7 +183,7 @@ export default function TrocarSenha() {
                   {loading ? "Alterando..." : "Alterar senha"}
                 </Button>
                 {!isMandatory && (
-                  <Button type="button" variant="outline" onClick={() => navigate(-1)}>
+                  <Button type="button" variant="outline" onClick={() => window.history.back()}>
                     Cancelar
                   </Button>
                 )}

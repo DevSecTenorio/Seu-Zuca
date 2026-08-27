@@ -1,4 +1,4 @@
-import { useListOrders } from "@workspace/api-client-react";
+import { useListOrders, getListOrdersQueryKey } from "@workspace/api-client-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Layout } from "@/components/Layout";
 import { Button } from "@/components/ui/button";
@@ -29,7 +29,7 @@ export default function Orders() {
   const { isApprovedBuyer, isSupplier, isAdmin } = useAuth();
 
   const { data: orders, isLoading } = useListOrders({
-    query: { enabled: isApprovedBuyer || isSupplier || isAdmin }
+    query: { queryKey: getListOrdersQueryKey(), enabled: isApprovedBuyer || isSupplier || isAdmin }
   });
 
   if (!isApprovedBuyer && !isSupplier && !isAdmin) {
@@ -76,8 +76,8 @@ export default function Orders() {
                             year: "numeric",
                           })}
                         </p>
-                        {order.supplierNome && (
-                          <p className="text-xs text-muted-foreground mt-0.5">Fornecedor: {order.supplierNome}</p>
+                        {order.supplierName && (
+                          <p className="text-xs text-muted-foreground mt-0.5">Fornecedor: {order.supplierName}</p>
                         )}
                       </div>
                       <div className="flex items-center gap-4 ml-4">

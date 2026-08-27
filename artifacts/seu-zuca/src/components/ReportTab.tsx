@@ -292,7 +292,7 @@ export default function ReportTab({
                 >
                   <span className={`text-xs ${s.color || "text-gray-500"} font-medium`}>{s.label}</span>
                   <span className="text-lg font-bold text-gray-900">
-                    {s.format ? s.format(summary[s.key]) : (summary[s.key] ?? "—")}
+                    {s.format ? s.format(summary[s.key]) : String(summary[s.key] ?? "—")}
                   </span>
                 </div>
               ))}

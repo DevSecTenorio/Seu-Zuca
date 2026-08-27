@@ -359,6 +359,11 @@ paths:
           in: query
           schema:
             type: boolean
+        - name: orderBy
+          in: query
+          schema:
+            type: string
+            enum: [nome, preco, estoque, createdAt]
         - name: page
           in: query
           schema:
@@ -1443,7 +1448,7 @@ components:
           type: string
         role:
           type: string
-          enum: [admin, buyer, supplier]
+          enum: [admin, buyer, supplier, support]
         status:
           type: string
           enum: [pending, approved, rejected, suspended]
@@ -1511,6 +1516,9 @@ components:
           type: integer
         unidadeMedida:
           type: string
+        icone:
+          type: string
+          nullable: true
         ativo:
           type: boolean
         ordem:
@@ -1571,6 +1579,9 @@ components:
           nullable: true
         unidadeMedidaId:
           type: integer
+          nullable: true
+        icone:
+          type: string
           nullable: true
         ativo:
           type: boolean
@@ -1640,6 +1651,12 @@ components:
           type: integer
         disponivel:
           type: boolean
+        status:
+          type: string
+          enum: [aguardando_aprovacao, aprovado, rejeitado]
+        motivoRejeicao:
+          type: string
+          nullable: true
         categoryId:
           type: integer
         categoryName:

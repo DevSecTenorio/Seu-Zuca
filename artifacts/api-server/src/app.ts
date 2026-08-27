@@ -50,6 +50,9 @@ const allowedOrigins: (string | RegExp)[] = (() => {
   if (domains) {
     return domains.split(",").map((d) => `https://${d.trim()}`);
   }
+  if (process.env.VERCEL_URL) {
+    return [`https://${process.env.VERCEL_URL}`];
+  }
   return [/^https?:\/\/localhost(:\d+)?$/, /^https?:\/\/.*\.replit\.dev$/];
 })();
 

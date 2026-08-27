@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useGetCart, useCreateOrder, useListAddresses } from "@workspace/api-client-react";
+import { useGetCart, getGetCartQueryKey, useCreateOrder, useListAddresses, getListAddressesQueryKey } from "@workspace/api-client-react";
 import type { CartItem } from "@workspace/api-client-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Layout } from "@/components/Layout";
@@ -33,8 +33,8 @@ export default function Checkout() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: cart, isLoading: cartLoading } = useGetCart({ query: { enabled: isApprovedBuyer } });
-  const { data: addresses, isLoading: addrLoading } = useListAddresses({ query: { enabled: isApprovedBuyer } });
+  const { data: cart, isLoading: cartLoading } = useGetCart({ query: { queryKey: getGetCartQueryKey(), enabled: isApprovedBuyer } });
+  const { data: addresses, isLoading: addrLoading } = useListAddresses({ query: { queryKey: getListAddressesQueryKey(), enabled: isApprovedBuyer } });
   const createOrder = useCreateOrder();
 
   const [selectedAddress, setSelectedAddress] = useState("");
@@ -163,6 +163,12 @@ export default function Checkout() {
           setSubmitting(false);
           return;
         }
+      }
+
+      if (!finalAddressId) {
+        toast({ title: "Erro ao definir endereço de entrega", variant: "destructive" });
+        setSubmitting(false);
+        return;
       }
 
       const orders = await createOrder.mutateAsync({ data: { addressId: finalAddressId, observacoes: "" } });

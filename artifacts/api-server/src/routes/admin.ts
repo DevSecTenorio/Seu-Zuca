@@ -337,7 +337,7 @@ router.get("/admin/internal-users", authMiddleware, requireAdminOrSupport, async
 
 // ── Internal user: edit ───────────────────────────────────────────────────────
 router.put("/admin/internal-users/:id", authMiddleware, requireAdmin, async (req: AuthRequest, res): Promise<void> => {
-  const id = parseInt(req.params.id, 10);
+  const id = parseInt(req.params.id as string, 10);
   const { nome, email, role, departamento, password } = req.body as {
     nome?: string; email?: string; role?: string; departamento?: string; password?: string;
   };
@@ -383,7 +383,7 @@ router.put("/admin/internal-users/:id", authMiddleware, requireAdmin, async (req
 
 // ── Internal user: delete ─────────────────────────────────────────────────────
 router.delete("/admin/internal-users/:id", authMiddleware, requireAdmin, async (req: AuthRequest, res): Promise<void> => {
-  const id = parseInt(req.params.id, 10);
+  const id = parseInt(req.params.id as string, 10);
 
   if (req.userId === id) {
     res.status(400).json({ message: "Você não pode excluir sua própria conta" });

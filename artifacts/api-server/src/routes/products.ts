@@ -1,7 +1,9 @@
 import { Router, type IRouter } from "express";
 import { db, productsTable, productImagesTable, categoriesTable, categoryMinimumRulesTable, usersTable, reviewsTable, unidadesMedidaTable } from "@workspace/db";
+import type { ProductStatus } from "@workspace/db";
 import { eq, and, ilike, sql, asc, desc } from "drizzle-orm";
 import { authMiddleware, requireSupplier, requireAdmin, type AuthRequest } from "../middlewares/auth";
+import { writeAuditLog, getClientIp } from "../lib/auditLog";
 
 const router: IRouter = Router();
 
@@ -32,7 +34,7 @@ router.get("/products", async (req, res): Promise<void> => {
   const limitNum = Math.min(parseInt(String(limit), 10), 100);
   const offset = (pageNum - 1) * limitNum;
 
-  const conditions: ReturnType<typeof eq>[] = [eq(productsTable.aprovado, true)];
+  const conditions: ReturnType<typeof eq>[] = [eq(productsTable.status, "aprovado")];
   if (categoryId) conditions.push(eq(productsTable.categoryId, parseInt(String(categoryId), 10)));
   if (supplierId) conditions.push(eq(productsTable.supplierId, parseInt(String(supplierId), 10)));
   if (available === "true") conditions.push(eq(productsTable.disponivel, true));
@@ -48,7 +50,7 @@ router.get("/products", async (req, res): Promise<void> => {
     unidadeMedida: unidadesMedidaTable.sigla,
     estoque: productsTable.estoque,
     disponivel: productsTable.disponivel,
-    aprovado: productsTable.aprovado,
+    status: productsTable.status,
     categoryId: productsTable.categoryId,
     supplierId: productsTable.supplierId,
     imagemPrincipal: productsTable.imagemPrincipal,
@@ -64,7 +66,7 @@ router.get("/products", async (req, res): Promise<void> => {
 
   let query;
   if (search) {
-    query = baseSelect.where(and(eq(productsTable.aprovado, true), ilike(productsTable.nome, `%${search}%`)));
+    query = baseSelect.where(and(eq(productsTable.status, "aprovado"), ilike(productsTable.nome, `%${search}%`)));
   } else {
     query = baseSelect.where(and(...conditions));
   }
@@ -77,7 +79,7 @@ router.get("/products", async (req, res): Promise<void> => {
 
   const countBase = db.select({ count: sql<number>`count(*)` }).from(productsTable);
   const countResult = search
-    ? await countBase.where(and(eq(productsTable.aprovado, true), ilike(productsTable.nome, `%${search}%`)))
+    ? await countBase.where(and(eq(productsTable.status, "aprovado"), ilike(productsTable.nome, `%${search}%`)))
     : await countBase.where(and(...conditions));
   const total = Number(countResult[0]?.count || 0);
 
@@ -158,10 +160,11 @@ router.get("/products/:id/reviews", async (req, res): Promise<void> => {
 
 // ADMIN: list all products
 router.get("/admin/products", authMiddleware, requireAdmin, async (req: AuthRequest, res): Promise<void> => {
-  const { aprovado, page = "1" } = req.query;
+  const { status, page = "1" } = req.query;
   const pageNum = parseInt(String(page), 10);
   const limitNum = 20;
   const offset = (pageNum - 1) * limitNum;
+  const statusFilter = status === "aguardando_aprovacao" || status === "aprovado" || status === "rejeitado" ? (status as ProductStatus) : undefined;
 
   let query = db.select({
     id: productsTable.id,
@@ -173,7 +176,8 @@ router.get("/admin/products", authMiddleware, requireAdmin, async (req: AuthRequ
     unidadeMedida: unidadesMedidaTable.sigla,
     estoque: productsTable.estoque,
     disponivel: productsTable.disponivel,
-    aprovado: productsTable.aprovado,
+    status: productsTable.status,
+    motivoRejeicao: productsTable.motivoRejeicao,
     imagemPrincipal: productsTable.imagemPrincipal,
     createdAt: productsTable.createdAt,
     categoryName: categoriesTable.nome,
@@ -185,15 +189,13 @@ router.get("/admin/products", authMiddleware, requireAdmin, async (req: AuthRequ
   .leftJoin(usersTable, eq(productsTable.supplierId, usersTable.id))
   .leftJoin(unidadesMedidaTable, eq(productsTable.unidadeMedidaId, unidadesMedidaTable.id));
 
-  if (aprovado === "false") {
-    query = query.where(eq(productsTable.aprovado, false)) as typeof query;
-  } else if (aprovado === "true") {
-    query = query.where(eq(productsTable.aprovado, true)) as typeof query;
+  if (statusFilter) {
+    query = query.where(eq(productsTable.status, statusFilter)) as typeof query;
   }
 
   const products = await query.orderBy(desc(productsTable.createdAt)).limit(limitNum).offset(offset);
   const countResult = await db.select({ count: sql<number>`count(*)` }).from(productsTable)
-    .where(aprovado === "false" ? eq(productsTable.aprovado, false) : aprovado === "true" ? eq(productsTable.aprovado, true) : sql`1=1`);
+    .where(statusFilter ? eq(productsTable.status, statusFilter) : sql`1=1`);
 
   res.json({ products, total: Number(countResult[0]?.count || 0), page: pageNum, totalPages: Math.ceil(Number(countResult[0]?.count || 0) / limitNum) });
 });
@@ -201,16 +203,44 @@ router.get("/admin/products", authMiddleware, requireAdmin, async (req: AuthRequ
 // ADMIN: approve product
 router.put("/admin/products/:id/approve", authMiddleware, requireAdmin, async (req: AuthRequest, res): Promise<void> => {
   const id = parseInt(Array.isArray(req.params.id) ? req.params.id[0] : req.params.id, 10);
-  const [product] = await db.update(productsTable).set({ aprovado: true }).where(eq(productsTable.id, id)).returning();
+  const [product] = await db.update(productsTable)
+    .set({ status: "aprovado", motivoRejeicao: null })
+    .where(eq(productsTable.id, id))
+    .returning();
   if (!product) { res.status(404).json({ message: "Produto não encontrado" }); return; }
+
+  void writeAuditLog({
+    actorId: req.userId,
+    action: "product.approve",
+    targetId: product.id,
+    targetType: "product",
+    details: { nome: product.nome, supplierId: product.supplierId },
+    ip: getClientIp(req),
+  });
+
   res.json(product);
 });
 
-// ADMIN: reject/hide product
+// ADMIN: reject product
 router.put("/admin/products/:id/reject", authMiddleware, requireAdmin, async (req: AuthRequest, res): Promise<void> => {
   const id = parseInt(Array.isArray(req.params.id) ? req.params.id[0] : req.params.id, 10);
-  const [product] = await db.update(productsTable).set({ aprovado: false }).where(eq(productsTable.id, id)).returning();
+  const motivo: string | undefined = typeof req.body?.motivo === "string" ? req.body.motivo.trim() || undefined : undefined;
+
+  const [product] = await db.update(productsTable)
+    .set({ status: "rejeitado", motivoRejeicao: motivo ?? null })
+    .where(eq(productsTable.id, id))
+    .returning();
   if (!product) { res.status(404).json({ message: "Produto não encontrado" }); return; }
+
+  void writeAuditLog({
+    actorId: req.userId,
+    action: "product.reject",
+    targetId: product.id,
+    targetType: "product",
+    details: { nome: product.nome, supplierId: product.supplierId, motivo: motivo ?? null },
+    ip: getClientIp(req),
+  });
+
   res.json(product);
 });
 
@@ -228,7 +258,8 @@ router.get("/supplier/products", authMiddleware, requireSupplier, async (req: Au
     estoque: productsTable.estoque,
     alertaEstoque: productsTable.alertaEstoque,
     disponivel: productsTable.disponivel,
-    aprovado: productsTable.aprovado,
+    status: productsTable.status,
+    motivoRejeicao: productsTable.motivoRejeicao,
     comissao: productsTable.comissao,
     categoryId: productsTable.categoryId,
     supplierId: productsTable.supplierId,
@@ -274,7 +305,7 @@ router.post("/supplier/products", authMiddleware, requireSupplier, async (req: A
     regioesAtendidas,
     alertaEstoque: alertaEstoque || 10,
     disponivel: (estoque || 0) > 0,
-    aprovado: false,
+    status: "aguardando_aprovacao" satisfies ProductStatus,
     comissao: comissao != null ? Number(comissao) : null,
   }).returning();
 
@@ -297,20 +328,46 @@ router.put("/supplier/products/:id", authMiddleware, requireSupplier, async (req
   const [product] = await db.select().from(productsTable).where(and(eq(productsTable.id, id), eq(productsTable.supplierId, req.userId!)));
   if (!product) { res.status(404).json({ message: "Produto não encontrado" }); return; }
 
+  const currentImages = await db.select().from(productImagesTable).where(eq(productImagesTable.productId, id)).orderBy(asc(productImagesTable.ordem));
+  const currentImageUrls = currentImages.map((i) => i.url);
+
+  const newNome = nome || product.nome;
+  const newDescricao = descricao !== undefined ? descricao : product.descricao;
+  const newPreco = preco || product.preco;
+  const newCategoryId = categoryId || product.categoryId;
+  const newUnidadeMedidaId = unidadeMedidaId != null ? Number(unidadeMedidaId) : product.unidadeMedidaId;
+  const newImagens: string[] | undefined = Array.isArray(imagens) ? imagens : undefined;
+
+  // Campos sensíveis: alteram o que o admin avaliou, então o produto volta para moderação.
+  const sensitiveChanged =
+    newNome !== product.nome ||
+    newDescricao !== product.descricao ||
+    newPreco !== product.preco ||
+    newCategoryId !== product.categoryId ||
+    newUnidadeMedidaId !== product.unidadeMedidaId ||
+    (newImagens !== undefined && JSON.stringify(newImagens) !== JSON.stringify(currentImageUrls));
+
+  const newStatus: ProductStatus = product.status !== "aguardando_aprovacao" && sensitiveChanged
+    ? "aguardando_aprovacao"
+    : (product.status as ProductStatus);
+  const newMotivoRejeicao = newStatus === "aguardando_aprovacao" ? null : product.motivoRejeicao;
+
   const [updated] = await db.update(productsTable).set({
-    nome: nome || product.nome,
-    descricao: descricao !== undefined ? descricao : product.descricao,
+    nome: newNome,
+    descricao: newDescricao,
     sku: sku !== undefined ? sku : product.sku,
-    preco: preco || product.preco,
-    unidadeMedidaId: unidadeMedidaId != null ? Number(unidadeMedidaId) : product.unidadeMedidaId,
+    preco: newPreco,
+    unidadeMedidaId: newUnidadeMedidaId,
     estoque: estoque !== undefined ? estoque : product.estoque,
-    categoryId: categoryId || product.categoryId,
+    categoryId: newCategoryId,
     imagemPrincipal: imagens?.[0] || product.imagemPrincipal,
     prazoFrete: prazoFrete || product.prazoFrete,
     regioesAtendidas: regioesAtendidas || product.regioesAtendidas,
     alertaEstoque: alertaEstoque !== undefined ? alertaEstoque : product.alertaEstoque,
     disponivel: (estoque !== undefined ? estoque : product.estoque) > 0,
     comissao: comissao != null ? Number(comissao) : product.comissao,
+    status: newStatus,
+    motivoRejeicao: newMotivoRejeicao,
   }).where(eq(productsTable.id, id)).returning();
 
   if (imagens && Array.isArray(imagens)) {

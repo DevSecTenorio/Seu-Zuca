@@ -1,4 +1,4 @@
-import { useGetCart, useUpdateCartItem, useRemoveFromCart, useClearCart } from "@workspace/api-client-react";
+import { useGetCart, useUpdateCartItem, useRemoveFromCart, useClearCart, getGetCartQueryKey } from "@workspace/api-client-react";
 import type { CartItem } from "@workspace/api-client-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Layout } from "@/components/Layout";
@@ -15,7 +15,7 @@ export default function Cart() {
   const [, navigate] = useLocation();
   const { toast } = useToast();
 
-  const { data: cart, isLoading, refetch } = useGetCart({ query: { enabled: isApprovedBuyer } });
+  const { data: cart, isLoading, refetch } = useGetCart({ query: { queryKey: getGetCartQueryKey(), enabled: isApprovedBuyer } });
   const updateItem = useUpdateCartItem();
   const removeItem = useRemoveFromCart();
   const clearCart = useClearCart();
@@ -235,7 +235,7 @@ export default function Cart() {
 
             <div className="text-right">
               <button
-                onClick={async () => { await clearCart.mutateAsync({}); refetch(); }}
+                onClick={async () => { await clearCart.mutateAsync(); refetch(); }}
                 className="text-sm text-gray-400 hover:text-red-500 transition-colors"
               >
                 Limpar carrinho

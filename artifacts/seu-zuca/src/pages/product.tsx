@@ -1,5 +1,5 @@
 import { useParams, useLocation } from "wouter";
-import { useGetProduct, useAddToCart, useAddToWishlist, useGetWishlist, useRemoveFromWishlist } from "@workspace/api-client-react";
+import { useGetProduct, useAddToCart, useAddToWishlist, useGetWishlist, getGetWishlistQueryKey, useRemoveFromWishlist } from "@workspace/api-client-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Layout } from "@/components/Layout";
 import { Button } from "@/components/ui/button";
@@ -19,11 +19,11 @@ export default function Product() {
   const canSeePrice = isApprovedBuyer || isAdmin || isSupplier;
   const { toast } = useToast();
 
-  const { data: product, isLoading } = useGetProduct(id!);
+  const { data: product, isLoading } = useGetProduct(Number(id!));
   const addToCart = useAddToCart();
   const addToWishlist = useAddToWishlist();
   const removeFromWishlist = useRemoveFromWishlist();
-  const { data: wishlist, refetch: refetchWishlist } = useGetWishlist({ query: { enabled: isApprovedBuyer } });
+  const { data: wishlist, refetch: refetchWishlist } = useGetWishlist({ query: { queryKey: getGetWishlistQueryKey(), enabled: isApprovedBuyer } });
   const isFavorited = wishlist?.some((w) => w.productId === product?.id) ?? false;
 
   const [qty, setQty] = useState(1);

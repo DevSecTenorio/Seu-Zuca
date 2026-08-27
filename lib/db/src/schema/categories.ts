@@ -10,6 +10,7 @@ export const categoriesTable = pgTable("categories", {
   descricao: text("descricao"),
   parentId: integer("parent_id"),
   unidadeMedidaId: integer("unidade_medida_id").references(() => unidadesMedidaTable.id),
+  icone: text("icone"),
   ativo: boolean("ativo").notNull().default(true),
   ordem: integer("ordem").notNull().default(0),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

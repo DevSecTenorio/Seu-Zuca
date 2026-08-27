@@ -16,7 +16,8 @@ export const productsTable = pgTable("products", {
   estoque: integer("estoque").notNull().default(0),
   alertaEstoque: integer("alerta_estoque").notNull().default(10),
   disponivel: boolean("disponivel").notNull().default(true),
-  aprovado: boolean("aprovado").notNull().default(true),
+  status: text("status").notNull().default("aprovado"),
+  motivoRejeicao: text("motivo_rejeicao"),
   comissao: real("comissao"),
   categoryId: integer("category_id").notNull().references(() => categoriesTable.id),
   supplierId: integer("supplier_id").notNull().references(() => usersTable.id),
@@ -38,6 +39,7 @@ export const productImagesTable = pgTable("product_images", {
 export const insertProductSchema = createInsertSchema(productsTable).omit({ id: true, createdAt: true, updatedAt: true });
 export type InsertProduct = z.infer<typeof insertProductSchema>;
 export type Product = typeof productsTable.$inferSelect;
+export type ProductStatus = "aguardando_aprovacao" | "aprovado" | "rejeitado";
 
 export const insertProductImageSchema = createInsertSchema(productImagesTable).omit({ id: true, createdAt: true });
 export type InsertProductImage = z.infer<typeof insertProductImageSchema>;

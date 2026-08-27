@@ -16,6 +16,7 @@ function getMpClient(): MercadoPagoConfig | null {
 function getBaseUrl(req: import("express").Request): string {
   const domains = process.env["REPLIT_DOMAINS"];
   if (domains) return `https://${domains.split(",")[0]}`;
+  if (process.env["VERCEL_URL"]) return `https://${process.env["VERCEL_URL"]}`;
   return `${req.protocol}://${req.get("host")}`;
 }
 

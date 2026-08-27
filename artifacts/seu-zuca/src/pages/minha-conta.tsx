@@ -170,7 +170,7 @@ export default function MinhaConta() {
     { key: "enderecos", label: "Endereços", icon: MapPin },
   ];
 
-  const u = user as Record<string, string>;
+  const u = user;
 
   return (
     <Layout>

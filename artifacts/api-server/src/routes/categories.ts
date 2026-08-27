@@ -50,7 +50,7 @@ router.get("/categories/:id", async (req, res): Promise<void> => {
 });
 
 router.post("/categories", authMiddleware, requireAdmin, async (req: AuthRequest, res): Promise<void> => {
-  const { nome, slug, descricao, parentId, unidadeMedidaId, ativo, ordem } = req.body;
+  const { nome, slug, descricao, parentId, unidadeMedidaId, icone, ativo, ordem } = req.body;
 
   if (!nome || !slug) {
     res.status(400).json({ message: "Nome e slug são obrigatórios" });
@@ -61,6 +61,7 @@ router.post("/categories", authMiddleware, requireAdmin, async (req: AuthRequest
     nome, slug, descricao,
     parentId: parentId ? Number(parentId) : null,
     unidadeMedidaId: unidadeMedidaId ? Number(unidadeMedidaId) : null,
+    icone: icone || null,
     ativo: ativo !== false, ordem: ordem || 0,
   }).returning();
 
@@ -70,13 +71,14 @@ router.post("/categories", authMiddleware, requireAdmin, async (req: AuthRequest
 router.put("/categories/:id", authMiddleware, requireAdmin, async (req: AuthRequest, res): Promise<void> => {
   const raw = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
   const id = parseInt(raw, 10);
-  const { nome, slug, descricao, parentId, unidadeMedidaId, ativo, ordem } = req.body;
+  const { nome, slug, descricao, parentId, unidadeMedidaId, icone, ativo, ordem } = req.body;
 
   const [cat] = await db.update(categoriesTable)
     .set({
       nome, slug, descricao,
       parentId: parentId ? Number(parentId) : null,
       unidadeMedidaId: unidadeMedidaId != null ? Number(unidadeMedidaId) : null,
+      icone: icone || null,
       ativo, ordem,
     })
     .where(eq(categoriesTable.id, id))

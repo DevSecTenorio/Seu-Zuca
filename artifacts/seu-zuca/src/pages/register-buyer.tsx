@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { AlertCircle, Building2, CheckCircle2, ChevronLeft, ChevronRight, FileText, Loader2, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { useLookupCep } from "@workspace/api-client-react";
+import { useLookupCep, getLookupCepQueryKey } from "@workspace/api-client-react";
 import { DocUploader, Documento, DocTipo, formatCnpj, validateCnpj, formatCep } from "@/components/register-shared";
 
 const DOC_TIPOS_BUYER: { value: DocTipo; label: string; obrigatorio?: boolean }[] = [
@@ -33,7 +33,7 @@ export default function RegisterBuyer() {
   const [, navigate] = useLocation();
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  const { data: cepData } = useLookupCep(cepQuery, { query: { enabled: cepQuery.length === 8 } });
+  const { data: cepData } = useLookupCep(cepQuery, { query: { queryKey: getLookupCepQueryKey(cepQuery), enabled: cepQuery.length === 8 } });
 
   useEffect(() => {
     if (!cepData) return;

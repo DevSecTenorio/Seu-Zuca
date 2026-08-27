@@ -46,7 +46,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   }, [megaOpen]);
 
   async function handleLogout() {
-    await logout.mutateAsync({});
+    await logout.mutateAsync();
     queryClient.clear();
     navigate("/");
   }

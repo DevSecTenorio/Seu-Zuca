@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useParams } from "wouter";
-import { useGetOrder, useUpdateOrderStatus } from "@workspace/api-client-react";
+import { useGetOrder, getGetOrderQueryKey, useUpdateOrderStatus, UpdateOrderStatusBodyStatus } from "@workspace/api-client-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Layout } from "@/components/Layout";
 import { Button } from "@/components/ui/button";
@@ -36,14 +36,14 @@ export default function OrderDetail() {
   const [cancelling, setCancelling] = useState(false);
 
   const { data: order, isLoading, refetch } = useGetOrder(Number(id), {
-    query: { enabled: !!id }
+    query: { queryKey: getGetOrderQueryKey(Number(id)), enabled: !!id }
   });
 
   const updateStatus = useUpdateOrderStatus();
 
   async function handleStatus(status: string) {
     try {
-      await updateStatus.mutateAsync({ id: Number(id), data: { status } });
+      await updateStatus.mutateAsync({ id: Number(id), data: { status: status as UpdateOrderStatusBodyStatus } });
       toast({ title: "Status atualizado!" });
       refetch();
     } catch {

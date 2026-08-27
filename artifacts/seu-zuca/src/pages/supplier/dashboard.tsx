@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import {
-  useGetSupplierStats, useListSupplierProducts, useDeleteProduct,
-  useListSupplierOrders, useUpdateOrderStatus,
+  useGetSupplierStats, getGetSupplierStatsQueryKey, useListSupplierProducts, getListSupplierProductsQueryKey, useDeleteProduct,
+  useListSupplierOrders, getListSupplierOrdersQueryKey, useUpdateOrderStatus, UpdateOrderStatusBodyStatus,
 } from "@workspace/api-client-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Layout } from "@/components/Layout";
@@ -46,9 +46,9 @@ export default function SupplierDashboard() {
   const [loadingAnalytics, setLoadingAnalytics] = useState(false);
   const [analyticsPeriod, setAnalyticsPeriod] = useState<"7d" | "30d" | "3m" | "6m">("30d");
 
-  const { data: dashboard } = useGetSupplierStats({ query: { enabled: isSupplier } });
-  const { data: products, isLoading: loadingProducts, refetch: refetchProducts } = useListSupplierProducts({ query: { enabled: isSupplier } });
-  const { data: orders, isLoading: loadingOrders, refetch: refetchOrders } = useListSupplierOrders({ query: { enabled: isSupplier } });
+  const { data: dashboard } = useGetSupplierStats({ query: { queryKey: getGetSupplierStatsQueryKey(), enabled: isSupplier } });
+  const { data: products, isLoading: loadingProducts, refetch: refetchProducts } = useListSupplierProducts({ query: { queryKey: getListSupplierProductsQueryKey(), enabled: isSupplier } });
+  const { data: orders, isLoading: loadingOrders, refetch: refetchOrders } = useListSupplierOrders({ query: { queryKey: getListSupplierOrdersQueryKey(), enabled: isSupplier } });
   const deleteMutation = useDeleteProduct();
   const updateOrderStatus = useUpdateOrderStatus();
 
@@ -74,14 +74,14 @@ export default function SupplierDashboard() {
 
   async function handleDelete(id: number) {
     if (!confirm("Tem certeza que deseja excluir este produto?")) return;
-    await deleteMutation.mutateAsync({ id: String(id) });
+    await deleteMutation.mutateAsync({ id });
     refetchProducts();
     toast({ title: "Produto excluído" });
   }
 
   async function handleOrderStatus(orderId: number, status: string) {
     try {
-      await updateOrderStatus.mutateAsync({ id: orderId, data: { status } });
+      await updateOrderStatus.mutateAsync({ id: orderId, data: { status: status as UpdateOrderStatusBodyStatus } });
       toast({ title: "Status do pedido atualizado!" });
       refetchOrders();
     } catch {
@@ -105,10 +105,11 @@ export default function SupplierDashboard() {
 
   const productList = (products as Array<{
     id: number; nome: string; sku?: string; imagemPrincipal?: string; categoryName?: string;
-    preco?: number; estoque?: number; alertaEstoque?: number; disponivel?: boolean; aprovado?: boolean;
+    preco?: number; estoque?: number; alertaEstoque?: number; disponivel?: boolean;
+    status?: "aguardando_aprovacao" | "aprovado" | "rejeitado"; motivoRejeicao?: string | null;
   }>) || [];
   const lowStockCount = productList.filter(p => (p.estoque ?? 0) <= (p.alertaEstoque ?? 10) && (p.estoque ?? 0) > 0).length;
-  const pendingCount = productList.filter(p => !p.aprovado).length;
+  const pendingCount = productList.filter(p => p.status === "aguardando_aprovacao").length;
 
   return (
     <Layout>
@@ -193,6 +194,8 @@ export default function SupplierDashboard() {
                         id: number; nome: string; sku?: string;
                         imagemPrincipal?: string; categoryName?: string;
                         preco?: number; estoque?: number; disponivel?: boolean;
+                        status?: "aguardando_aprovacao" | "aprovado" | "rejeitado"; motivoRejeicao?: string | null;
+                        alertaEstoque?: number;
                       }>).map((product) => (
                         <tr key={product.id} className="border-b border-border last:border-0 hover:bg-muted/30">
                           <td className="py-3">
@@ -215,13 +218,23 @@ export default function SupplierDashboard() {
                           </td>
                           <td className="py-3 text-center">
                             <div className="flex flex-col items-center gap-1">
-                              {product.aprovado === false && (
+                              {product.status === "aguardando_aprovacao" && (
                                 <Badge variant="secondary" className="text-xs bg-amber-100 text-amber-700 border-amber-200">Aguard. aprovação</Badge>
+                              )}
+                              {product.status === "rejeitado" && (
+                                <>
+                                  <Badge variant="destructive" className="text-xs">Rejeitado</Badge>
+                                  {product.motivoRejeicao && (
+                                    <p className="text-[10px] text-muted-foreground max-w-[140px] text-center line-clamp-2" title={product.motivoRejeicao}>
+                                      {product.motivoRejeicao}
+                                    </p>
+                                  )}
+                                </>
                               )}
                               {(product.estoque ?? 0) <= (product.alertaEstoque ?? 10) && (product.estoque ?? 0) > 0 && (
                                 <Badge variant="destructive" className="text-xs">Estoque baixo</Badge>
                               )}
-                              {product.aprovado !== false && (product.estoque ?? 0) > (product.alertaEstoque ?? 10) && (
+                              {product.status === "aprovado" && (product.estoque ?? 0) > (product.alertaEstoque ?? 10) && (
                                 <Badge variant={product.disponivel ? "default" : "secondary"} className="text-xs">
                                   {product.disponivel ? "Ativo" : "Inativo"}
                                 </Badge>

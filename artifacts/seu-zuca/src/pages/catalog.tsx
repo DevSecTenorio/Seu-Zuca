@@ -6,7 +6,7 @@ import { Layout } from "@/components/Layout";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Lock, Star, SlidersHorizontal, Building2, Heart } from "lucide-react";
-import { useAddToWishlist, useGetWishlist, useRemoveFromWishlist } from "@workspace/api-client-react";
+import { useAddToWishlist, useGetWishlist, getGetWishlistQueryKey, useRemoveFromWishlist } from "@workspace/api-client-react";
 import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
 
@@ -35,7 +35,7 @@ export default function Catalog() {
   const { data: categories } = useListCategories();
   const wishlistMutation = useAddToWishlist();
   const removeFromWishlist = useRemoveFromWishlist();
-  const { data: wishlist, refetch: refetchWishlist } = useGetWishlist({ query: { enabled: isApprovedBuyer } });
+  const { data: wishlist, refetch: refetchWishlist } = useGetWishlist({ query: { queryKey: getGetWishlistQueryKey(), enabled: isApprovedBuyer } });
   const favIds = useMemo(() => new Set((wishlist ?? []).map((w) => w.productId)), [wishlist]);
 
   function goCategory(id: string | "all") {

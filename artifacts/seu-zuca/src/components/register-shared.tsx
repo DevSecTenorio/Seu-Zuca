@@ -32,7 +32,7 @@ export function DocUploader({ tipo, label, onAdd, jaEnviado }: {
   const ref = useRef<HTMLInputElement>(null);
   const { uploadFile, isUploading, progress } = useUpload({
     onSuccess: (res) => {
-      onAdd({ tipo, nome: label, url: `/api/storage${res.objectPath}`, nomeArquivo: res.objectPath.split("/").pop() || label });
+      onAdd({ tipo, nome: label, url: res.objectPath, nomeArquivo: res.objectPath.split("/").pop() || label });
       toast({ title: `${label} enviado!` });
     },
     onError: (err) => toast({ title: err.message || "Erro ao enviar", variant: "destructive" }),

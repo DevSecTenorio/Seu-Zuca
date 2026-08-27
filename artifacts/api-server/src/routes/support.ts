@@ -29,7 +29,7 @@ router.get("/support/suppliers", authMiddleware, requireAdminOrSupport, async (_
 
 /* ── Supplier profile ───────────────────────────────────────────────────── */
 router.get("/support/suppliers/:id/profile", authMiddleware, requireAdminOrSupport, async (req: AuthRequest, res): Promise<void> => {
-  const id = parseInt(req.params.id, 10);
+  const id = parseInt(req.params.id as string, 10);
   const [supplier] = await db
     .select({
       id: usersTable.id,
@@ -53,7 +53,7 @@ router.get("/support/suppliers/:id/profile", authMiddleware, requireAdminOrSuppo
 
 /* ── Supplier products ──────────────────────────────────────────────────── */
 router.get("/support/suppliers/:id/products", authMiddleware, requireAdminOrSupport, async (req: AuthRequest, res): Promise<void> => {
-  const supplierId = parseInt(req.params.id, 10);
+  const supplierId = parseInt(req.params.id as string, 10);
   const products = await db
     .select()
     .from(productsTable)
@@ -65,7 +65,7 @@ router.get("/support/suppliers/:id/products", authMiddleware, requireAdminOrSupp
 
 /* ── Supplier orders ────────────────────────────────────────────────────── */
 router.get("/support/suppliers/:id/orders", authMiddleware, requireAdminOrSupport, async (req: AuthRequest, res): Promise<void> => {
-  const supplierId = parseInt(req.params.id, 10);
+  const supplierId = parseInt(req.params.id as string, 10);
 
   const orders = await db
     .select({
@@ -94,7 +94,7 @@ router.get("/support/suppliers/:id/orders", authMiddleware, requireAdminOrSuppor
 
 /* ── Supplier reviews ───────────────────────────────────────────────────── */
 router.get("/support/suppliers/:id/reviews", authMiddleware, requireAdminOrSupport, async (req: AuthRequest, res): Promise<void> => {
-  const supplierId = parseInt(req.params.id, 10);
+  const supplierId = parseInt(req.params.id as string, 10);
 
   const reviews = await db
     .select({
@@ -121,7 +121,7 @@ router.get("/support/suppliers/:id/reviews", authMiddleware, requireAdminOrSuppo
 
 /* ── Summary stats for a supplier ──────────────────────────────────────── */
 router.get("/support/suppliers/:id/summary", authMiddleware, requireAdminOrSupport, async (req: AuthRequest, res): Promise<void> => {
-  const supplierId = parseInt(req.params.id, 10);
+  const supplierId = parseInt(req.params.id as string, 10);
 
   const [prodCount] = await db
     .select({ count: sql<number>`count(*)` })
@@ -232,7 +232,7 @@ router.get("/support/buyers", authMiddleware, requireAdminOrSupport, async (req:
 
 /* ── Buyer profile ──────────────────────────────────────────────────────── */
 router.get("/support/buyers/:id/profile", authMiddleware, requireAdminOrSupport, async (req: AuthRequest, res): Promise<void> => {
-  const id = parseInt(req.params.id, 10);
+  const id = parseInt(req.params.id as string, 10);
   const [buyer] = await db
     .select({
       id: usersTable.id,
@@ -256,7 +256,7 @@ router.get("/support/buyers/:id/profile", authMiddleware, requireAdminOrSupport,
 
 /* ── Buyer orders ───────────────────────────────────────────────────────── */
 router.get("/support/buyers/:id/orders", authMiddleware, requireAdminOrSupport, async (req: AuthRequest, res): Promise<void> => {
-  const buyerId = parseInt(req.params.id, 10);
+  const buyerId = parseInt(req.params.id as string, 10);
 
   const orders = await db
     .select({

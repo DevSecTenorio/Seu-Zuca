@@ -27,7 +27,7 @@ router.post("/units", authMiddleware, requireAdmin, async (req: AuthRequest, res
 });
 
 router.put("/units/:id", authMiddleware, requireAdmin, async (req: AuthRequest, res): Promise<void> => {
-  const id = parseInt(req.params.id, 10);
+  const id = parseInt(req.params.id as string, 10);
   const { nome, sigla, ativo } = req.body;
   try {
     const [unit] = await db.update(unidadesMedidaTable)
@@ -42,7 +42,7 @@ router.put("/units/:id", authMiddleware, requireAdmin, async (req: AuthRequest, 
 });
 
 router.delete("/units/:id", authMiddleware, requireAdmin, async (req: AuthRequest, res): Promise<void> => {
-  const id = parseInt(req.params.id, 10);
+  const id = parseInt(req.params.id as string, 10);
   await db.delete(unidadesMedidaTable).where(eq(unidadesMedidaTable.id, id));
   res.json({ message: "Unidade excluída" });
 });

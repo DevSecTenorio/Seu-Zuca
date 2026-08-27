@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from "recharts";
-import { useGetDashboardStats, useAdminListUsers, useAdminApproveUser, useAdminSuspendUser, useAdminRejectUser, useListCategories, useCreateCategory, useUpdateCategory, useDeleteCategory, useListUnidadesMedida, useCreateUnidadeMedida, useUpdateUnidadeMedida, useDeleteUnidadeMedida } from "@workspace/api-client-react";
+import { useGetDashboardStats, getGetDashboardStatsQueryKey, useAdminListUsers, getAdminListUsersQueryKey, useAdminApproveUser, useAdminSuspendUser, useAdminRejectUser, useListCategories, useCreateCategory, useUpdateCategory, useDeleteCategory, useListUnidadesMedida, useCreateUnidadeMedida, useUpdateUnidadeMedida, useDeleteUnidadeMedida } from "@workspace/api-client-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Layout } from "@/components/Layout";
 import ReportTab from "@/components/ReportTab";
@@ -16,8 +16,9 @@ import {
   Users, Package, ShoppingBag, TrendingUp, CheckCircle, XCircle,
   Clock, UserPlus, LayoutDashboard, AlertCircle, Eye, EyeOff, RefreshCw,
   ImageIcon, Plus, Trash2, Edit2, GripVertical, ExternalLink, ToggleLeft, ToggleRight,
-  ShieldCheck, Headphones, UploadCloud, X as XIcon, Link as LinkIcon, FolderOpen, Tag, Star, Percent, ListOrdered, KeyRound, Copy, CheckCheck, BarChart2, FileText, Download, Loader2, Store, Building2
+  ShieldCheck, Headphones, UploadCloud, X as XIcon, Link as LinkIcon, FolderOpen, Tag, Star, Percent, ListOrdered, KeyRound, Copy, CheckCheck, BarChart2, FileText, Download, Loader2, Store, Building2, HelpCircle
 } from "lucide-react";
+import { DynamicIcon, dynamicIconImports } from "lucide-react/dynamic";
 import { useUpload } from "@workspace/object-storage-web";
 import { useToast } from "@/hooks/use-toast";
 
@@ -41,6 +42,7 @@ type UserType = {
   nomeFantasia?: string;
   role?: string;
   status?: string;
+  ramo?: string;
   createdAt?: string;
   documentos?: UserDocumento[];
   comissao?: number | null;
@@ -594,8 +596,7 @@ function BannerImageUploader({ value, onChange }: { value: string; onChange: (ur
 
   const { uploadFile, isUploading, progress } = useUpload({
     onSuccess: (res) => {
-      const servedUrl = `/api/storage${res.objectPath}`;
-      onChange(servedUrl);
+      onChange(res.objectPath);
       toast({ title: "Imagem enviada com sucesso!" });
     },
     onError: (err) => {
@@ -1290,7 +1291,7 @@ function UnitsTab() {
     if (!form.nome || !form.sigla) { toast({ title: "Nome e sigla são obrigatórios", variant: "destructive" }); return; }
     try {
       if (editingId) {
-        await updateMutation.mutateAsync({ id: String(editingId), data: { nome: form.nome, sigla: form.sigla, ativo: form.ativo } });
+        await updateMutation.mutateAsync({ id: editingId, data: { nome: form.nome, sigla: form.sigla, ativo: form.ativo } });
         toast({ title: "Unidade atualizada!" });
       } else {
         await createMutation.mutateAsync({ data: { nome: form.nome, sigla: form.sigla, ativo: form.ativo } });
@@ -1306,7 +1307,7 @@ function UnitsTab() {
 
   async function handleDelete(id: number) {
     try {
-      await deleteMutation.mutateAsync({ id: String(id) });
+      await deleteMutation.mutateAsync({ id });
       toast({ title: "Unidade excluída" });
       setConfirmDeleteId(null);
       refetch();
@@ -1402,6 +1403,18 @@ type CatType = { id: number; nome: string; slug?: string; icone?: string; descri
 
 const EMPTY_CAT = { nome: "", slug: "", icone: "", descricao: "", parentId: "", unidadeMedidaId: "" };
 
+function isLucideIconName(name: string): name is keyof typeof dynamicIconImports {
+  return Object.prototype.hasOwnProperty.call(dynamicIconImports, name);
+}
+
+function CategoryIcon({ name, size = 14, className }: { name?: string; size?: number; className?: string }) {
+  const normalized = (name || "").trim().toLowerCase();
+  if (normalized && isLucideIconName(normalized)) {
+    return <DynamicIcon name={normalized} size={size} className={className} fallback={() => <FolderOpen size={size} className={className} />} />;
+  }
+  return <FolderOpen size={size} className={className} />;
+}
+
 function CategoriesTab() {
   const { toast } = useToast();
   const { data: rawCategories, refetch } = useListCategories();
@@ -1443,7 +1456,7 @@ function CategoriesTab() {
     };
     try {
       if (editingId) {
-        await updateMutation.mutateAsync({ id: String(editingId), data: payload });
+        await updateMutation.mutateAsync({ id: editingId, data: payload });
         toast({ title: "Categoria atualizada!" });
       } else {
         await createMutation.mutateAsync({ data: payload });
@@ -1459,7 +1472,7 @@ function CategoriesTab() {
 
   async function handleDelete(id: number) {
     try {
-      await deleteMutation.mutateAsync({ id: String(id) });
+      await deleteMutation.mutateAsync({ id });
       toast({ title: "Categoria excluída" });
       setConfirmDeleteId(null);
       refetch();
@@ -1517,7 +1530,17 @@ function CategoriesTab() {
             </div>
             <div className="space-y-1.5">
               <Label>Ícone (nome Lucide)</Label>
-              <Input placeholder="building-2" value={form.icone} onChange={(e) => setForm((f) => ({ ...f, icone: e.target.value }))} />
+              <div className="flex items-center gap-2">
+                <div className="w-9 h-9 shrink-0 rounded-md border border-input bg-muted/40 flex items-center justify-center">
+                  {form.icone.trim() && isLucideIconName(form.icone.trim().toLowerCase()) ? (
+                    <CategoryIcon name={form.icone} size={16} className="text-[#C0181A]" />
+                  ) : (
+                    <HelpCircle size={16} className="text-muted-foreground" />
+                  )}
+                </div>
+                <Input placeholder="building-2" value={form.icone} onChange={(e) => setForm((f) => ({ ...f, icone: e.target.value }))} className="flex-1" />
+              </div>
+              <p className="text-xs text-muted-foreground">Nome do ícone em <a href="https://lucide.dev/icons" target="_blank" rel="noreferrer" className="underline">lucide.dev/icons</a>, ex: building-2, wrench, hammer.</p>
             </div>
             <div className="space-y-1.5">
               <Label>Descrição</Label>
@@ -1549,7 +1572,7 @@ function CategoriesTab() {
               {categories.map((cat) => (
                 <div key={cat.id} className="flex items-center gap-3 px-4 py-3 group hover:bg-gray-50">
                   <div className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center shrink-0">
-                    <FolderOpen size={14} className="text-[#E85D00]" />
+                    <CategoryIcon name={cat.icone} size={14} className="text-[#E85D00]" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium">{cat.nome}</p>
@@ -1584,25 +1607,40 @@ function CategoriesTab() {
 }
 
 // ─── Aba: Aprovação de Produtos ───────────────────────────────────────────────
+type ProductModerationStatus = "aguardando_aprovacao" | "aprovado" | "rejeitado";
+
 type AdminProductType = {
   id: number; nome: string; sku?: string; preco: number; unidadeMedida: string;
-  estoque: number; disponivel: boolean; aprovado: boolean; imagemPrincipal?: string;
-  createdAt: string; categoryName?: string; supplierName?: string;
+  estoque: number; disponivel: boolean; status: ProductModerationStatus; motivoRejeicao?: string | null;
+  imagemPrincipal?: string; createdAt: string; categoryName?: string; supplierName?: string;
+};
+
+const PRODUCT_STATUS_LABEL: Record<ProductModerationStatus, string> = {
+  aguardando_aprovacao: "Aguardando",
+  aprovado: "Aprovado",
+  rejeitado: "Rejeitado",
+};
+const PRODUCT_STATUS_VARIANT: Record<ProductModerationStatus, "default" | "secondary" | "destructive"> = {
+  aguardando_aprovacao: "secondary",
+  aprovado: "default",
+  rejeitado: "destructive",
 };
 
 function ProductsApprovalTab() {
   const { toast } = useToast();
-  const [filter, setFilter] = useState<"false" | "true" | "all">("false");
+  const [filter, setFilter] = useState<ProductModerationStatus | "all">("aguardando_aprovacao");
   const [products, setProducts] = useState<AdminProductType[]>([]);
   const [loading, setLoading] = useState(true);
   const [total, setTotal] = useState(0);
   const [commissions, setCommissions] = useState<Record<number, string>>({});
   const [savingCommission, setSavingCommission] = useState<number | null>(null);
+  const [rejectModal, setRejectModal] = useState<{ product: AdminProductType; motivo: string } | null>(null);
+  const [rejectLoading, setRejectLoading] = useState(false);
 
   async function load() {
     setLoading(true);
     try {
-      const url = filter === "all" ? "/api/admin/products" : `/api/admin/products?aprovado=${filter}`;
+      const url = filter === "all" ? "/api/admin/products" : `/api/admin/products?status=${filter}`;
       const r = await fetch(url, { credentials: "include" });
       if (r.ok) { const d = await r.json(); setProducts(d.products || []); setTotal(d.total || 0); }
     } finally { setLoading(false); }
@@ -1633,12 +1671,23 @@ function ProductsApprovalTab() {
     } catch { toast({ title: "Erro", variant: "destructive" }); }
   }
 
-  async function handleReject(id: number) {
+  async function handleRejectConfirm() {
+    if (!rejectModal) return;
+    setRejectLoading(true);
     try {
-      await fetch(`/api/admin/products/${id}/reject`, { method: "PUT", credentials: "include" });
-      toast({ title: "Produto ocultado" });
+      await fetch(`/api/admin/products/${rejectModal.product.id}/reject`, {
+        method: "PUT", credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ motivo: rejectModal.motivo || undefined }),
+      });
+      toast({ title: `Produto "${rejectModal.product.nome}" rejeitado` });
+      setRejectModal(null);
       load();
-    } catch { toast({ title: "Erro", variant: "destructive" }); }
+    } catch {
+      toast({ title: "Erro ao rejeitar produto", variant: "destructive" });
+    } finally {
+      setRejectLoading(false);
+    }
   }
 
   const BRL = (v: number) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v);
@@ -1653,13 +1702,13 @@ function ProductsApprovalTab() {
           </CardTitle>
           <div className="flex gap-1">
             {[
-              { v: "false", label: "Aguardando" },
-              { v: "true",  label: "Aprovados" },
-              { v: "all",   label: "Todos" },
+              { v: "aguardando_aprovacao", label: "Aguardando" },
+              { v: "aprovado",             label: "Aprovados" },
+              { v: "all",                  label: "Todos" },
             ].map(f => (
               <button
                 key={f.v}
-                onClick={() => setFilter(f.v as "false" | "true" | "all")}
+                onClick={() => setFilter(f.v as ProductModerationStatus | "all")}
                 className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${filter === f.v ? "bg-[#C0181A] text-white border-[#C0181A]" : "bg-white text-gray-600 border-gray-200 hover:border-gray-300"}`}
               >
                 {f.label}
@@ -1677,7 +1726,7 @@ function ProductsApprovalTab() {
         ) : products.length === 0 ? (
           <div className="text-center py-16 text-muted-foreground">
             <Package size={40} className="mx-auto mb-3 opacity-30" />
-            <p>{filter === "false" ? "Nenhum produto aguardando aprovação" : "Nenhum produto encontrado"}</p>
+            <p>{filter === "aguardando_aprovacao" ? "Nenhum produto aguardando aprovação" : "Nenhum produto encontrado"}</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -1731,20 +1780,20 @@ function ProductsApprovalTab() {
                       </div>
                     </td>
                     <td className="py-3 text-center">
-                      <Badge variant={p.aprovado ? "default" : "secondary"} className="text-xs">
-                        {p.aprovado ? "Aprovado" : "Aguardando"}
+                      <Badge variant={PRODUCT_STATUS_VARIANT[p.status]} className="text-xs" title={p.status === "rejeitado" ? (p.motivoRejeicao || undefined) : undefined}>
+                        {PRODUCT_STATUS_LABEL[p.status]}
                       </Badge>
                     </td>
                     <td className="py-3 px-4 text-right">
                       <div className="flex items-center gap-1 justify-end">
-                        {!p.aprovado && (
+                        {p.status !== "aprovado" && (
                           <Button size="sm" className="h-7 text-xs bg-green-600 hover:bg-green-700" onClick={() => handleApprove(p.id)}>
                             <CheckCircle size={11} className="mr-1" /> Aprovar
                           </Button>
                         )}
-                        {p.aprovado && (
-                          <Button size="sm" variant="outline" className="h-7 text-xs border-red-200 text-red-600 hover:bg-red-50" onClick={() => handleReject(p.id)}>
-                            Ocultar
+                        {p.status !== "rejeitado" && (
+                          <Button size="sm" variant="outline" className="h-7 text-xs border-red-200 text-red-600 hover:bg-red-50" onClick={() => setRejectModal({ product: p, motivo: "" })}>
+                            Rejeitar
                           </Button>
                         )}
                       </div>
@@ -1756,6 +1805,46 @@ function ProductsApprovalTab() {
           </div>
         )}
       </CardContent>
+
+      {rejectModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/50" onClick={() => setRejectModal(null)} />
+          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+              <div>
+                <h2 className="font-bold text-gray-900">Rejeitar produto</h2>
+                <p className="text-xs text-gray-500 mt-0.5">{rejectModal.product.nome}</p>
+              </div>
+              <button onClick={() => setRejectModal(null)} className="text-gray-400 hover:text-gray-600 transition-colors">
+                <XIcon size={18} />
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div className="bg-red-50 border border-red-100 rounded-lg p-3 text-sm text-red-700">
+                O fornecedor verá o motivo da rejeição no painel dele.
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-sm">Motivo da rejeição <span className="text-muted-foreground text-xs">(opcional)</span></Label>
+                <Textarea
+                  value={rejectModal.motivo}
+                  onChange={(e) => setRejectModal((m) => m ? { ...m, motivo: e.target.value } : null)}
+                  placeholder="Ex: Fotos de baixa qualidade, descrição incompleta, preço fora do padrão..."
+                  className="resize-none text-sm"
+                  rows={3}
+                />
+              </div>
+              <div className="flex gap-3">
+                <Button variant="outline" className="flex-1" onClick={() => setRejectModal(null)} disabled={rejectLoading}>
+                  Cancelar
+                </Button>
+                <Button className="flex-1 bg-[#C0181A] hover:bg-[#a01416] gap-1.5" onClick={handleRejectConfirm} disabled={rejectLoading}>
+                  {rejectLoading ? <><Loader2 size={14} className="animate-spin" />Rejeitando...</> : <><XCircle size={14} />Confirmar rejeição</>}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </Card>
   );
 }
@@ -2307,7 +2396,7 @@ function PendingUserTable({ users, onApprove, onReject, onDocs, onResetPassword,
 export default function AdminDashboard() {
   const { isAdmin } = useAuth();
   const { toast } = useToast();
-  const [activeTab, setActiveTab] = useState<"overview" | "users" | "create-supplier" | "internal-users" | "banners" | "categories" | "products" | "minimums" | "reviews" | "relatorios" | "analytics">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "users" | "create-supplier" | "internal-users" | "banners" | "categories" | "products" | "minimums" | "units" | "reviews" | "relatorios" | "analytics">("overview");
   const [statusFilter, setStatusFilter] = useState("all");
   const [userCommissions, setUserCommissions] = useState<Record<number, string>>({});
   const [savingUserCommission, setSavingUserCommission] = useState<number | null>(null);
@@ -2331,8 +2420,8 @@ export default function AdminDashboard() {
     } finally { setSavingUserCommission(null); }
   }
 
-  const { data: dashboard } = useGetDashboardStats({ query: { enabled: isAdmin } });
-  const { data: users, isLoading, refetch } = useAdminListUsers({ query: { enabled: isAdmin } });
+  const { data: dashboard } = useGetDashboardStats({ query: { queryKey: getGetDashboardStatsQueryKey(), enabled: isAdmin } });
+  const { data: users, isLoading, refetch } = useAdminListUsers(undefined, { query: { queryKey: getAdminListUsersQueryKey(), enabled: isAdmin } });
 
   useEffect(() => {
     const allU: UserType[] = Array.isArray(users)
@@ -2363,13 +2452,13 @@ export default function AdminDashboard() {
   }
 
   async function handleApprove(userId: number) {
-    await approveMutation.mutateAsync({ id: String(userId) });
+    await approveMutation.mutateAsync({ id: userId });
     refetch();
     toast({ title: "Usuário aprovado com sucesso" });
   }
 
   async function handleSuspend(userId: number) {
-    await suspendMutation.mutateAsync({ id: String(userId) });
+    await suspendMutation.mutateAsync({ id: userId });
     refetch();
     toast({ title: "Usuário suspenso" });
   }
@@ -2378,7 +2467,7 @@ export default function AdminDashboard() {
     if (!rejectModal) return;
     setRejectLoading(true);
     try {
-      await rejectMutation.mutateAsync({ id: String(rejectModal.user.id!), data: { motivo: rejectModal.motivo || undefined } });
+      await rejectMutation.mutateAsync({ id: rejectModal.user.id!, data: { motivo: rejectModal.motivo || undefined } });
       refetch();
       toast({ title: `Cadastro de ${rejectModal.user.nomeFantasia || rejectModal.user.nome} recusado` });
       setRejectModal(null);

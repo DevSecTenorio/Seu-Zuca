@@ -1,6 +1,6 @@
 import { useParams, useLocation } from "wouter";
 import { useState, useEffect, useRef } from "react";
-import { useGetProduct, useCreateProduct, useUpdateProduct, useListCategories, useListUnidadesMedida } from "@workspace/api-client-react";
+import { useGetProduct, getGetProductQueryKey, useCreateProduct, useUpdateProduct, useListCategories, useListUnidadesMedida } from "@workspace/api-client-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Layout } from "@/components/Layout";
 import { Button } from "@/components/ui/button";
@@ -37,7 +37,7 @@ function ProductImagesUploader({
 
   const { uploadFile, isUploading, progress } = useUpload({
     onSuccess: (res) => {
-      onAdd(`/api/storage${res.objectPath}`);
+      onAdd(res.objectPath);
       toast({ title: "Imagem adicionada!" });
     },
     onError: (err) => {
@@ -226,8 +226,13 @@ export default function ProductForm() {
   const [error, setError] = useState("");
 
   const { data: categories } = useListCategories();
+  type CategoryOption = { id: number; nome: string; parentId?: number | null; children?: CategoryOption[] };
+  const categoryOptions: CategoryOption[] = ((categories as CategoryOption[] | undefined) ?? []).flatMap((cat) => [
+    { id: cat.id, nome: cat.nome },
+    ...(cat.children ?? []).map((child) => ({ id: child.id, nome: `— ${child.nome}` })),
+  ]);
   const { data: units } = useListUnidadesMedida();
-  const { data: product } = useGetProduct(isEditing ? id! : "", { query: { enabled: !!isEditing } });
+  const { data: product } = useGetProduct(isEditing ? Number(id!) : 0, { query: { queryKey: getGetProductQueryKey(isEditing ? Number(id!) : 0), enabled: !!isEditing } });
   const createMutation = useCreateProduct();
   const updateMutation = useUpdateProduct();
 
@@ -286,7 +291,7 @@ export default function ProductForm() {
 
     try {
       if (isEditing) {
-        await updateMutation.mutateAsync({ id: id!, data: payload });
+        await updateMutation.mutateAsync({ id: Number(id!), data: payload });
         toast({ title: "Produto atualizado com sucesso!" });
       } else {
         await createMutation.mutateAsync({ data: payload });
@@ -332,6 +337,26 @@ export default function ProductForm() {
             </div>
           )}
 
+          {isEditing && (product as { status?: string })?.status === "rejeitado" && (
+            <div className="flex items-start gap-2 p-3 bg-destructive/10 text-destructive rounded-md text-sm">
+              <AlertCircle size={16} className="mt-0.5 shrink-0" />
+              <div>
+                <p className="font-medium">Este produto foi rejeitado pelo administrador.</p>
+                {(product as { motivoRejeicao?: string | null })?.motivoRejeicao && (
+                  <p className="mt-0.5">Motivo: {(product as { motivoRejeicao?: string | null }).motivoRejeicao}</p>
+                )}
+                <p className="mt-0.5">Ajuste o que for necessário e salve para reenviar à moderação.</p>
+              </div>
+            </div>
+          )}
+
+          {isEditing && (product as { status?: string })?.status === "aprovado" && (
+            <div className="flex items-center gap-2 p-3 bg-amber-50 text-amber-700 border border-amber-200 rounded-md text-sm">
+              <AlertCircle size={16} className="shrink-0" />
+              Alterar nome, descrição, preço, categoria, unidade ou imagens envia este produto novamente para aprovação.
+            </div>
+          )}
+
           <Card className="border-border">
             <CardHeader>
               <CardTitle className="text-base">Informações Básicas</CardTitle>
@@ -356,7 +381,7 @@ export default function ProductForm() {
                     <SelectValue placeholder="Selecione a categoria" />
                   </SelectTrigger>
                   <SelectContent>
-                    {categories?.map((cat) => (
+                    {categoryOptions.map((cat) => (
                       <SelectItem key={cat.id} value={String(cat.id)}>{cat.nome}</SelectItem>
                     ))}
                   </SelectContent>

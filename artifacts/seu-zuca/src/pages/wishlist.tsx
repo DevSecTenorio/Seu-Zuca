@@ -1,4 +1,4 @@
-import { useGetWishlist, useRemoveFromWishlist as useRemoveWishlist } from "@workspace/api-client-react";
+import { useGetWishlist, getGetWishlistQueryKey, useRemoveFromWishlist as useRemoveWishlist } from "@workspace/api-client-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Layout } from "@/components/Layout";
 import { Button } from "@/components/ui/button";
@@ -14,7 +14,7 @@ export default function Wishlist() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: wishlist, isLoading, refetch } = useGetWishlist({ query: { enabled: isAuthenticated } });
+  const { data: wishlist, isLoading, refetch } = useGetWishlist({ query: { queryKey: getGetWishlistQueryKey(), enabled: isAuthenticated } });
   const removeMutation = useRemoveWishlist();
 
   if (!isAuthenticated) {
@@ -54,10 +54,10 @@ export default function Wishlist() {
             {wishlist.map((item) => (
               <Card key={item.productId} className="border-border overflow-hidden group">
                 <div className="aspect-video bg-muted overflow-hidden">
-                  {(item as { imagemPrincipal?: string }).imagemPrincipal ? (
+                  {item.product?.imagemPrincipal ? (
                     <img
-                      src={(item as { imagemPrincipal?: string }).imagemPrincipal}
-                      alt={item.productNome}
+                      src={item.product.imagemPrincipal}
+                      alt={item.product?.nome}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform"
                     />
                   ) : (
@@ -69,12 +69,12 @@ export default function Wishlist() {
                 <CardContent className="p-4">
                   <Link href={`/produto/${item.productId}`}>
                     <h3 className="font-semibold text-sm line-clamp-2 hover:text-primary cursor-pointer mb-2">
-                      {item.productNome}
+                      {item.product?.nome}
                     </h3>
                   </Link>
-                  {(item as { preco?: number }).preco && (
+                  {item.product?.preco && (
                     <p className="text-primary font-bold text-base mb-3">
-                      {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format((item as { preco?: number }).preco!)}
+                      {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(item.product.preco)}
                     </p>
                   )}
                   <div className="flex gap-2">

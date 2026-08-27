@@ -47,7 +47,7 @@ router.post("/admin/banners", authMiddleware, requireAdmin, async (req: AuthRequ
 
 /* ── Admin: update banner ────────────────────────────────────────────── */
 router.put("/admin/banners/:id", authMiddleware, requireAdmin, async (req: AuthRequest, res): Promise<void> => {
-  const id = parseInt(req.params.id, 10);
+  const id = parseInt(req.params.id as string, 10);
   const { titulo, subtitulo, destaque, tag, imagemUrl, linkUrl, corFundo, ativo, ordem } = req.body;
 
   if (!titulo) { res.status(400).json({ message: "Título é obrigatório" }); return; }
@@ -71,7 +71,7 @@ router.put("/admin/banners/:id", authMiddleware, requireAdmin, async (req: AuthR
 
 /* ── Admin: toggle ativo ─────────────────────────────────────────────── */
 router.patch("/admin/banners/:id/toggle", authMiddleware, requireAdmin, async (req: AuthRequest, res): Promise<void> => {
-  const id = parseInt(req.params.id, 10);
+  const id = parseInt(req.params.id as string, 10);
   const current = await db.select().from(bannersTable).where(eq(bannersTable.id, id));
   if (!current[0]) { res.status(404).json({ message: "Banner não encontrado" }); return; }
 
@@ -94,7 +94,7 @@ router.patch("/admin/banners/reorder", authMiddleware, requireAdmin, async (req:
 });
 
 router.delete("/admin/banners/:id", authMiddleware, requireAdmin, async (req: AuthRequest, res): Promise<void> => {
-  const id = parseInt(req.params.id, 10);
+  const id = parseInt(req.params.id as string, 10);
   await db.delete(bannersTable).where(eq(bannersTable.id, id));
   res.json({ success: true });
 });

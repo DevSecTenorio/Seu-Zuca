@@ -69,6 +69,7 @@ function generateToken(): { raw: string; hash: string } {
 function getAppBaseUrl(): string {
   const domains = process.env.REPLIT_DOMAINS?.split(",")[0];
   if (domains) return `https://${domains}`;
+  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
   return process.env.APP_BASE_URL || "http://localhost:80";
 }
 
@@ -122,7 +123,7 @@ router.post("/auth/register", async (req, res): Promise<void> => {
   await sendEmail({ to: email, subject: "Confirme seu e-mail — Seu Zuca", html: buildVerificationEmailHtml(nome, verificationUrl) }).catch(() => {});
 
   const token = signToken(user.id);
-  res.cookie("token", token, { httpOnly: true, maxAge: 7 * 24 * 60 * 60 * 1000, sameSite: "lax" });
+  res.cookie("token", token, { httpOnly: true, maxAge: 7 * 24 * 60 * 60 * 1000, sameSite: "lax", secure: process.env.NODE_ENV === "production" });
 
   res.status(201).json({
     user: {
@@ -165,7 +166,7 @@ router.post("/auth/register/buyer", async (req, res): Promise<void> => {
   await sendEmail({ to: email, subject: "Confirme seu e-mail — Seu Zuca", html: buildVerificationEmailHtml(nome, verificationUrl) }).catch(() => {});
 
   const token = signToken(user.id);
-  res.cookie("token", token, { httpOnly: true, maxAge: 7 * 24 * 60 * 60 * 1000, sameSite: "lax" });
+  res.cookie("token", token, { httpOnly: true, maxAge: 7 * 24 * 60 * 60 * 1000, sameSite: "lax", secure: process.env.NODE_ENV === "production" });
   res.status(201).json({
     user: { id: user.id, email: user.email, nome: user.nome, role: user.role, status: user.status, cnpj: user.cnpj, razaoSocial: user.razaoSocial, nomeFantasia: user.nomeFantasia, emailVerificado: user.emailVerificado, createdAt: user.createdAt },
     message: "Cadastro realizado. Confirme seu e-mail e aguarde aprovação do administrador.",
@@ -208,7 +209,7 @@ router.post("/auth/register/supplier", async (req, res): Promise<void> => {
   await sendEmail({ to: email, subject: "Confirme seu e-mail — Seu Zuca", html: buildVerificationEmailHtml(nome, verificationUrl) }).catch(() => {});
 
   const token = signToken(user.id);
-  res.cookie("token", token, { httpOnly: true, maxAge: 7 * 24 * 60 * 60 * 1000, sameSite: "lax" });
+  res.cookie("token", token, { httpOnly: true, maxAge: 7 * 24 * 60 * 60 * 1000, sameSite: "lax", secure: process.env.NODE_ENV === "production" });
   res.status(201).json({
     user: { id: user.id, email: user.email, nome: user.nome, role: user.role, status: user.status, cnpj: user.cnpj, razaoSocial: user.razaoSocial, nomeFantasia: user.nomeFantasia, emailVerificado: user.emailVerificado, createdAt: user.createdAt },
     message: "Cadastro realizado. Confirme seu e-mail e aguarde aprovação do administrador.",
@@ -242,7 +243,7 @@ router.post("/auth/login", loginLimiter, async (req, res): Promise<void> => {
   await db.update(usersTable).set({ ultimoAcesso: new Date() }).where(eq(usersTable.id, user.id));
 
   const token = signToken(user.id);
-  res.cookie("token", token, { httpOnly: true, maxAge: 7 * 24 * 60 * 60 * 1000, sameSite: "lax" });
+  res.cookie("token", token, { httpOnly: true, maxAge: 7 * 24 * 60 * 60 * 1000, sameSite: "lax", secure: process.env.NODE_ENV === "production" });
 
   res.json({
     user: {

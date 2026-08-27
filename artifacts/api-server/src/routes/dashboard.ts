@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { db, ordersTable, usersTable, productsTable, orderItemsTable } from "@workspace/db";
+import { db, ordersTable, usersTable, productsTable, orderItemsTable, unidadesMedidaTable } from "@workspace/db";
 import { eq, sql, and, desc } from "drizzle-orm";
 import { authMiddleware, requireAdmin, type AuthRequest } from "../middlewares/auth";
 
@@ -181,10 +181,12 @@ router.get("/suppliers/:id/public", async (req, res): Promise<void> => {
     nome: productsTable.nome,
     slug: productsTable.slug,
     preco: productsTable.preco,
-    unidadeMedida: productsTable.unidadeMedida,
+    unidadeMedida: unidadesMedidaTable.sigla,
     imagemPrincipal: productsTable.imagemPrincipal,
     disponivel: productsTable.disponivel,
-  }).from(productsTable).where(and(eq(productsTable.supplierId, id), eq(productsTable.aprovado, true), eq(productsTable.disponivel, true)));
+  }).from(productsTable)
+    .leftJoin(unidadesMedidaTable, eq(productsTable.unidadeMedidaId, unidadesMedidaTable.id))
+    .where(and(eq(productsTable.supplierId, id), eq(productsTable.status, "aprovado"), eq(productsTable.disponivel, true)));
 
   const reviewStatsResult = await db.execute(sql`
     SELECT COUNT(*) AS total, COALESCE(AVG(nota), 0) AS media

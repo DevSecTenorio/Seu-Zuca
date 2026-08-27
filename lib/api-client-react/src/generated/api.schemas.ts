@@ -65,6 +65,7 @@ export const UserRole = {
   admin: "admin",
   buyer: "buyer",
   supplier: "supplier",
+  support: "support",
 } as const;
 
 export type UserStatus = (typeof UserStatus)[keyof typeof UserStatus];
@@ -124,6 +125,7 @@ export interface Category {
   descricao?: string;
   parentId?: number;
   unidadeMedida?: string;
+  icone?: string | null;
   ativo: boolean;
   ordem?: number;
   minimumRule?: CategoryMinimumRule;
@@ -149,6 +151,7 @@ export interface CreateCategoryBody {
   descricao?: string;
   parentId?: number | null;
   unidadeMedidaId?: number | null;
+  icone?: string | null;
   ativo?: boolean;
   ordem?: number;
 }
@@ -160,6 +163,14 @@ export interface CreateCategoryRuleBody {
   ativo?: boolean;
 }
 
+export type ProductStatus = (typeof ProductStatus)[keyof typeof ProductStatus];
+
+export const ProductStatus = {
+  aguardando_aprovacao: "aguardando_aprovacao",
+  aprovado: "aprovado",
+  rejeitado: "rejeitado",
+} as const;
+
 export interface Product {
   id: number;
   nome: string;
@@ -170,6 +181,8 @@ export interface Product {
   unidadeMedida?: string;
   estoque?: number;
   disponivel: boolean;
+  status?: ProductStatus;
+  motivoRejeicao?: string | null;
   categoryId: number;
   categoryName?: string;
   supplierId: number;
@@ -507,9 +520,20 @@ export type ListProductsParams = {
   categoryId?: number;
   supplierId?: number;
   available?: boolean;
+  orderBy?: ListProductsOrderBy;
   page?: number;
   limit?: number;
 };
+
+export type ListProductsOrderBy =
+  (typeof ListProductsOrderBy)[keyof typeof ListProductsOrderBy];
+
+export const ListProductsOrderBy = {
+  nome: "nome",
+  preco: "preco",
+  estoque: "estoque",
+  createdAt: "createdAt",
+} as const;
 
 export type AdminListUsersParams = {
   role?: string;
