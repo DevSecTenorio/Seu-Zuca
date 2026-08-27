@@ -6,8 +6,11 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-inter);
+  --font-mono: var(--font-jetbrains-mono);
+  --font-display: var(--font-oswald);
+  --color-brand-orange: var(--brand-orange);
+  --color-primary-ink: var(--primary-ink);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -51,28 +54,31 @@
 }
 
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.62 0.17 45);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.62 0.17 45);
-  --success: oklch(0.6 0.15 145);
-  --success-foreground: oklch(0.985 0 0);
-  --warning: oklch(0.75 0.15 80);
-  --warning-foreground: oklch(0.205 0 0);
+  /* Direção Canteiro — paleta aprovada. Ajuste global aqui, nunca hardcoded nos componentes. */
+  --background: #f1f1ef; /* Cinza claro */
+  --foreground: #2a2721; /* Grafite */
+  --card: #ffffff;
+  --card-foreground: #2a2721;
+  --popover: #ffffff;
+  --popover-foreground: #2a2721;
+  --primary: #c6371e; /* Vermelho Zuca */
+  --primary-foreground: #f6f1e7;
+  --primary-ink: #8f2814; /* variante escura do vermelho, para gradientes/seções de conversão */
+  --brand-orange: #e8791f; /* Laranja de Obra */
+  --secondary: #e7e7e4;
+  --secondary-foreground: #2a2721;
+  --muted: #e7e7e4;
+  --muted-foreground: #6e6a5f; /* Aço */
+  --accent: #ebebe8;
+  --accent-foreground: #2a2721;
+  --destructive: #b3261e;
+  --border: #dcdcd8;
+  --input: #dcdcd8;
+  --ring: #c6371e;
+  --success: #3f7a3a;
+  --success-foreground: #f6f1e7;
+  --warning: #f2b705; /* Amarelo Capacete */
+  --warning-foreground: #2a2721;
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
@@ -90,28 +96,30 @@
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.68 0.16 45);
-  --primary-foreground: oklch(0.145 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
+  --background: #211f1a;
+  --foreground: #f6f1e7;
+  --card: #2a2721;
+  --card-foreground: #f6f1e7;
+  --popover: #2a2721;
+  --popover-foreground: #f6f1e7;
+  --primary: #e0532f;
+  --primary-foreground: #211f1a;
+  --primary-ink: #b3402a;
+  --brand-orange: #e8791f;
+  --secondary: #38352c;
+  --secondary-foreground: #f6f1e7;
+  --muted: #38352c;
+  --muted-foreground: #a49d8a;
+  --accent: #38352c;
+  --accent-foreground: #f6f1e7;
+  --destructive: #d1493a;
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.68 0.16 45);
-  --success: oklch(0.65 0.15 145);
-  --success-foreground: oklch(0.145 0 0);
-  --warning: oklch(0.75 0.15 80);
-  --warning-foreground: oklch(0.145 0 0);
+  --ring: #e0532f;
+  --success: #5fa858;
+  --success-foreground: #211f1a;
+  --warning: #f2b705;
+  --warning-foreground: #211f1a;
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);

@@ -22,19 +22,19 @@ const HIGHLIGHT_BLOCKS = [
     categorySlug: "argamassa",
     title: "Atacado de cimento e estrutura",
     description: "Condições especiais para pedidos grandes, com pedido mínimo por categoria.",
-    className: "from-orange-500/15 to-orange-500/5",
+    className: "from-primary/15 to-primary/5",
   },
   {
     categorySlug: "acabamento",
     title: "Acabamento e pisos",
     description: "Porcelanatos, tintas e revestimentos direto de fornecedores aprovados.",
-    className: "from-blue-500/15 to-blue-500/5",
+    className: "from-brand-orange/15 to-brand-orange/5",
   },
   {
     categorySlug: "hidraulica",
     title: "Infraestrutura hidráulica e elétrica",
     description: "Tudo para instalações prediais em um só lugar, com prazos claros.",
-    className: "from-emerald-500/15 to-emerald-500/5",
+    className: "from-foreground/15 to-foreground/5",
   },
 ];
 
@@ -50,17 +50,17 @@ export default async function Home() {
   return (
     <div className="flex flex-1 flex-col">
       {banners.length > 0 && (
-        <section className="mx-auto w-full max-w-7xl px-4 pt-6 sm:px-6 lg:px-8">
+        <section className="mx-auto w-full max-w-7xl px-4 pt-6 pb-6 sm:px-6 lg:px-8">
           <BannerCarousel banners={banners} />
         </section>
       )}
 
-      <section className="border-b">
+      <section className="bg-primary">
         <div className="mx-auto grid max-w-7xl grid-cols-2 gap-6 px-4 py-8 sm:px-6 md:grid-cols-4 lg:px-8">
           {TRUST_BADGES.map(({ icon: Icon, label }) => (
             <div key={label} className="flex flex-col items-center gap-2 text-center sm:flex-row sm:text-left">
-              <Icon className="size-6 shrink-0 text-primary" />
-              <span className="text-sm font-medium text-foreground">{label}</span>
+              <Icon className="size-6 shrink-0 text-primary-foreground" />
+              <span className="text-sm font-medium text-primary-foreground">{label}</span>
             </div>
           ))}
         </div>
@@ -68,17 +68,18 @@ export default async function Home() {
 
       {categories.length > 0 && (
         <section className="mx-auto w-full max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
-          <h2 className="text-xl font-semibold text-foreground">Categorias</h2>
+          <h2 className="font-display text-2xl uppercase tracking-wide text-foreground">Categorias</h2>
           <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-5">
-            {categories.map((category) => {
+            {categories.map((category, index) => {
               const Icon = getCategoryIcon(category.icon);
+              const swatch = index % 2 === 0 ? "bg-primary" : "bg-brand-orange";
               return (
                 <Link
                   key={category.id}
                   href={`/catalogo?categoria=${category.slug}`}
-                  className="flex flex-col items-center gap-2 rounded-lg border bg-card p-4 text-center transition-colors hover:border-primary hover:bg-accent"
+                  className="flex flex-col items-center gap-2 rounded-lg border bg-card p-4 text-center transition-all hover:-translate-y-0.5 hover:border-primary hover:shadow-md"
                 >
-                  <span className="flex size-11 items-center justify-center rounded-full bg-primary/10 text-primary">
+                  <span className={`flex size-11 items-center justify-center rounded-full text-primary-foreground ${swatch}`}>
                     <Icon className="size-5" />
                   </span>
                   <span className="text-sm font-medium text-foreground">{category.name}</span>
@@ -112,7 +113,7 @@ export default async function Home() {
       {featuredProducts.length > 0 && (
         <section className="mx-auto w-full max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold text-foreground">Produtos em destaque</h2>
+            <h2 className="font-display text-2xl uppercase tracking-wide text-foreground">Produtos em destaque</h2>
             <Button asChild variant="ghost">
               <Link href="/catalogo">
                 Ver todos <ArrowRight className="size-4" />
@@ -127,12 +128,12 @@ export default async function Home() {
         </section>
       )}
 
-      <section className="border-t bg-muted/30">
+      <section className="bg-gradient-to-br from-foreground to-primary-ink">
         <div className="mx-auto w-full max-w-3xl flex-1 px-4 py-20 text-center sm:px-6 lg:px-8">
-          <h2 className="text-2xl font-semibold text-foreground">
+          <h2 className="font-display text-3xl uppercase tracking-wide text-background">
             Compre e venda materiais de construção sem intermediários confusos
           </h2>
-          <p className="mt-4 text-muted-foreground">
+          <p className="mt-4 text-background/80">
             Crie sua conta B2B em poucos minutos: envie os dados da sua empresa e a documentação
             necessária, e nossa equipe libera o acesso após a análise. Fornecedores aprovados podem
             cadastrar produtos; compradores aprovados compram com condições exclusivas — inclusive
@@ -142,7 +143,12 @@ export default async function Home() {
             <Button asChild size="lg">
               <Link href="/cadastro">Criar conta B2B gratuita</Link>
             </Button>
-            <Button asChild size="lg" variant="outline">
+            <Button
+              asChild
+              size="lg"
+              variant="outline"
+              className="border-background/60 bg-transparent text-background hover:bg-background hover:text-foreground"
+            >
               <Link href="/como-funciona">Como funciona</Link>
             </Button>
           </div>
