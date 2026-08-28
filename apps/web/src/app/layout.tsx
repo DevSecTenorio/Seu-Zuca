@@ -21,6 +21,12 @@ const jetbrainsMono = JetBrains_Mono({
   subsets: ["latin"],
 });
 
+// This app is session/cookie-driven on every route (header shows different auth state per
+// request); force dynamic rendering everywhere so the build never attempts to statically
+// prerender a page and query the database at build time, when DATABASE_URL (a Vercel Sensitive
+// env var) isn't available.
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: {
     default: "Seu Zuca — Marketplace B2B de Materiais de Construção",
