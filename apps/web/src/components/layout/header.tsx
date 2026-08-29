@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { Heart, LayoutGrid, Search, ShoppingCart, User } from "lucide-react";
+import { Heart, Search, ShoppingCart, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -11,6 +11,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { CategoriesMenu } from "./categories-menu";
 import { getCurrentUser } from "@/lib/auth/session";
 import { logoutAction } from "@/server/actions/auth-actions";
 import { ROLE_HOME } from "@/lib/auth/roles";
@@ -42,40 +43,7 @@ export async function Header() {
           />
         </Link>
 
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" className="shrink-0" aria-label="Todas as categorias">
-              <LayoutGrid className="size-4" />
-              <span className="hidden sm:inline">Todas as categorias</span>
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="w-56">
-            <DropdownMenuItem asChild>
-              <Link href="/catalogo">Todos os produtos</Link>
-            </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <Link href="/catalogo?ordenar=recentes">Lançamentos</Link>
-            </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              {/* No promotions data model in the MVP (SPEC backlog) — points at the full
-                  catalog rather than faking a filter that doesn't exist yet. */}
-              <Link href="/catalogo">Promoções</Link>
-            </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <Link href="/catalogo?ordenar=mais-vendidos">Mais vendidos</Link>
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            {categories.map((category) => (
-              <DropdownMenuItem key={category.slug} asChild>
-                <Link href={`/catalogo?categoria=${category.slug}`}>{category.name}</Link>
-              </DropdownMenuItem>
-            ))}
-            <DropdownMenuSeparator />
-            <DropdownMenuItem asChild>
-              <Link href="/seja-fornecedor">Vender no Seu Zuca</Link>
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <CategoriesMenu categories={categories} />
 
         <Button asChild variant="ghost" size="icon" className="shrink-0 sm:hidden" aria-label="Buscar produtos">
           <Link href="/catalogo">
