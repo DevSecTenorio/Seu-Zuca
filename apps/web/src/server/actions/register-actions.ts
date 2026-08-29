@@ -8,7 +8,7 @@ import { hashPassword } from "@/lib/auth/password";
 import { createSession } from "@/lib/auth/session";
 import { onlyDigits } from "@/lib/cnpj";
 import { geocodeAddress } from "@/lib/openrouteservice";
-import { uploadFile } from "@/lib/storage";
+import { uploadKycDocument } from "@/lib/storage";
 import { generateUniqueSlug } from "@/lib/slug";
 import { companyStepSchema } from "@/lib/validation/register";
 import { validateDocumentFile } from "@/lib/validation/files";
@@ -81,15 +81,15 @@ async function registerCompanyAccount(role: Role, formData: FormData): Promise<F
   uploads.push({
     type: "cartao_cnpj",
     fileName: cartaoCnpjFile!.name,
-    fileUrl: await uploadFile(cartaoCnpjFile!, "kyc"),
+    fileUrl: await uploadKycDocument(cartaoCnpjFile!, "kyc"),
   });
   uploads.push({
     type: "contrato_social",
     fileName: contratoSocialFile!.name,
-    fileUrl: await uploadFile(contratoSocialFile!, "kyc"),
+    fileUrl: await uploadKycDocument(contratoSocialFile!, "kyc"),
   });
   for (const file of outrosFiles) {
-    uploads.push({ type: "outro", fileName: file.name, fileUrl: await uploadFile(file, "kyc") });
+    uploads.push({ type: "outro", fileName: file.name, fileUrl: await uploadKycDocument(file, "kyc") });
   }
 
   const passwordHash = await hashPassword(data.password);

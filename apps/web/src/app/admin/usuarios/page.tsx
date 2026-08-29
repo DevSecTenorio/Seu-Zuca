@@ -3,6 +3,7 @@ import Link from "next/link";
 import { and, eq, inArray } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { requireUser } from "@/lib/auth/require-user";
+import { getSignedDocumentUrl } from "@/lib/storage";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -52,11 +53,27 @@ export default async function AdminUsersPage({ searchParams }: { searchParams: P
   if (activeFilter.key === "fornecedores") conditions.push(eq(schema.users.role, "fornecedor"));
   if (activeFilter.key === "compradores") conditions.push(eq(schema.users.role, "comprador"));
 
-  const users = await db.query.users.findMany({
+  const usersWithCompany = await db.query.users.findMany({
     where: and(...conditions),
     orderBy: (u, { desc }) => [desc(u.createdAt)],
     with: { company: { with: { kycDocuments: true } } },
   });
+
+  // KYC documents live in a private bucket (see lib/storage.ts) — sign a short-lived URL for
+  // each one here, after requireUser(["admin"]) above already confirmed this viewer is allowed
+  // to see them, rather than storing/reusing a permanent public link.
+  const users = await Promise.all(
+    usersWithCompany.map(async (user) => {
+      if (!user.company) return user;
+      const kycDocuments = await Promise.all(
+        user.company.kycDocuments.map(async (doc) => ({
+          ...doc,
+          fileUrl: await getSignedDocumentUrl(doc.fileUrl),
+        })),
+      );
+      return { ...user, company: { ...user.company, kycDocuments } };
+    }),
+  );
 
   return (
     <div className="space-y-6">

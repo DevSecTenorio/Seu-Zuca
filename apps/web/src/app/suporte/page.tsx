@@ -13,6 +13,7 @@ import { formatCnpj } from "@/lib/cnpj";
 import { formatCentsToBRL, formatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { getFinancialAnalytics, PERIOD_LABELS, type AnalyticsPeriod } from "@/server/queries/analytics";
+import { getSignedDocumentUrl } from "@/lib/storage";
 import { KycDocumentsDialog } from "../admin/usuarios/kyc-documents-dialog";
 
 export const metadata: Metadata = {
@@ -43,11 +44,26 @@ const TABS = [
 const VALID_PERIODS: AnalyticsPeriod[] = ["7d", "30d", "3m", "6m"];
 
 async function CompanyTable({ role }: { role: "fornecedor" | "comprador" }) {
-  const users = await db.query.users.findMany({
+  const usersWithCompany = await db.query.users.findMany({
     where: eq(schema.users.role, role),
     orderBy: (u, { desc }) => [desc(u.createdAt)],
     with: { company: { with: { kycDocuments: true } } },
   });
+
+  // Same private-bucket signing as admin/usuarios/page.tsx — the caller already went through
+  // requireUser(["suporte"]) before this component renders.
+  const users = await Promise.all(
+    usersWithCompany.map(async (user) => {
+      if (!user.company) return user;
+      const kycDocuments = await Promise.all(
+        user.company.kycDocuments.map(async (doc) => ({
+          ...doc,
+          fileUrl: await getSignedDocumentUrl(doc.fileUrl),
+        })),
+      );
+      return { ...user, company: { ...user.company, kycDocuments } };
+    }),
+  );
 
   if (users.length === 0) {
     return <p className="py-8 text-center text-sm text-muted-foreground">Nenhuma conta encontrada.</p>;
