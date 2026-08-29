@@ -11,7 +11,7 @@ Marketplace B2B exclusivo para pessoas jurídicas (CNPJ ativo) que conecta forne
 - **Deploy: Vercel.** Toda a arquitetura deve ser compatível com serverless/edge da Vercel. Nada de servidores long-running, WebSockets persistentes próprios ou dependência de filesystem local em produção.
 - **Banco: Postgres gerenciado serverless** (Neon ou Supabase — escolha um e justifique). Usar connection pooling adequado para serverless.
 - **Framework: Next.js (App Router) com TypeScript**, full-stack (rotas de API/Server Actions no próprio projeto).
-- **Pagamentos: Mercado Pago** (Checkout API ou Checkout Pro) com suporte a PIX, boleto e cartão. Webhooks de confirmação obrigatórios. Chaves via variáveis de ambiente, nunca hardcoded.
+- **Pagamentos: Stripe** (a integração com Mercado Pago foi pausada — ver decisão em `SPEC.md` §9 — e revertida para Stripe, numa etapa futura ainda não iniciada). Suporte a PIX, boleto e cartão. Webhooks de confirmação obrigatórios. Chaves via variáveis de ambiente, nunca hardcoded. Até a etapa do Stripe ser priorizada, não configurar, testar nem expandir a integração com Mercado Pago; o checkout deve funcionar de ponta a ponta sem depender de nenhum gateway real, parando de forma limpa em `aguardando_pagamento`.
 - **Upload de arquivos (imagens de produto, documentos de KYC, banners): Vercel Blob** ou storage do Supabase, conforme o banco escolhido.
 
 ## Escolhas Técnicas Recomendadas (pode ajustar com justificativa)

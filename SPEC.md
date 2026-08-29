@@ -81,7 +81,7 @@ apenas escondê-lo no cliente.
 - Carrinho: exclusivo do comprador (persistido em banco, por usuário). Demais papéis autenticados veem mensagem "Administradores não possuem carrinho de compras" (adaptar por papel). Validação de estoque, quantidade mínima e múltiplo por categoria ao adicionar e ao finalizar.
 - Um carrinho pode conter itens de múltiplos fornecedores; ao finalizar, o pedido é dividido em um pedido por fornecedor (padrão marketplace), todos vinculados a um mesmo grupo de checkout.
 - Checkout: confirmação de endereço de entrega (endereço da empresa como padrão, com possibilidade de outro endereço), resumo dos itens, frete calculado pelo Motor de Frete e modalidade de entrega/retirada (ver §10 — Módulo LOG), total.
-- Pagamento via **Mercado Pago**: PIX, boleto e cartão. Confirmação assíncrona via webhook. Estados de pagamento: `aguardando_pagamento`, `pago`, `falhou`, `expirado`, `estornado`.
+- Pagamento via **Stripe** (decisão revertida de Mercado Pago para Stripe, integração ainda não iniciada — ver §9): PIX, boleto e cartão. Confirmação assíncrona via webhook. Estados de pagamento: `aguardando_pagamento`, `pago`, `falhou`, `expirado`, `estornado`. Até o Stripe ser integrado, o checkout cria o pedido e para de forma limpa em `aguardando_pagamento`, sem chamar nenhum gateway real.
 - Status do pedido: `aguardando_pagamento` → `pago` → `em_separacao` → `enviado` → `entregue`; ramificações: `cancelado`, `em_disputa`, `devolvido`. Fornecedor atualiza status operacionais (separação, envio com código de rastreio, entrega); comprador e admin podem abrir disputa/cancelamento conforme regras.
 - Comissão: percentual da plataforma calculado sobre cada pedido no momento da criação (percentual configurável globalmente pelo admin; armazenar o percentual aplicado no pedido para histórico). Painéis exibem GMV (valor total dos pedidos) e receita de comissões.
 - `/pedidos` lista os pedidos do comprador com status e totais; `/pedidos/[id]` mostra itens, pagamentos, linha do tempo de status e dados de entrega.
@@ -119,6 +119,7 @@ Log de decisões de negócio que não são óbvias a partir do código e que sub
 | Data | Decisão | Onde se aplica |
 |---|---|---|
 | 2026-08-25 | A **base de cálculo da comissão** da plataforma sobre um pedido — apenas o valor da mercadoria, ou mercadoria + frete — é **configurável pelo admin em Settings**, não fixa no código. Vale para todos os pedidos criados após a mudança de configuração; pedidos já criados mantêm a base vigente no momento em que a comissão foi congelada (mesmo princípio do percentual, §5). Expor no mesmo mecanismo de configuração usado hoje pelo percentual de comissão (`lib/settings.ts` / tabela `setting`). | §5 (Comissão), §10 (LOG-02) |
+| 2026-08-29 | A integração de pagamento com **Mercado Pago foi pausada** e a decisão revertida para **Stripe**, numa etapa futura ainda não iniciada. Não configurar, testar, validar chaves nem expandir o código do Mercado Pago existente (`lib/mercadopago.ts`, webhook, `checkout-form.tsx`, etc.) até essa etapa ser priorizada — o código fica como está, sem ser removido, para eventual reaproveitamento/generalização quando o Stripe for integrado. Até lá, o checkout deve continuar funcionando de ponta a ponta (carrinho, frete, endereço, criação do pedido) e parar de forma limpa em `aguardando_pagamento`, sem depender de nenhum gateway real. | §5 (Carrinho, Checkout e Pedidos), §11 (payment) |
 
 ## 10. Logística e Frete — Módulo LOG, Onda 1
 
@@ -183,7 +184,7 @@ Fora de escopo do módulo inteiro (todas as ondas): qualquer forma de "carrinho 
 - **cart / cart_item**: por comprador.
 - **checkout_group**: agrupa os pedidos gerados num mesmo checkout.
 - **order / order_item**: fornecedor, comprador, itens com preço congelado, frete, total, percentual e valor de comissão, status, código de rastreio; linha do tempo de status (`order_status_event`).
-- **payment**: pedido/grupo, método (PIX, boleto, cartão), status, IDs do Mercado Pago, payload de webhook.
+- **payment**: pedido/grupo, método (PIX, boleto, cartão), status, IDs do gateway de pagamento (colunas atualmente nomeadas para o Mercado Pago — `mp_payment_id`/`mp_preference_id` — a generalizar quando o Stripe for integrado, ver §9), payload de webhook.
 - **review**: produto, comprador, pedido de origem, nota, comentário, status de moderação.
 - **banner**: título, destaque, subtítulo, imagem, link, ordem, ativo.
 - **wishlist_item**: comprador + produto.
