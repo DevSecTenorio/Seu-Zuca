@@ -1,19 +1,11 @@
 import Image from "next/image";
 import Link from "next/link";
-import { Heart, Search, ShoppingCart, User } from "lucide-react";
+import { Heart, Search, ShoppingCart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { CategoriesMenu } from "./categories-menu";
+import { AccountMenu } from "./account-menu";
 import { getCurrentUser } from "@/lib/auth/session";
-import { logoutAction } from "@/server/actions/auth-actions";
 import { ROLE_HOME } from "@/lib/auth/roles";
 import { listTopLevelActiveCategories } from "@/server/actions/category-actions";
 import { getCartForBuyer } from "@/server/queries/cart";
@@ -91,32 +83,11 @@ export async function Header() {
             </>
           )}
           {user ? (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="gap-2">
-                  <User className="size-4" />
-                  <span className="hidden sm:inline">{user.company?.nomeFantasia ?? user.email}</span>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuLabel>
-                  <p className="truncate font-medium">{user.company?.nomeFantasia ?? user.email}</p>
-                  <p className="text-xs font-normal text-muted-foreground">{ROLE_LABELS[user.role]}</p>
-                </DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem asChild>
-                  <Link href={ROLE_HOME[user.role]}>Meu painel</Link>
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem asChild>
-                  <form action={logoutAction} className="w-full">
-                    <button type="submit" className="w-full text-left">
-                      Sair
-                    </button>
-                  </form>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <AccountMenu
+              label={user.company?.nomeFantasia ?? user.email}
+              roleLabel={ROLE_LABELS[user.role]}
+              panelHref={ROLE_HOME[user.role]}
+            />
           ) : (
             <>
               <Button asChild variant="ghost" size="sm" className="sm:h-9 sm:px-4 sm:py-2">
