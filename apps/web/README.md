@@ -46,8 +46,43 @@ cp .env.example .env.local
 ```
 
 Preencha `.env.local` (ver tabela completa de variáveis abaixo). No mínimo para rodar localmente:
-`DATABASE_URL` (Supabase). Todo o resto tem fallback de desenvolvimento (uploads em
-`public/uploads`, e-mails no console, checkout sem gateway real configurado).
+`DATABASE_URL`. Todo o resto tem fallback de desenvolvimento (uploads em `public/uploads`,
+e-mails no console, checkout sem gateway real configurado).
+
+### Banco de dados local — temporário
+
+`DATABASE_URL` aponta oficialmente para o Supabase em produção (ver seção "Banco de dados"
+abaixo), mas enquanto esse projeto Supabase não está conectado, o ambiente de desenvolvimento
+usa um Postgres local. A aplicação não sabe (nem precisa saber) a diferença — ela só lê
+`DATABASE_URL` como uma connection string Postgres genérica, sem depender de nada exclusivo do
+Supabase (RLS, Supabase Auth, etc.), então trocar para a connection string do Supabase depois é
+só editar `apps/web/.env.local`, sem mudar código.
+
+**Setup atual desta máquina**: um role e banco `seuzuca` dedicados foram criados num Postgres 17
+já instalado nativamente (não Docker — ver abaixo), para não interferir em outros projetos que
+usam essa mesma instância:
+`DATABASE_URL=postgresql://seuzuca:seuzuca_dev_password@localhost:5432/seuzuca`.
+
+**Opção Docker (`docker-compose.yml` na raiz do monorepo)**: para quem não tem um Postgres local
+já rodando, ou preferir isolamento total, o compose sobe um Postgres 16 dedicado.
+
+```bash
+# na raiz do monorepo
+docker compose up -d      # sobe o Postgres em background (porta 5433 — não 5432, para não
+                           # conflitar com um Postgres nativo já em uso nesta máquina)
+docker compose down       # derruba o container (mantém os dados no volume)
+docker compose down -v    # derruba e apaga o volume (reset completo do banco local)
+```
+
+Se optar pelo Docker, ajuste `apps/web/.env.local` para
+`DATABASE_URL=postgresql://seuzuca:seuzuca_dev_password@localhost:5433/seuzuca` (mesmas
+credenciais do compose, porta diferente).
+
+Em qualquer um dos dois casos, depois de o banco estar de pé: `db:migrate` e `db:seed` (ver
+comandos abaixo).
+
+**Antes do deploy**, troque `DATABASE_URL` para a connection string real do Supabase e rode as
+migrations contra ela — nenhuma das opções de banco local acima deve ser usada em produção.
 
 Da raiz do monorepo (o workspace pnpm cobre `apps/*`):
 
