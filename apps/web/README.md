@@ -114,6 +114,16 @@ dashboard). Resumo:
 \* Sem essas variáveis o app funciona em modo de desenvolvimento com fallback (ver Stack acima),
 mas **produção real exige todas elas**.
 
+**Pendência conhecida — `EMAIL_FROM`**: o domínio `seuzuca.com.br` ainda não está verificado no
+Resend (resend.com/domains), então enviar com `EMAIL_FROM="Seu Zuca <no-reply@seuzuca.com.br>"`
+retorna 403 ("domain is not verified"). Como fallback temporário de desenvolvimento, `.env.local`
+está com `EMAIL_FROM=onboarding@resend.dev` (remetente sandbox do Resend) — mas esse sandbox só
+entrega para o e-mail da própria conta Resend, nunca para destinatários arbitrários, então nem
+todo fluxo de e-mail real dá pra testar localmente dessa forma. **Assim que o domínio for
+verificado no Resend, troque `EMAIL_FROM` de volta para um endereço `@seuzuca.com.br`** (aqui e
+nas env vars da Vercel) — sem essa troca, e-mails reais para usuários (aprovação de conta,
+redefinição de senha) vão falhar em produção.
+
 ## Banco de dados
 
 Schema completo (23 tabelas) cobrindo toda a seção "Modelo de Dados" do SPEC.md.
