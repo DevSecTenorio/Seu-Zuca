@@ -55,7 +55,6 @@ export const PRODUCTS: {
   leadTimeDays: number;
   description: string;
   supplierIndex: number;
-  images: number;
 }[] = [
   {
     name: "Argamassa Colante AC-III 20kg",
@@ -68,7 +67,6 @@ export const PRODUCTS: {
     description:
       "Argamassa colante flexível tipo AC-III, indicada para porcelanatos e áreas externas sujeitas a variação térmica. Pedido mínimo de 20 sacos por categoria (Argamassa), em múltiplos de 5. Frete grátis para pedidos acima de 100 sacos na região metropolitana.",
     supplierIndex: 0,
-    images: 3,
   },
   {
     name: "Cimento CP-II-32 50kg",
@@ -81,7 +79,6 @@ export const PRODUCTS: {
     description:
       "Cimento Portland composto CP-II-32, uso geral em concretos, argamassas e contrapisos. Estoque em grande volume para atender obras de médio e grande porte.",
     supplierIndex: 0,
-    images: 2,
   },
   {
     name: "Rejunte Cimentício Cinza Platina 1kg",
@@ -93,7 +90,6 @@ export const PRODUCTS: {
     leadTimeDays: 3,
     description: "Rejunte cimentício com resistência a fungos e mofo, ideal para pisos e revestimentos internos e externos.",
     supplierIndex: 0,
-    images: 2,
   },
   {
     name: "Vergalhão CA-50 10mm 12m",
@@ -105,7 +101,6 @@ export const PRODUCTS: {
     leadTimeDays: 5,
     description: "Vergalhão de aço CA-50 nervurado, diâmetro 10mm, barras de 12 metros, certificado conforme norma ABNT NBR 7480.",
     supplierIndex: 1,
-    images: 2,
   },
   {
     name: "Bloco de Concreto Estrutural 14x19x39",
@@ -117,7 +112,6 @@ export const PRODUCTS: {
     leadTimeDays: 4,
     description: "Bloco de concreto estrutural para alvenaria armada, dimensões 14x19x39cm, resistência 6 MPa. Pedido mínimo de 100 unidades.",
     supplierIndex: 1,
-    images: 2,
   },
   {
     name: "Tela Soldada Nervurada 15x15 2,45x6m",
@@ -129,7 +123,6 @@ export const PRODUCTS: {
     leadTimeDays: 6,
     description: "Tela soldada nervurada para lajes e contrapisos, malha 15x15cm, painel de 2,45 x 6 metros.",
     supplierIndex: 1,
-    images: 2,
   },
   {
     name: "Porcelanato Acetinado 60x60 Cinza",
@@ -141,7 +134,6 @@ export const PRODUCTS: {
     leadTimeDays: 5,
     description: "Porcelanato acetinado retificado 60x60cm, tonalidade cinza, PEI 4 — indicado para tráfego intenso. Frete grátis acima de 200m².",
     supplierIndex: 0,
-    images: 3,
   },
   {
     name: "Tinta Acrílica Fosca Branca 18L",
@@ -153,7 +145,6 @@ export const PRODUCTS: {
     leadTimeDays: 3,
     description: "Tinta acrílica fosca premium, rendimento aproximado de 300m² por demão, lata de 18 litros.",
     supplierIndex: 0,
-    images: 2,
   },
   {
     name: "Massa Corrida PVA 25kg",
@@ -165,7 +156,6 @@ export const PRODUCTS: {
     leadTimeDays: 3,
     description: "Massa corrida PVA para nivelamento e acabamento de paredes internas antes da pintura.",
     supplierIndex: 0,
-    images: 2,
   },
   {
     name: "Caixa de Passagem PVC 4x2",
@@ -177,7 +167,6 @@ export const PRODUCTS: {
     leadTimeDays: 2,
     description: "Caixa de passagem em PVC 4x2 polegadas para instalações elétricas embutidas, com tampa cega.",
     supplierIndex: 2,
-    images: 2,
   },
   {
     name: "Eletroduto Corrugado 25mm 25m",
@@ -189,7 +178,6 @@ export const PRODUCTS: {
     leadTimeDays: 3,
     description: "Eletroduto corrugado flexível 25mm, rolo com 25 metros, próprio para embutir em laje e parede.",
     supplierIndex: 2,
-    images: 2,
   },
   {
     name: "Furadeira de Impacto 750W",
@@ -201,7 +189,6 @@ export const PRODUCTS: {
     leadTimeDays: 4,
     description: "Furadeira de impacto profissional 750W, mandril de 13mm, com maleta e garantia de fábrica de 12 meses.",
     supplierIndex: 1,
-    images: 3,
   },
   {
     name: "Betoneira 400L Monofásica",
@@ -213,7 +200,6 @@ export const PRODUCTS: {
     leadTimeDays: 10,
     description: "Betoneira 400 litros, motor monofásico 1,5cv, ideal para obras de médio porte. Entrega combinada com transportadora.",
     supplierIndex: 1,
-    images: 2,
   },
   {
     name: "Kit Ferramentas Manuais 129 peças",
@@ -225,7 +211,6 @@ export const PRODUCTS: {
     leadTimeDays: 5,
     description: "Kit com 129 peças para manutenção geral: chaves, alicates, soquetes e acessórios em maleta organizadora.",
     supplierIndex: 1,
-    images: 2,
   },
   {
     name: "Tubo PVC Soldável 100mm 6m",
@@ -237,7 +222,6 @@ export const PRODUCTS: {
     leadTimeDays: 4,
     description: "Tubo de PVC soldável 100mm, barra de 6 metros, para redes de esgoto e águas pluviais.",
     supplierIndex: 2,
-    images: 2,
   },
   {
     name: "Registro de Gaveta Bruto 3/4\"",
@@ -249,7 +233,6 @@ export const PRODUCTS: {
     leadTimeDays: 3,
     description: "Registro de gaveta bruto em latão, rosca de 3/4 polegada, para instalações hidráulicas prediais.",
     supplierIndex: 2,
-    images: 2,
   },
   {
     name: "Caixa d'Água Polietileno 1000L",
@@ -261,7 +244,6 @@ export const PRODUCTS: {
     leadTimeDays: 7,
     description: "Caixa d'água em polietileno com proteção UV, capacidade de 1000 litros, tampa com vedação rosqueável.",
     supplierIndex: 2,
-    images: 2,
   },
   {
     name: "Cabo Flexível 2,5mm² 100m",
@@ -273,7 +255,6 @@ export const PRODUCTS: {
     leadTimeDays: 4,
     description: "Cabo flexível 2,5mm², rolo com 100 metros, isolação antichama 750V, conforme norma NBR NM 247-3.",
     supplierIndex: 2,
-    images: 2,
   },
   {
     name: "Disjuntor Bipolar 40A",
@@ -285,7 +266,6 @@ export const PRODUCTS: {
     leadTimeDays: 2,
     description: "Disjuntor termomagnético bipolar 40A, padrão DIN, curva C — proteção para circuitos residenciais e comerciais.",
     supplierIndex: 2,
-    images: 2,
   },
   {
     name: "Quadro de Distribuição 12 Disjuntores",
@@ -297,7 +277,6 @@ export const PRODUCTS: {
     leadTimeDays: 5,
     description: "Quadro de distribuição de embutir para até 12 disjuntores, em chapa metálica com pintura eletrostática.",
     supplierIndex: 2,
-    images: 2,
   },
   {
     name: "Compensado Naval 18mm 2,20x1,60m",
@@ -309,7 +288,6 @@ export const PRODUCTS: {
     leadTimeDays: 6,
     description: "Chapa de compensado naval 18mm, resistente à umidade, indicada para formas de concreto e mobiliário externo.",
     supplierIndex: 0,
-    images: 2,
   },
   {
     name: "Sarrafo de Pinus 5x2,5cm 3m",
@@ -321,7 +299,6 @@ export const PRODUCTS: {
     leadTimeDays: 3,
     description: "Sarrafo de pinus tratado, 5x2,5cm, comprimento de 3 metros, ideal para estruturas de forro e acabamentos.",
     supplierIndex: 0,
-    images: 2,
   },
   {
     name: "Tijolo Baiano 8 Furos",
@@ -333,7 +310,6 @@ export const PRODUCTS: {
     leadTimeDays: 3,
     description: "Tijolo cerâmico baiano de 8 furos, dimensões 9x19x19cm, para vedação de alvenaria. Pedido mínimo de 100 unidades, em múltiplos de 50.",
     supplierIndex: 0,
-    images: 2,
   },
   {
     name: "Bloco Cerâmico de Vedação 9x19x19",
@@ -345,6 +321,5 @@ export const PRODUCTS: {
     leadTimeDays: 3,
     description: "Bloco cerâmico de vedação, dimensões 9x19x19cm, ideal para paredes internas e externas não estruturais.",
     supplierIndex: 0,
-    images: 2,
   },
 ];
