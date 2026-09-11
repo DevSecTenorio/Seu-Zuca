@@ -7,6 +7,8 @@ import { requireApprovedUser } from "@/lib/auth/require-user";
 import { canTransition, ORDER_STATUS_LABELS, type OrderStatus } from "@/lib/order-status";
 import { logAudit } from "@/lib/audit";
 import { sendEmail } from "@/lib/email";
+import { uploadInvoiceDocument } from "@/lib/storage";
+import { validateInvoiceFile } from "@/lib/validation/files";
 import type { FormState } from "./form-state";
 
 export async function applyOrderStatusTransition(orderId: string, to: OrderStatus, note: string, actorId: string | null) {
@@ -127,4 +129,36 @@ export async function supplierConfirmPickupAction(orderId: string): Promise<Form
   await db.update(schema.pickupCodes).set({ used: true, usedAt: new Date() }).where(eq(schema.pickupCodes.id, pickupCode.id));
   await applyOrderStatusTransition(orderId, "entregue", "Retirada confirmada pelo fornecedor.", supplier.id);
   return { status: "success", message: "Retirada confirmada." };
+}
+
+/**
+ * Nota fiscal isn't itself an order-status transition, so this doesn't go through
+ * applyOrderStatusTransition/canTransition — it just requires the order to already be paid
+ * (issuing an invoice before payment makes no sense) and not cancelled.
+ */
+export async function supplierAttachInvoiceAction(orderId: string, _prevState: FormState, formData: FormData): Promise<FormState> {
+  const supplier = await requireApprovedUser(["fornecedor"]);
+  const file = formData.get("invoiceFile");
+  const invoiceFile = file instanceof File && file.size > 0 ? file : null;
+  const fileError = validateInvoiceFile(invoiceFile, { required: true });
+  if (fileError) return { status: "error", fieldErrors: { invoiceFile: [fileError] } };
+
+  const order = await db.query.orders.findFirst({ where: eq(schema.orders.id, orderId) });
+  if (!order || order.supplierId !== supplier.id) return { status: "error", message: "Pedido não encontrado." };
+  if (order.status === "aguardando_pagamento" || order.status === "cancelado") {
+    return { status: "error", message: "Este pedido ainda não pode receber nota fiscal." };
+  }
+
+  const invoiceUrl = await uploadInvoiceDocument(invoiceFile!, "invoices");
+  await db
+    .update(schema.orders)
+    .set({ invoiceUrl, invoiceFileName: invoiceFile!.name, invoiceUploadedAt: new Date(), updatedAt: new Date() })
+    .where(eq(schema.orders.id, orderId));
+  await logAudit({ actorId: supplier.id, action: "order.invoice_attached", entityType: "order", entityId: orderId, after: { fileName: invoiceFile!.name } });
+
+  revalidatePath(`/pedidos/${orderId}`);
+  revalidatePath("/pedidos");
+  revalidatePath("/minha-conta");
+  revalidatePath("/fornecedor/painel");
+  return { status: "success", message: "Nota fiscal anexada." };
 }

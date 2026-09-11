@@ -18,3 +18,17 @@ export function validateDocumentFile(file: File | null, { required }: { required
   }
   return null;
 }
+
+/** Nota fiscal is always a formal PDF (DANFE) — narrower than the general KYC document types. */
+export function validateInvoiceFile(file: File | null, { required }: { required: boolean }): string | null {
+  if (!file || file.size === 0) {
+    return required ? "Envie a nota fiscal." : null;
+  }
+  if (file.size > MAX_FILE_SIZE_BYTES) {
+    return "Arquivo muito grande. O tamanho máximo é 10MB.";
+  }
+  if (file.type !== "application/pdf") {
+    return "Formato inválido. Envie um PDF.";
+  }
+  return null;
+}

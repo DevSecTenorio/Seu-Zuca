@@ -12,6 +12,10 @@ const SUPABASE_STORAGE_BUCKET = process.env.SUPABASE_STORAGE_BUCKET || "seu-zuca
 // the document's own company or an admin/suporte account (CLAUDE.md: "Autorização SEMPRE
 // verificada no servidor").
 const SUPABASE_KYC_BUCKET = process.env.SUPABASE_KYC_BUCKET || "seu-zuca-kyc";
+// Same private-bucket reasoning as SUPABASE_KYC_BUCKET, but for supplier-uploaded nota fiscal
+// files — these carry buyer/supplier tax data and must only be reachable by the order's own
+// buyer/supplier or an admin/suporte account, via a signed URL.
+const SUPABASE_INVOICE_BUCKET = process.env.SUPABASE_INVOICE_BUCKET || "seu-zuca-invoices";
 
 function getSupabaseAdminClient() {
   const url = process.env.SUPABASE_URL;
@@ -57,22 +61,23 @@ export async function uploadFile(file: File, folder: string): Promise<string> {
 }
 
 /**
- * Uploads a KYC document to the private bucket and returns its **storage path** (not a URL —
- * the bucket has no public access, so the path alone is useless without a signed URL from
- * getSignedDocumentUrl()). Local dev fallback (no Supabase configured) still writes under
- * public/uploads for convenience, same as uploadFile() — never used in production.
+ * Uploads a file to a private bucket and returns its **storage path** (not a URL — the bucket
+ * has no public access, so the path alone is useless without a signed URL from
+ * getSignedUrlForPrivateFile()). Local dev fallback (no Supabase configured) still writes under
+ * public/uploads for convenience, same as uploadFile() — never used in production. Shared by
+ * uploadKycDocument and uploadInvoiceDocument, which only differ by target bucket.
  */
-export async function uploadKycDocument(file: File, folder: string): Promise<string> {
+async function uploadToPrivateBucket(file: File, folder: string, bucket: string, errorLabel: string): Promise<string> {
   const extension = path.extname(file.name) || "";
   const key = `${folder}/${randomUUID()}${extension}`;
 
   const supabase = getSupabaseAdminClient();
   if (supabase) {
     const { error } = await supabase.storage
-      .from(SUPABASE_KYC_BUCKET)
+      .from(bucket)
       .upload(key, file, { contentType: file.type || undefined, upsert: false });
     if (error) {
-      throw new Error(`Falha ao enviar documento de KYC para o Supabase Storage: ${error.message}`);
+      throw new Error(`Falha ao enviar ${errorLabel} para o Supabase Storage: ${error.message}`);
     }
     return key;
   }
@@ -85,13 +90,21 @@ export async function uploadKycDocument(file: File, folder: string): Promise<str
   return `/uploads/${folder}/${path.basename(key)}`;
 }
 
+export async function uploadKycDocument(file: File, folder: string): Promise<string> {
+  return uploadToPrivateBucket(file, folder, SUPABASE_KYC_BUCKET, "documento de KYC");
+}
+
+export async function uploadInvoiceDocument(file: File, folder: string): Promise<string> {
+  return uploadToPrivateBucket(file, folder, SUPABASE_INVOICE_BUCKET, "nota fiscal");
+}
+
 /**
- * Resolves a value stored in kyc_documents.file_url into something a browser can actually load.
- * A value from the local-dev fallback is already a servable relative path (`/uploads/...`) —
- * returned as-is. Anything else is a path inside the private KYC bucket, signed on demand so the
- * link expires shortly after being handed to an already-authorized admin/suporte viewer.
+ * Resolves a stored file_url/path into something a browser can actually load. A value from the
+ * local-dev fallback is already a servable relative path (`/uploads/...`) — returned as-is.
+ * Anything else is a path inside the given private bucket, signed on demand so the link expires
+ * shortly after being handed to an already-authorized viewer.
  */
-export async function getSignedDocumentUrl(fileUrlOrPath: string, expiresInSeconds = 600): Promise<string> {
+async function getSignedUrlForPrivateFile(bucket: string, fileUrlOrPath: string, expiresInSeconds: number, errorLabel: string): Promise<string> {
   if (fileUrlOrPath.startsWith("/") || fileUrlOrPath.startsWith("http")) {
     return fileUrlOrPath;
   }
@@ -99,11 +112,19 @@ export async function getSignedDocumentUrl(fileUrlOrPath: string, expiresInSecon
   const supabase = getSupabaseAdminClient();
   if (!supabase) return fileUrlOrPath;
 
-  const { data, error } = await supabase.storage
-    .from(SUPABASE_KYC_BUCKET)
-    .createSignedUrl(fileUrlOrPath, expiresInSeconds);
+  const { data, error } = await supabase.storage.from(bucket).createSignedUrl(fileUrlOrPath, expiresInSeconds);
   if (error || !data) {
-    throw new Error(`Falha ao gerar link assinado para o documento de KYC: ${error?.message}`);
+    throw new Error(`Falha ao gerar link assinado para ${errorLabel}: ${error?.message}`);
   }
   return data.signedUrl;
+}
+
+/** Signs a value stored in kyc_documents.file_url — see getSignedUrlForPrivateFile(). */
+export async function getSignedDocumentUrl(fileUrlOrPath: string, expiresInSeconds = 600): Promise<string> {
+  return getSignedUrlForPrivateFile(SUPABASE_KYC_BUCKET, fileUrlOrPath, expiresInSeconds, "o documento de KYC");
+}
+
+/** Signs a value stored in orders.invoice_url — see getSignedUrlForPrivateFile(). */
+export async function getSignedInvoiceUrl(fileUrlOrPath: string, expiresInSeconds = 600): Promise<string> {
+  return getSignedUrlForPrivateFile(SUPABASE_INVOICE_BUCKET, fileUrlOrPath, expiresInSeconds, "a nota fiscal");
 }

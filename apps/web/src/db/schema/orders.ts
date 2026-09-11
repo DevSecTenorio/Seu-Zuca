@@ -58,6 +58,13 @@ export const orders = pgTable(
     commissionPercent: numeric("commission_percent", { precision: 5, scale: 2 }).notNull(),
     commissionCents: integer("commission_cents").notNull(),
     trackingCode: text("tracking_code"),
+    // Nota fiscal attached by the supplier, covering every item in this order. Stored the same
+    // way as KYC documents (private bucket, path only — see lib/storage.ts) since an invoice
+    // carries the buyer's and supplier's tax data and must not be reachable via a guessable
+    // public URL. Null until the supplier uploads it.
+    invoiceUrl: text("invoice_url"),
+    invoiceFileName: text("invoice_file_name"),
+    invoiceUploadedAt: timestamp("invoice_uploaded_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },

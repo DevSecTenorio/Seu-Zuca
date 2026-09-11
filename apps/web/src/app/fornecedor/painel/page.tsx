@@ -22,6 +22,7 @@ import { getSupplierCoverageAreas } from "@/server/queries/logistics";
 import { getSupplierFreightConfig } from "@/server/queries/freight";
 import { getSupplierPickupLocations } from "@/server/queries/pickup";
 import { ShipOrderForm } from "./ship-order-form";
+import { AttachInvoiceForm } from "./attach-invoice-form";
 import { LogisticsTab } from "./logistics-tab";
 
 export const metadata: Metadata = {
@@ -343,6 +344,16 @@ export default async function SupplierDashboardPage({
                               Marcar como entregue
                             </Button>
                           </form>
+                        )}
+                        {order.status !== "aguardando_pagamento" && order.status !== "cancelado" && (
+                          <div className="mt-1 flex flex-col items-end gap-1">
+                            {order.invoiceFileName && (
+                              <span className="max-w-40 truncate text-xs text-muted-foreground" title={order.invoiceFileName}>
+                                NF: {order.invoiceFileName}
+                              </span>
+                            )}
+                            <AttachInvoiceForm orderId={order.id} hasInvoice={Boolean(order.invoiceUrl)} />
+                          </div>
                         )}
                       </TableCell>
                     </TableRow>

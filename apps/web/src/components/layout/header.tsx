@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { CategoriesMenu } from "./categories-menu";
 import { AccountMenu } from "./account-menu";
 import { getCurrentUser } from "@/lib/auth/session";
-import { ROLE_HOME } from "@/lib/auth/roles";
+import { ROLE_PANEL } from "@/lib/auth/roles";
 import { listTopLevelActiveCategories } from "@/server/actions/category-actions";
 import { getCartForBuyer } from "@/server/queries/cart";
 
@@ -28,10 +28,10 @@ export async function Header() {
           <Image
             src="/logo-seuzuca.png"
             alt="Seu Zuca"
-            width={165}
-            height={89}
+            width={819}
+            height={301}
             priority
-            className="h-10 w-auto sm:h-14 md:h-20"
+            className="h-7 w-auto sm:h-9 md:h-11"
           />
         </Link>
 
@@ -86,7 +86,7 @@ export async function Header() {
             <AccountMenu
               label={user.company?.nomeFantasia ?? user.email}
               roleLabel={ROLE_LABELS[user.role]}
-              panelHref={ROLE_HOME[user.role]}
+              panelHref={ROLE_PANEL[user.role]}
             />
           ) : (
             <>

@@ -12,6 +12,7 @@ import { OrderTimeline } from "@/components/order-timeline";
 import { formatCentsToBRL, formatDate } from "@/lib/format";
 import { ORDER_STATUS_LABELS, canTransition, type OrderStatus } from "@/lib/order-status";
 import { buyerCancelOrderAction, buyerConfirmDeliveryAction } from "@/server/actions/order-actions";
+import { getSignedInvoiceUrl } from "@/lib/storage";
 import { DisputeDialog } from "./dispute-dialog";
 import { ReviewDialog } from "./review-dialog";
 import { CheckCircle2 } from "lucide-react";
@@ -55,6 +56,8 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
 
   const reviews = order.status === "entregue" ? await db.query.reviews.findMany({ where: eq(schema.reviews.orderId, order.id) }) : [];
   const reviewedProductIds = new Set(reviews.map((r) => r.productId));
+
+  const signedInvoiceUrl = order.invoiceUrl ? await getSignedInvoiceUrl(order.invoiceUrl) : null;
 
   const canCancel = canTransition(order.status, "cancelado", "comprador");
   const canDispute = canTransition(order.status, "em_disputa", "comprador");
@@ -195,6 +198,21 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
             <CardContent className="space-y-1 text-sm text-muted-foreground">
               <p>Método: {payment?.method === "cartao" ? "Cartão de crédito" : payment?.method?.toUpperCase()}</p>
               <p>Status: {payment?.status ?? "—"}</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Nota fiscal</CardTitle>
+            </CardHeader>
+            <CardContent className="text-sm text-muted-foreground">
+              {signedInvoiceUrl ? (
+                <a href={signedInvoiceUrl} target="_blank" rel="noopener noreferrer" className="font-medium text-primary hover:underline">
+                  Baixar {order.invoiceFileName}
+                </a>
+              ) : (
+                <p>O fornecedor ainda não anexou a nota fiscal deste pedido.</p>
+              )}
             </CardContent>
           </Card>
 
