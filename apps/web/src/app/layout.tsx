@@ -4,7 +4,6 @@ import "./globals.css";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { Toaster } from "@/components/ui/sonner";
-import { TestEnvironmentNotice } from "@/components/layout/test-environment-notice";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -52,7 +51,6 @@ export default function RootLayout({
         <main className="flex flex-1 flex-col">{children}</main>
         <Footer />
         <Toaster />
-        <TestEnvironmentNotice />
       </body>
     </html>
   );
